@@ -1,0 +1,48 @@
+
+# IP_DIR-------------------------------------------------------------------
+|rtl/
+|---|com/         #rtl common library
+|---|---|com_snippet.sv
+|---|---|common/
+|---|---|csr/
+|---|---|emi/
+|---|---|img/
+|---|---|impl_template/
+|---|impl/          #rtl implement library, each project will modify this
+|---|---|impl_define.sv
+|---|---|dw/
+|---|---|memory/
+|---|---|------|xx_spram_cell.sv
+|---|---|------|xx_sprom_cell.sv
+|---|---|------|xx_tpram1ck_cell.sv
+|---|---|------|xx_tpram2ck_cell.sv
+|---|---|------|wrapper/
+|---|---|stdcell/
+|---|---|-------|clk_gate.v;
+|---|IP1/           #ip design development;
+|---|IP2/
+
+*cat rtl.f
+>>>
+$RTL_DIR/impl/impl_define.sv
+$RTL_DIR/StLib/common/com_define.sv
+
+-f $RTL_DIR/impl/impl.f
+-f $RTL_DIR/common/com_common.f
+-f $RTL_DIR/emi/com_emi.f
+-f $RTL_DIR/csr/com_csr.f
+-f $RTL_DIR/img/com_img.f
+-f $RTL_DIR/IP1.f
+-f $RTL_DIR/IP2.f
+>>>
+
+
+# define file -------------------------------------------------------------------
+1. rtl/impl/impl_define.sv,  set all define;
+2. rtl/common/com_define.sv, include some define function;
+
+# create a ip content -------------------------------------------------------------------
+1. mkdir rtl
+2. cd rtl; git clone <com_repo>;
+3. mkdir impl; cp com/impl_template/* impl/* -rf;
+4. mkdir IP1; start develop IP1;

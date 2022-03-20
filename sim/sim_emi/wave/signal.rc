@@ -1,0 +1,191 @@
+Magic 271485
+Revision Verdi_Q-2020.03-SP2
+
+; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
+viewPort 0 25 1920 435 340 89
+
+; File list:
+; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
+openDirFile -d / "" "/nfs54/project/spiderman/dmg/proj/CPM/git/CPM/sim/sim_emi/bin/run.fsdb"
+
+; file time scale:
+; fileTimeScale ### s|ms|us|ns|ps
+
+; signal spacing:
+signalSpacing 5
+
+; windowTimeUnit is used for zoom, cursor & marker
+; waveform viewport range
+zoom 0.000000 2030100.000000
+cursor 66000.000000
+marker 46000.000000
+
+; user define markers
+; userMarker time_pos marker_name color linestyle
+; visible top row signal index
+top 0
+; marker line index
+markerPos 96
+
+; event list
+; addEvent event_name event_expression
+; curEvent event_name
+
+
+
+COMPLEX_EVENT_BEGIN
+
+
+COMPLEX_EVENT_END
+
+
+
+; toolbar current search type
+; curSTATUS search_type
+curSTATUS ByChange
+
+
+addGroup "rch"
+addSubGroup "arb_tx" -e FALSE
+activeDirFile "" "/nfs54/project/spiderman/dmg/proj/CPM/git/CPM/sim/sim_emi/bin/run.fsdb"
+addSignal -h 15 /top/u_com_emi_wrap/u_com_emi_rch/u_com_emi_rch_arb/tx_arvalid
+addSignal -h 15 -holdScope tx_arready
+addSignal -h 15 -holdScope tx_arid[3:0]
+addSignal -h 15 -holdScope tx_araddr[31:0]
+addSignal -h 15 -holdScope tx_arlen[7:0]
+addSignal -h 15 -holdScope tx_aruser[0:0]
+addSignal -h 15 -holdScope tx_rvalid
+addSignal -h 15 -holdScope tx_rready
+addSignal -h 15 -holdScope tx_rid[3:0]
+addSignal -h 15 -holdScope tx_rdata[127:0]
+addSignal -h 15 -holdScope tx_rlast
+addSignal -h 15 -holdScope tx_ruser[0:0]
+addSignal -h 15 /BLANK
+endSubGroup "arb_tx"
+addSubGroup "split_tx" -e FALSE
+addSignal -h 15 /top/u_com_emi_wrap/u_com_emi_rch/u_com_emi_rch_split/tx_arvalid
+addSignal -h 15 -holdScope tx_arready
+addSignal -h 15 -holdScope tx_arid[3:0]
+addSignal -h 15 -holdScope tx_araddr[31:0]
+addSignal -h 15 -holdScope tx_arlen[7:0]
+addSignal -h 15 -holdScope tx_aruser[0:0]
+addSignal -h 15 -holdScope tx_rvalid
+addSignal -h 15 -holdScope tx_rready
+addSignal -h 15 -holdScope tx_rid[3:0]
+addSignal -h 15 -holdScope tx_rlast
+addSignal -h 15 /BLANK
+endSubGroup "split_tx"
+addSubGroup "ext_rx" -e FALSE
+addSignal -h 15 /top/u_com_emi_wrap/u_com_emi_rch/u_com_emi_rch_ext/rx_arvalid
+addSignal -h 15 -holdScope rx_arready
+addSignal -h 15 -holdScope rx_arid[3:0]
+addSignal -h 15 -holdScope rx_araddr[31:0]
+addSignal -h 15 -holdScope rx_arlen[7:0]
+addSignal -h 15 -holdScope rx_aruser[0:0]
+addSignal -h 15 -holdScope rx_rvalid
+addSignal -h 15 -holdScope rx_rready
+addSignal -h 15 -holdScope rx_rid[3:0]
+addSignal -h 15 -holdScope rx_rdata[127:0]
+addSignal -h 15 -holdScope rx_rlast
+addSignal -h 15 -holdScope rx_ruser[0:0]
+addSignal -h 15 /BLANK
+endSubGroup "ext_rx"
+addGroup "wch"
+addSubGroup "arb_tx" -e FALSE
+addSignal -h 15 /top/u_com_emi_wrap/u_com_emi_wch/u_com_emi_wch_arb/tx_awvalid
+addSignal -h 15 -holdScope tx_awready
+addSignal -h 15 -holdScope tx_awid[3:0]
+addSignal -h 15 -holdScope tx_awaddr[31:0]
+addSignal -h 15 -holdScope tx_awlen[7:0]
+addSignal -h 15 -holdScope tx_awuser[0:0]
+addSignal -h 15 /BLANK
+addSignal -h 15 /top/u_com_emi_wrap/u_com_emi_wch/u_com_emi_wch_arb/tx_wvalid
+addSignal -h 15 -holdScope tx_wready
+addSignal -h 15 -holdScope tx_wid[3:0]
+addSignal -h 15 -holdScope tx_wdata[127:0]
+addSignal -h 15 -holdScope tx_wstrb[15:0]
+addSignal -h 15 -holdScope tx_wlast
+addSignal -h 15 -holdScope tx_wuser[0:0]
+addSignal -h 15 /BLANK
+addSignal -h 15 /top/u_com_emi_wrap/u_com_emi_wch/u_com_emi_wch_arb/tx_bvalid
+addSignal -h 15 -holdScope tx_bready
+addSignal -h 15 -holdScope tx_bid[3:0]
+addSignal -h 15 -holdScope tx_buser[0:0]
+addSignal -h 15 /BLANK
+addSignal -h 15 -holdScope BLANK
+addSignal -h 15 -holdScope BLANK
+endSubGroup "arb_tx"
+addSubGroup "split_tx" -e FALSE
+addSignal -h 15 /top/u_com_emi_wrap/u_com_emi_wch/u_com_emi_wch_split/tx_awvalid
+addSignal -h 15 -holdScope tx_awready
+addSignal -h 15 -holdScope tx_awid[3:0]
+addSignal -h 15 -holdScope tx_awaddr[31:0]
+addSignal -h 15 -holdScope tx_awlen[7:0]
+addSignal -h 15 -holdScope tx_awuser[0:0]
+addSignal -h 15 -holdScope tx_wvalid
+addSignal -h 15 -holdScope tx_wready
+addSignal -h 15 -holdScope tx_wlast
+addSignal -h 15 -holdScope tx_bvalid
+addSignal -h 15 -holdScope tx_bready
+addSignal -h 15 /BLANK
+endSubGroup "split_tx"
+addSubGroup "ext_rx" -e FALSE
+addSignal -h 15 /top/u_com_emi_wrap/u_com_emi_wch/u_com_emi_wch_ext/rx_awvalid
+addSignal -h 15 -holdScope rx_awready
+addSignal -h 15 -holdScope rx_awid[3:0]
+addSignal -h 15 -holdScope rx_awaddr[31:0]
+addSignal -h 15 -holdScope rx_awlen[7:0]
+addSignal -h 15 -holdScope rx_awuser[0:0]
+addSignal -h 15 -holdScope rx_wvalid
+addSignal -h 15 -holdScope rx_wready
+addSignal -h 15 -holdScope rx_wid[3:0]
+addSignal -h 15 -holdScope rx_wdata[127:0]
+addSignal -h 15 -holdScope rx_wstrb[15:0]
+addSignal -h 15 -holdScope rx_wlast
+addSignal -h 15 -holdScope rx_wuser[0:0]
+addSignal -h 15 -holdScope rx_bvalid
+addSignal -h 15 -holdScope rx_bready
+addSignal -h 15 -holdScope rx_bid[3:0]
+addSignal -h 15 -holdScope rx_buser[0:0]
+addSignal -h 15 /BLANK
+endSubGroup "ext_rx"
+addSignal -h 15 /BLANK
+addGroup "ext" -e FALSE
+addSignal -h 15 /top/u_com_emi_wrap/ext_emi_ifm/emi_arvalid
+addSignal -h 15 -holdScope emi_arready
+addSignal -h 15 -holdScope emi_arid[3:0]
+addSignal -h 15 -holdScope emi_araddr[31:0]
+addSignal -h 15 -holdScope emi_arlen[7:0]
+addSignal -h 15 -holdScope emi_aruser[0:0]
+addSignal -h 15 /BLANK
+addSignal -h 15 /top/u_com_emi_wrap/ext_emi_ifm/emi_rvalid
+addSignal -h 15 -holdScope emi_rready
+addSignal -h 15 -holdScope emi_rid[3:0]
+addSignal -h 15 -holdScope emi_rdata[127:0]
+addSignal -h 15 -holdScope emi_rlast
+addSignal -h 15 -holdScope emi_ruser[0:0]
+addSignal -h 15 /BLANK
+addSignal -h 15 /top/u_com_emi_wrap/ext_emi_ifm/emi_awvalid
+addSignal -h 15 -holdScope emi_awid[3:0]
+addSignal -h 15 -holdScope emi_awaddr[31:0]
+addSignal -h 15 -holdScope emi_awlen[7:0]
+addSignal -h 15 -holdScope emi_awuser[0:0]
+addSignal -h 15 -holdScope emi_awready
+addSignal -h 15 /BLANK
+addSignal -h 15 /top/u_com_emi_wrap/ext_emi_ifm/emi_wvalid
+addSignal -h 15 -holdScope emi_wready
+addSignal -h 15 -holdScope emi_wid[3:0]
+addSignal -h 15 -holdScope emi_wdata[127:0]
+addSignal -h 15 -holdScope emi_wstrb[15:0]
+addSignal -h 15 -holdScope emi_wlast
+addSignal -h 15 -holdScope emi_wuser[0:0]
+addSignal -h 15 /BLANK
+addSignal -h 15 /top/u_com_emi_wrap/ext_emi_ifm/emi_bvalid
+addSignal -h 15 -holdScope emi_bid[3:0]
+addSignal -h 15 -holdScope emi_buser[0:0]
+addSignal -h 15 /BLANK
+addGroup "G4"
+
+; getSignalForm Scope Hierarchy Status
+; active file of getSignalForm
+
