@@ -47,9 +47,9 @@ input  wire                         lb_rd_ack           ,
 input  wire [LB_DW-1:0]             lb_rd_data          //,
 );
 //localparam-----------------------------------------------------------------
-`STL_PARAM_ASSERT( LB_PXL_N>=1, "LB_PXL_N>=1" ); //spyglass disable W193
-`STL_PARAM_ASSERT( LB_PXL_N==1<<$clog2(LB_PXL_N), "LB_PXL_N==2^n" ); //spyglass disable W193
-`STL_PARAM_ASSERT( RD_PXL_N<=LB_PXL_N, "RD_PXL_N<=LB_PXL_N" ); //spyglass disable W193
+`COM_PARAM_ASSERT( LB_PXL_N>=1, "LB_PXL_N>=1" ); //spyglass disable W193
+`COM_PARAM_ASSERT( LB_PXL_N==1<<$clog2(LB_PXL_N), "LB_PXL_N==2^n" ); //spyglass disable W193
+`COM_PARAM_ASSERT( RD_PXL_N<=LB_PXL_N, "RD_PXL_N<=LB_PXL_N" ); //spyglass disable W193
 localparam LB_PXL_N_L2 = $clog2(LB_PXL_N);
 
 localparam ST_IDLE = 3'b001;

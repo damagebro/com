@@ -45,8 +45,8 @@ output wire [LB_AW-1:0]            lb_wr_addr          ,
 output wire [LB_DW-1:0]            lb_wr_data          //,
 );
 //localparam-----------------------------------------------------------------
-`STL_PARAM_ASSERT( LB_PXL_N>=1, "LB_PXL_N>=1" ); //spyglass disable W193
-`STL_PARAM_ASSERT( WR_PXL_N<=LB_PXL_N, "WR_PXL_N<=LB_PXL_N" ); //spyglass disable W193
+`COM_PARAM_ASSERT( LB_PXL_N>=1, "LB_PXL_N>=1" ); //spyglass disable W193
+`COM_PARAM_ASSERT( WR_PXL_N<=LB_PXL_N, "WR_PXL_N<=LB_PXL_N" ); //spyglass disable W193
 localparam LB_PXL_N_L2 = $clog2(LB_PXL_N);
 //reg  declare---------------------------------------------------------------
 reg  [LB_PXL_N-1:0][PW-1:0] arc_buf;

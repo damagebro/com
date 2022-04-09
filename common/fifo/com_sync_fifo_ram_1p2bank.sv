@@ -66,7 +66,8 @@ wire out_rd_empty;
 
 wire ram_wr_en    ;
 wire ram_wr_full  ;
-wire ram_wr_hold  ; //two's spram, rd priotity, so wr maybe hold;
+// wire ram_wr_hold  ; //two's spram, rd priority, so wr maybe hold;
+wire ram_rd_hold  ; //two's spram, wr priority, so rd maybe hold; //2021/07/13, change to wr_ram priority
 wire ram_rd_empty ;
 wire ram_rd_en    ;
 wire ram_rd_ack   ;
@@ -77,7 +78,7 @@ wire [DW-1:0] ram_rd_data;
 //in fifo---
 wire              in_wr_en    = (!in_rd_empty || !ram_rd_empty_do || out_wr_full) ? wr_en   : 1'b0;
 wire [DW-1:0] in_wr_data  = wr_data;
-wire              in_rd_en    = !in_rd_empty && ((!ram_rd_empty_do||out_wr_full) ? !(ram_wr_full||ram_wr_hold) : !out_wr_full);
+wire              in_rd_en    = !in_rd_empty && ((!ram_rd_empty_do||out_wr_full) ? !(ram_wr_full) : !out_wr_full);
 wire [DW-1:0] in_rd_data  ;
 wire [IN_AW-1:0]  in_water_level;
 com_sync_fifo_reg #(
@@ -167,12 +168,16 @@ if( RAM_DEPTH>0 )begin:GEN_RAM_FIFO
     assign ram_rd_ack = rc_ram_rd_ack;
 
     wire [OUT_AW-0:0] out_buf_needed = out_wr_en + (OUT_AW+1)'(0);
-    wire   ram_wr_en_t = !ram_rd_empty_do || out_wr_full ? !in_rd_empty : 1'b0;
-    assign ram_wr_en   = ram_wr_en_t && !(ram_wr_full||ram_wr_hold);
-    assign ram_rd_en   = !ram_rd_empty && out_water_level>out_buf_needed;
+    wire   ram_wr_en_t = !ram_rd_empty_do || out_wr_full ? !in_rd_empty&&!ram_wr_full : 1'b0;
+    wire   ram_rd_en_t = !ram_rd_empty && out_water_level>out_buf_needed;
+    // assign ram_wr_en   = ram_wr_en_t && !ram_wr_hold;
+    // assign ram_rd_en   = ram_rd_en_t;
+    assign ram_wr_en = ram_wr_en_t;
+    assign ram_rd_en = ram_rd_en_t && !ram_rd_hold;
     assign water_level = in_water_level + out_water_level + ram_water_level;
 
-    assign ram_wr_hold = ram_rd_en && (ram_wr_addr[0]==ram_rd_addr[0]);
+    // assign ram_wr_hold = ram_rd_en && (ram_wr_addr[0]==ram_rd_addr[0]);
+    assign ram_rd_hold = ram_rd_en_t && ram_wr_en && (ram_wr_addr[0]==ram_rd_addr[0]);
     assign ram_cen [0] = !((ram_wr_en && ram_wr_addr[0]==1'b0) || (ram_rd_en && ram_rd_addr[0]==1'b0));
     assign ram_we  [0] = ram_wr_en && ram_wr_addr[0]==1'b0;
     assign ram_addr[0] = (!ram_cen[0]&&ram_we[0]) ? ram_wr_addr[RAM_AW-1:1] : ram_rd_addr[RAM_AW-1:1];
@@ -192,7 +197,8 @@ else begin:GEN_NO_RAM_FIFO
     assign ram_rd_en   = 1'b0;
     assign water_level = in_water_level + out_water_level;
 
-    assign ram_wr_hold = 1'b0;
+    // assign ram_wr_hold = 1'b0;
+    assign ram_rd_hold = 1'b0;
     assign ram_cen [0] = 1'b0;
     assign ram_we  [0] = 1'b0;
     assign ram_addr[0] = RAM_ONE_AW'(0);

@@ -392,8 +392,7 @@ wire [WIN_H-2:0]              arr_rd_dat_rd_empty ;
 wire [WIN_H-2:0][RD_CW-1:0]   arr_rd_dat_wl       ;//water_level = DEPTH-count
 com_sync_fifo_reg #(
     .DW         ( PW        ), //8
-    .DEPTH      ( RD_DEPTH  ), //4
-    .FIFO_TYPE  ( StlCommon::FIFOTYPE_CWL )
+    .DEPTH      ( RD_DEPTH  )  //4
 )r_com_sync_fifo_reg_rd_dat[WIN_H-2:0]
 (
     .clk                  ( clk                  ), //i
@@ -406,7 +405,7 @@ com_sync_fifo_reg #(
     .rd_en                ( arr_rd_dat_rd_en     ), //i
     .rd_data              ( arr_rd_dat_rd_data   ), //o
     .rd_empty             ( arr_rd_dat_rd_empty  ), //o
-    .count                ( arr_rd_dat_wl        )  //o
+    .water_level          ( arr_rd_dat_wl        )  //o
 );
 reg  [WIN_H-2:0] arb_rd_req_arr_ovld;
 reg  [WIN_H-2:0] arb_rd_req_arr_ordy;
