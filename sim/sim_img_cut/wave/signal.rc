@@ -1,0 +1,120 @@
+Magic 271485
+Revision Verdi3_L-2016.06-1
+
+; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
+viewPort 0 28 1853 370 307 142
+
+; File list:
+; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
+openDirFile -d / "" "/home/damage/proj/dmg/git/rtl/com/sim/sim_img_cut/bin/run.fsdb"
+
+; file time scale:
+; fileTimeScale ### s|ms|us|ns|ps
+
+; signal spacing:
+signalSpacing 5
+
+; windowTimeUnit is used for zoom, cursor & marker
+windowTimeUnit 1ns
+
+; waveform viewport range
+zoom 0.000000 54113.780000 1n
+cursor 0.000000
+marker 15686.000000
+
+; user define markers
+; userMarker time_pos marker_name color linestyle
+; visible top row signal index
+top 0
+; marker line index
+markerPos 52
+
+; logical expression list
+; addExprSig expr_name expression_string
+activeDirFile "" "/home/damage/proj/dmg/git/rtl/com/sim/sim_img_cut/bin/run.fsdb"
+
+addExprSig -b 1 -n UUU logical_expression_1 "/top/u_com_img_cut_rd/bus_rd_valid"&"/top/u_com_img_cut_rd/bus_rd_rea\
+dy"&"/top/u_com_img_cut_rd/clk"
+
+; counter signal list
+; addCounterSig -Rising|-Falling|-AnyChange signal
+
+addCounterSig -Rising "/logical_expression_1"
+
+; event list
+; addEvent event_name event_expression
+; curEvent event_name
+
+
+
+COMPLEX_EVENT_BEGIN
+
+
+COMPLEX_EVENT_END
+
+
+
+; toolbar current search type
+; curSTATUS search_type
+curSTATUS ByChange
+
+
+addGroup "cut_wr" -e FALSE
+activeDirFile "" "/home/damage/proj/dmg/git/rtl/com/sim/sim_img_cut/bin/run.fsdb"
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_img_cut_wr/pic_width_m1[11:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope pic_heigh_m1[11:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope pixel_bitlen[4:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope pic_base_addr[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope line_stride[15:0]
+addSignal -h 15 /BLANK
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_img_cut_wr/cut_xpos[11:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope cut_ypos[11:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope cut_width_m1[11:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope cut_heigh_m1[11:0]
+addSignal -h 15 -holdScope cut_wr_vld
+addSignal -h 15 -holdScope cut_wr_rdy
+addSignal -h 15 -holdScope cut_wb_resp
+addSignal -h 15 /BLANK
+addSignal -h 15 /top/u_com_img_cut_wr/pixel_sob
+addSignal -h 15 -holdScope pixel_last
+addSignal -h 15 -UNSIGNED -HEX -holdScope pixel_data[0:0]
+addSignal -h 15 -holdScope pixel_valid
+addSignal -h 15 -holdScope pixel_ready
+addSignal -h 15 /BLANK
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_img_cut_wr/bus_wa_addr[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope bus_wa_bytelen[23:0]
+addSignal -h 15 -holdScope bus_wa_valid
+addSignal -h 15 -holdScope bus_wa_ready
+addSignal -h 15 -UNSIGNED -HEX -holdScope bus_wd_data[127:0]
+addSignal -h 15 -holdScope bus_wd_valid
+addSignal -h 15 -holdScope bus_wd_ready
+addSignal -h 15 -holdScope bus_wb_resp
+addGroup "cut_rd" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_img_cut_rd/cut_xpos[11:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope cut_ypos[11:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope cut_width_m1[11:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope cut_heigh_m1[11:0]
+addSignal -h 15 -holdScope cut_rd_vld
+addSignal -h 15 -holdScope cut_rd_rdy
+addSignal -h 15 /BLANK
+addSignal -h 15 /top/u_com_img_cut_rd/pixel_sob
+addSignal -h 15 -holdScope pixel_eob
+addSignal -h 15 -holdScope pixel_last
+addSignal -h 15 -UNSIGNED -HEX -holdScope pixel_data[0:0]
+addSignal -h 15 -holdScope pixel_valid
+addSignal -h 15 -holdScope pixel_ready
+addSignal -h 15 /BLANK
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_img_cut_rd/bus_ra_addr[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope bus_ra_bytelen[23:0]
+addSignal -h 15 -holdScope bus_ra_valid
+addSignal -h 15 -holdScope bus_ra_ready
+addSignal -h 15 -UNSIGNED -HEX -holdScope bus_rd_data[127:0]
+addSignal -h 15 -holdScope bus_rd_valid
+addSignal -h 15 -holdScope bus_rd_ready
+addSignal -h 15 /BLANK
+addGroup "G3"
+addGroup "G4"
+
+; getSignalForm Scope Hierarchy Status
+; active file of getSignalForm
+
