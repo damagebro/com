@@ -89,8 +89,9 @@ begin
     else if( bus_hs )
         rc_bus_vld_flag <= 1'b1;
 end
-wire bus_dec_vld = b_bus_rcv_avl_flag&&!out_buf_last ? bus_rd_valid : rc_bus_vld_flag;
-assign bus_rd_ready = b_bus_rcv_avl_flag&&!out_buf_last ? pixel_ready : !rc_bus_vld_flag;
+// wire b_bus_dat_fst_invalid = bus_rd_valid && !rc_bus_vld_flag && b_bus_rcv_avl_flag;
+wire bus_dec_vld = b_bus_rcv_avl_flag&&rc_bus_vld_flag ? bus_rd_valid : rc_bus_vld_flag;
+assign bus_rd_ready = b_bus_rcv_avl_flag ? pixel_ready : !rc_bus_vld_flag;
 assign out_buf_ihs = bus_dec_vld && pixel_ready;
 
 wire [XW-1:0] cut_xpos_s_use = cut_cfg_en ? cut_xpos_s : rc_cut_xpos_s;
@@ -98,7 +99,7 @@ wire [BUS_DW_L2-1:0] cut_xpos_s_use_lo = cut_xpos_s_use + BUS_DW_L2'(0);
 wire [BUS_DW_L2-1:0] bit_pos_start = cut_xpos_s_use_lo*pixel_bitlen;
 wire [BUS_DW_L2-0:0] bit_pos_nxt_t = rc_bit_pos+once_bitlen;
 wire [BUS_DW_L2-0:0] bit_pos_nxt = b_bus_rcv_avl_flag ? bit_pos_nxt_t-BUS_DW : bit_pos_nxt_t;
-assign b_bus_rcv_avl_flag = bit_pos_nxt_t>=BUS_DW;
+assign b_bus_rcv_avl_flag = bit_pos_nxt_t>=BUS_DW && !(out_buf_last && bit_pos_nxt_t==BUS_DW);
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )

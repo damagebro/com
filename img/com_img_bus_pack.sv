@@ -55,6 +55,7 @@ wire bus_hs = bus_wd_valid && bus_wd_ready;
 
 wire [BUS_DW_L2-0:0] bit_pos_nxt_t = rc_bit_pos+once_bitlen;
 wire [BUS_DW_L2-0:0] bit_pos_nxt = b_out_avl_flag ? bit_pos_nxt_t-BUS_DW : bit_pos_nxt_t;
+wire b_out_avl_flag_extend = bit_pos_nxt_t>BUS_DW;
 assign b_out_avl_flag = bit_pos_nxt_t>=BUS_DW;
 always @(posedge clk or negedge rst_n)
 begin
@@ -66,10 +67,21 @@ begin
         rc_bit_pos <= bit_pos_nxt;
 end
 
+wire [PW-1:0] one_pxl_mask = (1<<pixel_bitlen) - 1;
+reg  [PXL_N*PW-1:0] rb_pxl_pack_data; //maybe the true bitlen=pixel_bitlen*PXL_N;
+always @*
+begin
+    rb_pxl_pack_data = (PXL_N*PW)'(0);
+    for( int i=0; i<PXL_N; i++ )begin
+        rb_pxl_pack_data[ i*pixel_bitlen +:PW ] = pixel_data[i] & one_pxl_mask;
+    end
+end
+
+reg  rc_bus_last_extend_flag;
 wire [BUS_DW-1:0] bus_data_mask = (1<<rc_bit_pos)-1;
 wire [BUS_DW-1:0] bus_data_avl = rc_bus_data & bus_data_mask;
 wire [BUS_DW+PW*PXL_N-1:0] bus_data_avl_t = {(PW*PXL_N)'(0),bus_data_avl};
-wire [BUS_DW+PW*PXL_N-1:0] bus_data_append = pixel_data<<rc_bit_pos;
+wire [BUS_DW+PW*PXL_N-1:0] bus_data_append = rb_pxl_pack_data<<rc_bit_pos;
 wire [BUS_DW+PW*PXL_N-1:0] bus_data_extend = bus_data_avl_t | bus_data_append;
 wire [BUS_DW-1:0] bus_data_ovf = bus_data_extend[BUS_DW +:PW*PXL_N] + BUS_DW'(0);
 wire [BUS_DW-1:0] bus_data_nxt = b_out_avl_flag ? bus_data_ovf : bus_data_extend[BUS_DW-1:0];
@@ -77,16 +89,28 @@ always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
         rc_bus_data <= 'b0;
-    else if( clear || pixel_start || pixel_hs&&pixel_last )
+    // else if( clear || pixel_start || pixel_hs&&pixel_last&&!b_out_avl_flag_extend || rc_bus_last_extend_flag&&bus_hs  )
+    else if( clear || pixel_start )
         rc_bus_data <= 'b0;
     else if( pixel_hs )
         rc_bus_data <= bus_data_nxt;
 end
+always @(posedge clk or negedge rst_n)
+begin
+    if( !rst_n )
+        rc_bus_last_extend_flag <= 1'b0;
+    else if( clear || pixel_start )
+        rc_bus_last_extend_flag <= 1'b0;
+    else if( b_out_avl_flag_extend && pixel_hs&&pixel_last )
+        rc_bus_last_extend_flag <= 1'b1;
+    else if( rc_bus_last_extend_flag&&bus_hs )
+        rc_bus_last_extend_flag <= 1'b0;
+end
 
 //out---
-assign bus_wd_valid = b_out_avl_flag || pixel_valid&&pixel_last;
-assign bus_wd_data  = bus_data_extend[BUS_DW-1:0];
-assign pixel_ready  = bus_wd_valid ? bus_wd_ready : 1'b1;
+assign bus_wd_valid = rc_bus_last_extend_flag || b_out_avl_flag || pixel_valid&&pixel_last;
+assign bus_wd_data  = rc_bus_last_extend_flag ? rc_bus_data : bus_data_extend[BUS_DW-1:0];
+assign pixel_ready  = rc_bus_last_extend_flag ? 1'b0 : bus_wd_valid ? bus_wd_ready : 1'b1;
 
 endmodule //end of com_img_bus_pack
 `endif //end of com_img_bus_pack_v
