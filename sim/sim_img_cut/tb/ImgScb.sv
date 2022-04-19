@@ -31,9 +31,10 @@ task ImgScb::img_score_borad();
             int x = x_s+xcnt;
             int y = y_s+ycnt;
             for( int i=0; i<PXL_N; i++ )begin
+                bit b_pxl_avl_flag = (xcnt+i)<cut_w;
                 golden = (x+i)*(y+1);
                 golden = golden & pixel_avl_mask;
-                if( m_img_vif.mcb.img_cut_rd_pixel_data[i]!=golden )begin
+                if( m_img_vif.mcb.img_cut_rd_pixel_data[i]!=golden && b_pxl_avl_flag )begin
                     $display( "NOTICE(), ###compare fail!!!##########################, the position is x:%1d, y:%1d; rtl_data:0x%1h, golden:0x%1h",x+i,y, m_img_vif.mcb.img_cut_rd_pixel_data[i],golden );
                     #100;
                     $finish;

@@ -86,10 +86,16 @@ task ImgDrv::run();
     pic_config();
     pic_set_cut_wr();
     pic_stim();
-    wait( m_img_vif.cb.img_cut_wb_resp==1'b1 );
+    do
+        @(m_img_vif.cb);
+    while( m_img_vif.cb.img_cut_wb_resp==1'b0 );
+    // wait( m_img_vif.cb.img_cut_wb_resp==1'b1 );
     $display("NOTICE(), img cut wr finish");
     pic_set_cut_rd();
-    wait( m_img_vif.cb.img_cut_rd_pixel_eof==1'b1 );
+    do
+        @(m_img_vif.cb);
+    while( m_img_vif.cb.img_cut_rd_pixel_eof==1'b0 );
+    // wait( m_img_vif.cb.img_cut_rd_pixel_eof==1'b1 );
     $display("NOTICE(), img cut rd finish");
 
     #2000;
