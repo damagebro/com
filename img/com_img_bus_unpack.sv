@@ -46,6 +46,8 @@ localparam BUS_DW_L2 = $clog2(BUS_DW);
 
 `COM_PARAM_ASSERT( ($clog2(BUS_DW)!=$clog2(BUS_DW+1)) && BUS_DW>=32, "BUS_DW must be 2^n && BUS_DW>=32" );
 `COM_PARAM_ASSERT( PW*PXL_N<BUS_DW, "PW*PXL_N must less than BUS_DW" );
+`COM_PARAM_ASSERT( PXL_N<=16, "pxl_num only 4bit, so PXL_N<=16" );
+`COM_SIGNAL_ASSERT_LITE( a0, cut_cfg_en,pixel_bitlen<=PW, "pixel_bitlen must be less than PW"  );
 //reg  declare---------------------------------------------------------------
 reg  rc_idle;
 reg  [XW-1:0] rc_cut_xcnt;
@@ -55,7 +57,8 @@ reg  [BUS_DW_L2-1:0] rc_bit_pos;
 reg  [PXL_N-1:0][PW-1:0] arc_out_buf;
 reg  rc_out_flag;
 //wire declare---------------------------------------------------------------
-wire [BUS_DW_L2-1:0] once_bitlen = pixel_bitlen*PXL_N;
+wire [3:0] pxl_num;
+wire [BUS_DW_L2-1:0] once_bitlen = pixel_bitlen*pxl_num;
 wire b_bus_rcv_avl_flag;
 //statement------------------------------------------------------------------
 
@@ -161,7 +164,9 @@ begin
     else if( out_buf_ihs )
         rc_cut_xcnt <= cut_xcnt_nxt;
 end
-assign out_buf_last = cut_xcnt_nxt>{1'b0,rc_cut_width_m1};
+wire [XW-0:0] cut_width = rc_cut_width_m1+1'b1;
+assign out_buf_last = cut_xcnt_nxt>=cut_width;
+assign pxl_num = out_buf_last ? (cut_width-rc_cut_xcnt) : PXL_N;
 
 reg  rc_out_buf_last;
 always @(posedge clk or negedge rst_n)

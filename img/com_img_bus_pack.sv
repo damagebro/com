@@ -25,6 +25,7 @@ input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
 //cfg&status---
+input  wire [XW-1:0]            cut_width_m1        ,
 input  wire [4:0]               pixel_bitlen        ,
 //dp---
 input  wire                     pixel_start         ,
@@ -42,16 +43,33 @@ localparam BUS_DW_L2 = $clog2(BUS_DW);
 
 `COM_PARAM_ASSERT( ($clog2(BUS_DW)!=$clog2(BUS_DW+1)) && BUS_DW>=32, "BUS_DW must be 2^n && BUS_DW>=32" );
 `COM_PARAM_ASSERT( PW*PXL_N<BUS_DW, "PW*PXL_N must less than BUS_DW" );
+`COM_PARAM_ASSERT( PXL_N<=16, "pxl_num only 4bit, so PXL_N<=16" );
+`COM_SIGNAL_ASSERT_LITE( a0, pixel_start,pixel_bitlen<=PW, "pixel_bitlen must be less than PW"  );
 //reg  declare---------------------------------------------------------------
 reg  [BUS_DW-1:0] rc_bus_data;
 reg  [BUS_DW_L2-1:0] rc_bit_pos;
+reg  [XW-1:0] rc_xcnt;
 //wire declare---------------------------------------------------------------
-wire [BUS_DW_L2-1:0] once_bitlen = pixel_bitlen*PXL_N;
+wire [XW-0:0] cut_width = cut_width_m1+1'b1;
+wire [3:0] pxl_num;
+wire [BUS_DW_L2-1:0] once_bitlen = pxl_num*pixel_bitlen + BUS_DW_L2'(0);
 wire b_out_avl_flag;
 //statement------------------------------------------------------------------
 
 wire pixel_hs = pixel_valid && pixel_ready;
 wire bus_hs = bus_wd_valid && bus_wd_ready;
+
+wire [XW-0:0] xcnt_nxt = rc_xcnt+PXL_N;
+assign pxl_num = pixel_last ? (cut_width-rc_xcnt) : PXL_N;
+always @(posedge clk or negedge rst_n)
+begin
+    if( !rst_n )
+        rc_xcnt <= 'b0;
+    else if( clear || pixel_start || pixel_hs&&pixel_last )
+        rc_xcnt <= 'b0;
+    else if( pixel_hs )
+        rc_xcnt <= xcnt_nxt;
+end
 
 wire [BUS_DW_L2-0:0] bit_pos_nxt_t = rc_bit_pos+once_bitlen;
 wire [BUS_DW_L2-0:0] bit_pos_nxt = b_out_avl_flag ? bit_pos_nxt_t-BUS_DW : bit_pos_nxt_t;

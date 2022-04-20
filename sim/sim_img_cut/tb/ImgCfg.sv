@@ -39,6 +39,7 @@ function ImgCfg::parse_cfgfile( string fn );
     integer fp;
     string line;
     int ret;
+    int emi_dw = EmiPkg::EMI_DW;
 
     fp = $fopen(fn,"rt");
     if( fp==0 )begin
@@ -72,7 +73,7 @@ function ImgCfg::parse_cfgfile( string fn );
     img_cut_rd_width = str2int( dict_cfg["cut_rd_width"] );
     img_cut_rd_heigh = str2int( dict_cfg["cut_rd_heigh"] );
     //display config
-    line_stride = (pic_width*pixel_bitlen+127)/128*16;
+    line_stride = (pic_width*pixel_bitlen+emi_dw-1)/emi_dw*(emi_dw/8);
     img_cut_wr_xpos = 0;
     img_cut_wr_ypos = 0;
     img_cut_wr_width = pic_width;

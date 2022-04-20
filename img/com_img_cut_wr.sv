@@ -210,6 +210,7 @@ com_img_bus_pack #(
     .clear                ( clear                ), //i
     //cfg&status---
     .pixel_bitlen         ( pixel_bitlen         ), //i
+    .cut_width_m1         ( rc_cut_width_m1      ), //i
     //dp---
     .pixel_start          ( pixel_sob            ), //i
     .pixel_last           ( pixel_last           ), //i
