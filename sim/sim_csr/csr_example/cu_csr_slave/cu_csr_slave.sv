@@ -1,8 +1,8 @@
 /******************************************************************************
 *
-*  Authors:   dmg
-*    Email:   dmg@sensetime.com
-*     Date:   2020/11/09-10:07:43
+*  Authors:   <someone>
+*    Email:   <someone>@sensetime.com
+*     Date:   2022/04/26-22:29:39
 *
 *  Description:
 *  -
@@ -24,7 +24,7 @@ input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
 
-UniCSRIf.Slave                  CsrIf_S             ,
+com_csr_if.slave                csr_rxif            ,
 //cu_sta
 input  wire [31:0]              cu_sta_versionD               ,
 //cu_cfg1
@@ -40,9 +40,7 @@ output wire [31:0]              cu_cfg4_nctaid_zR             ,
 //cu_cfg5
 output wire [21:0][31:0]        cu_cfg5_paramR                ,
 //cu_cfg6
-output wire [31:0]              cu_cfg6_warp_szR              ,
-//cu_cfg7
-output wire [31:0]              cu_cfg7_init_pcR              ,
+output wire [31:0]              cu_cfg6_init_pcR              ,
 //cu_cmd
 output wire                     cu_cmd_kernel_startOEn        ,
 output wire                     cu_cmd_kernel_startO          ,
@@ -52,53 +50,53 @@ input  wire [31:0]              cu_dbg_pc_valD                //,
 //localparam-----------------------------------------------------------------
 //reg  declare---------------------------------------------------------------
 //wire declare---------------------------------------------------------------
-wire                   CSRValid          ;
-wire                   CSRReady          ;
-wire                   bCSRWrite         ;
-wire [AW-1:0]          CSRAddr           ;
-wire [DW-1:0]          CSRRdData         ;
-wire [DW-1:0]          CSRWrData         ;
-wire [SW-1:0]          CSRWrStrb         ;
-assign CSRValid    = CsrIf_S.CSRValid  ;
-assign bCSRWrite   = CsrIf_S.bCSRWrite ;
-assign CSRAddr     = CsrIf_S.CSRAddr   ;
-assign CSRWrData   = CsrIf_S.CSRWrData ;
-assign CSRWrStrb   = CsrIf_S.CSRWrStrb ;
-assign CsrIf_S.CSRReady    = CSRReady  ;
-assign CsrIf_S.CSRRdData   = CSRRdData ;
+wire                   csr_write        ;
+wire [AW-1:0]          csr_addr         ;
+wire [DW-1:0]          csr_wdata        ;
+wire [SW-1:0]          csr_wstrb        ;
+wire                   csr_valid        ;
+wire                   csr_ready        ;
+wire [DW-1:0]          csr_rdata        ;
+assign csr_write   = csr_rxif.csr_write  ;
+assign csr_addr    = csr_rxif.csr_addr   ;
+assign csr_wdata   = csr_rxif.csr_wdata  ;
+assign csr_wstrb   = csr_rxif.csr_wstrb  ;
+assign csr_valid   = csr_rxif.csr_valid  ;
+assign csr_rxif.csr_ready   = csr_ready  ;
+assign csr_rxif.csr_rdata   = csr_rdata  ;
 
 wire [AW-1:0] csr_offset_regs1_lo = 'h0   ;
 wire [AW-1:0] csr_offset_regs1_hi = 'h404 ;
 wire [AW-1:0] csr_offset_dmys1_lo = 'h404 ;
 
-wire bcsr_regs1_sel = CSRValid && CSRAddr>=csr_offset_regs1_lo && CSRAddr<csr_offset_regs1_hi;
-wire bcsr_dmys1_sel = CSRValid && CSRAddr>=csr_offset_dmys1_lo;
+wire bcsr_regs1_sel = csr_valid && csr_addr>=csr_offset_regs1_lo && csr_addr<csr_offset_regs1_hi;
+wire bcsr_dmys1_sel = csr_valid && csr_addr>=csr_offset_dmys1_lo;
 wire bcsr_regs_sel = bcsr_regs1_sel;
 
-wire             CSRValid_regs  = bcsr_regs_sel ? CSRValid : 1'b0;
-wire [AW-1:0]    CSRAddr_regs   = bcsr_regs_sel ? CSRAddr  : {AW{1'b0}};
-wire             CSRReady_regs  ;
-wire [DW-1:0]    CSRRdData_regs ;
+wire             csr_valid_regs  = bcsr_regs_sel ? csr_valid : 1'b0;
+wire [AW-1:0]    csr_addr_regs   = bcsr_regs_sel ? csr_addr  : {AW{1'b0}};
+wire             csr_ready_regs  ;
+wire [DW-1:0]    csr_rdata_regs  ;
 
 //statement------------------------------------------------------------------
 
-wire          CSRReady_dmy   = 1'b1;
-wire [DW-1:0] CSRRdData_dmy  = {2{16'hdeaf}};
+wire          csr_ready_dmy   = 1'b1;
+wire [DW-1:0] csr_rdata_dmy  = {2{16'hdeaf}};
 reg           rb_csr_ready;
 reg  [DW-1:0] rb_csr_rddata;
 always @*
 begin
     if( bcsr_regs_sel )begin
-        rb_csr_ready = CSRReady_regs;
-        rb_csr_rddata= CSRRdData_regs;
+        rb_csr_ready = csr_ready_regs;
+        rb_csr_rddata= csr_rdata_regs;
     end
     else begin
-        rb_csr_ready = CSRReady_dmy;
-        rb_csr_rddata= CSRRdData_dmy;
+        rb_csr_ready = csr_ready_dmy;
+        rb_csr_rddata= csr_rdata_dmy;
     end
 end
-assign CSRReady = rb_csr_ready;
-assign CSRRdData= rb_csr_rddata;
+assign csr_ready = rb_csr_ready;
+assign csr_rdata = rb_csr_rddata;
 
 cu_csr_slave_reg #(
     .AW (AW),
@@ -109,13 +107,13 @@ cu_csr_slave_reg #(
     .rst_n               ( rst_n                ),
     .clear               ( clear                ),
 
-    .CSRValid            ( CSRValid_regs        ),
-    .CSRReady            ( CSRReady_regs        ),
-    .bCSRWrite           ( bCSRWrite            ),
-    .CSRAddr             ( CSRAddr_regs         ),
-    .CSRRdData           ( CSRRdData_regs       ),
-    .CSRWrData           ( CSRWrData            ),
-    .CSRWrStrb           ( CSRWrStrb            ),
+    .csr_write           ( csr_write            ),
+    .csr_addr            ( csr_addr_regs        ),
+    .csr_wdata           ( csr_wdata            ),
+    .csr_wstrb           ( csr_wstrb            ),
+    .csr_valid           ( csr_valid_regs       ),
+    .csr_ready           ( csr_ready_regs       ),
+    .csr_rdata           ( csr_rdata_regs       ),
     .cu_sta_versionD               ( cu_sta_versionD                ),
     .cu_cfg1_ntid_xR               ( cu_cfg1_ntid_xR                ),
     .cu_cfg1_ntid_yR               ( cu_cfg1_ntid_yR                ),
@@ -124,8 +122,7 @@ cu_csr_slave_reg #(
     .cu_cfg3_nctaid_yR             ( cu_cfg3_nctaid_yR              ),
     .cu_cfg4_nctaid_zR             ( cu_cfg4_nctaid_zR              ),
     .cu_cfg5_paramR                ( cu_cfg5_paramR                 ),
-    .cu_cfg6_warp_szR              ( cu_cfg6_warp_szR               ),
-    .cu_cfg7_init_pcR              ( cu_cfg7_init_pcR               ),
+    .cu_cfg6_init_pcR              ( cu_cfg6_init_pcR               ),
     .cu_cmd_kernel_startOEn        ( cu_cmd_kernel_startOEn         ),
     .cu_cmd_kernel_startO          ( cu_cmd_kernel_startO           ),
     .cu_dbg_pc_valD                ( cu_dbg_pc_valD                 )//,

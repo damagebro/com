@@ -45,8 +45,8 @@ localparam CSR_DW = 32;
 localparam CSR_SW = CSR_DW/8;
 //reg  declare---------------------------------------------------------------
 //wire declare---------------------------------------------------------------
-UniCSRIf #(.AW(CSR_AW), .DW(CSR_DW)) cu_csr_if_dmapb();
-UniCSRIf #(.AW(CSR_AW), .DW(CSR_DW)) cu_csr_if();
+com_csr_if #(.AW(CSR_AW), .DW(CSR_DW)) cu_csr_if_dmapb();
+com_csr_if #(.AW(CSR_AW), .DW(CSR_DW)) cu_csr_if();
 //statement------------------------------------------------------------------
 
 com_csr_apb2csr #(
@@ -70,7 +70,7 @@ com_csr_apb2csr #(
     .PRDATA               ( PRDATA               ), //o
     .PSLVERR              ( PSLVERR              ), //o
 
-    .CsrIf_M              ( cu_csr_if_dmapb      )  //if
+    .csr_txif             ( cu_csr_if_dmapb      )  //if
 );
 com_csr_cdc #(
     .AW         ( CSR_AW        ), //16
@@ -84,8 +84,8 @@ com_csr_cdc #(
     .rst_n_d              ( rst_n                ), //i
     .clear_d              ( clear                ), //i
 
-    .CsrIf_S              ( cu_csr_if_dmapb      ), //if
-    .CsrIf_M              ( cu_csr_if            )  //if
+    .csr_rxif             ( cu_csr_if_dmapb      ), //if
+    .csr_txif             ( cu_csr_if            )  //if
 );
 
 
@@ -98,8 +98,7 @@ wire [31:0]     cu_cfg2_nctaid_xR             ;
 wire [31:0]     cu_cfg3_nctaid_yR             ;
 wire [31:0]     cu_cfg4_nctaid_zR             ;
 wire [21:0][31:0] cu_cfg5_paramR              ;
-wire [31:0]     cu_cfg6_warp_szR              ;
-wire [31:0]     cu_cfg7_init_pcR              ;
+wire [31:0]     cu_cfg6_init_pcR              ;
 wire            cu_cmd_kernel_startOEn        ;
 wire            cu_cmd_kernel_startO          ;
 wire [31:0]     cu_dbg_pc_valD                = 32'h1000;
@@ -112,7 +111,7 @@ cu_csr_slave #(
     .rst_n                ( rst_n                ), //i
     .clear                ( clear                ), //i
 
-    .CsrIf_S              ( cu_csr_if            ), //if
+    .csr_rxif             ( cu_csr_if            ), //if
 
     .cu_sta_versionD               ( cu_sta_versionD                ),
     .cu_cfg1_ntid_xR               ( cu_cfg1_ntid_xR                ),
@@ -122,8 +121,7 @@ cu_csr_slave #(
     .cu_cfg3_nctaid_yR             ( cu_cfg3_nctaid_yR              ),
     .cu_cfg4_nctaid_zR             ( cu_cfg4_nctaid_zR              ),
     .cu_cfg5_paramR                ( cu_cfg5_paramR                 ),
-    .cu_cfg6_warp_szR              ( cu_cfg6_warp_szR               ),
-    .cu_cfg7_init_pcR              ( cu_cfg7_init_pcR               ),
+    .cu_cfg6_init_pcR              ( cu_cfg6_init_pcR               ),
     .cu_cmd_kernel_startOEn        ( cu_cmd_kernel_startOEn         ),
     .cu_cmd_kernel_startO          ( cu_cmd_kernel_startO           ),
     .cu_dbg_pc_valD                ( cu_dbg_pc_valD                 )//,

@@ -39,7 +39,7 @@ output wire [DW_AHB-1:0]        HRDATA              ,
 output wire                     HREADYOUT           ,
 output wire                     HRESP               ,//0: OKAY, 1:ERROR
 
-UniCSRIf.Master                 CsrIf_M             //,
+com_csr_if.master               csr_txif            //,
 );
 //localparam-----------------------------------------------------------------
 localparam LG2_SW_CSR = $clog2(SW_CSR>2?SW_CSR:2);
@@ -60,27 +60,27 @@ wire clk   = HCLK;
 wire rst_n = HRESETn;
 wire [AW_AHB-1:0] ahb_baseaddr = 32'h0000_0000;
 
-wire                   CSRValid          ;
-wire                   CSRReady          ;
-wire                   bCSRWrite         ;
-wire [AW_CSR-1:0]      CSRAddr           ;
-wire [DW_CSR-1:0]      CSRRdData         ;
-wire [DW_CSR-1:0]      CSRWrData         ;
-wire [SW_CSR-1:0]      CSRWrStrb         ;
-assign CsrIf_M.CSRValid    = CSRValid    ;
-assign CsrIf_M.bCSRWrite   = bCSRWrite   ;
-assign CsrIf_M.CSRAddr     = CSRAddr     ;
-assign CsrIf_M.CSRWrData   = CSRWrData   ;
-assign CsrIf_M.CSRWrStrb   = CSRWrStrb   ;
-assign CSRReady      = CsrIf_M.CSRReady  ;
-assign CSRRdData     = CsrIf_M.CSRRdData ;
+wire                   csr_write      ;
+wire [AW_CSR-1:0]      csr_addr       ;
+wire [DW_CSR-1:0]      csr_wdata      ;
+wire [SW_CSR-1:0]      csr_wstrb      ;
+wire                   csr_valid      ;
+wire                   csr_ready      ;
+wire [DW_CSR-1:0]      csr_rdata      ;
+assign csr_txif.csr_write  = csr_write ;
+assign csr_txif.csr_addr   = csr_addr  ;
+assign csr_txif.csr_wdata  = csr_wdata ;
+assign csr_txif.csr_wstrb  = csr_wstrb ;
+assign csr_txif.csr_valid  = csr_valid ;
+assign csr_ready   = csr_txif.csr_ready;
+assign csr_rdata   = csr_txif.csr_rdata;
 //statement------------------------------------------------------------------
 reg  rc_ahbbusy_flag;
 reg  rc_csrrd_flag;
 wire hin_valid = rc_ahberr_flag ? 1'b0 : HSELx && HREADY && HTRANS[1]==1;//HTRANS==HT_NONSEQ || HTRANS==HT_SEQ;
-wire hin_ready = CSRReady;
+wire hin_ready = csr_ready;
 wire hout_valid= rc_ahbbusy_flag;
-wire hout_ready= CSRReady;
+wire hout_ready= csr_ready;
 wire hin_hs    = hin_valid && hin_ready;
 wire hout_hs   = hout_valid&& hout_ready;
 always @(posedge clk or negedge rst_n)
@@ -127,20 +127,20 @@ begin
         hburst_d <= HBURST;
     end
 end
-assign CSRValid  = hout_valid;
-assign bCSRWrite = !rc_csrrd_flag;
+assign csr_valid  = hout_valid;
+assign csr_write = !rc_csrrd_flag;
 
 wire [AW_AHB-1:0] haddr_off0 = haddr_d - ahb_baseaddr;
-assign CSRAddr   = SW_CSR==1 ? haddr_off0[AW_CSR-1:0] : { haddr_off0[AW_CSR-1:LG2_SW_CSR],{LG2_SW_CSR{1'b0}} };
-assign CSRWrData = DW_CSR'(HWDATA);
-assign CSRWrStrb = SW_CSR==1 ? 1'b1 : (rc_csrrd_flag || haddr_off0[LG2_SW_CSR-1:0]==LG2_SW_CSR'(0)) ? {SW_CSR{1'b1}} : ((1<<hsize_d)-1)<<haddr_off0[LG2_SW_CSR-1:0];
+assign csr_addr   = SW_CSR==1 ? haddr_off0[AW_CSR-1:0] : { haddr_off0[AW_CSR-1:LG2_SW_CSR],{LG2_SW_CSR{1'b0}} };
+assign csr_wdata = DW_CSR'(HWDATA);
+assign csr_wstrb = SW_CSR==1 ? 1'b1 : (rc_csrrd_flag || haddr_off0[LG2_SW_CSR-1:0]==LG2_SW_CSR'(0)) ? {SW_CSR{1'b1}} : ((1<<hsize_d)-1)<<haddr_off0[LG2_SW_CSR-1:0];
 // wire [LG2_SW_CSR-1:0] haddr_lsb = haddr_off0[LG2_SW_CSR-1:0];
 // wire [SW_CSR-1:0] t1_csrwrstrb = (1<<HSIZE)-1);
 // wire [SW_CSR-1:0] t2_csrwrstrb = t1_csrwrstrb<<haddr_lsb;
 // assign CSRWrStrb = SW_CSR==1 ? 1'b1 : (rc_csrrd_flag || haddr_lsb==LG2_SW_CSR'(0)) ? {SW_CSR{1'b1}} : t2_csrwrstrb;
 
-assign HREADYOUT = rc_ahberr_flag ? rc_ahberr_cnt : rc_ahbbusy_flag ? CSRReady : 1'b1;
-assign HRDATA    = DW_AHB'(CSRRdData);
+assign HREADYOUT = rc_ahberr_flag ? rc_ahberr_cnt : rc_ahbbusy_flag ? csr_ready : 1'b1;
+assign HRDATA    = DW_AHB'(csr_rdata);
 assign HRESP     = rc_ahberr_flag;
 
 //deal err,

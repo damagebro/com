@@ -30,45 +30,45 @@ input  wire                     clk_d               ,
 input  wire                     rst_n_d             ,
 input  wire                     clear_d             ,
 
-UniCSRIf.Slave                  CsrIf_S             ,
-UniCSRIf.Master                 CsrIf_M             //,
+com_csr_if.slave                csr_rxif            ,
+com_csr_if.master               csr_txif             //,
 );
 //localparam-----------------------------------------------------------------
 localparam AFIFO_DEPTH_S2D = 8;
 localparam AFIFO_DEPTH_D2S = 2;
 //reg  declare---------------------------------------------------------------
 //wire declare---------------------------------------------------------------
-wire                   S_CSRValid        ;
-wire                   S_CSRReady        ;
-wire                   S_bCSRWrite       ;
-wire [AW-1:0]          S_CSRAddr         ;
-wire [DW-1:0]          S_CSRRdData       ;
-wire [DW-1:0]          S_CSRWrData       ;
-wire [SW-1:0]          S_CSRWrStrb       ;
+wire                   rx_csr_write      ;
+wire [AW-1:0]          rx_csr_addr       ;
+wire [DW-1:0]          rx_csr_wdata      ;
+wire [SW-1:0]          rx_csr_wstrb      ;
+wire                   rx_csr_valid      ;
+wire                   rx_csr_ready      ;
+wire [DW-1:0]          rx_csr_rdata      ;
 
-wire                   M_CSRValid        ;
-wire                   M_CSRReady        ;
-wire                   M_bCSRWrite       ;
-wire [AW-1:0]          M_CSRAddr         ;
-wire [DW-1:0]          M_CSRRdData       ;
-wire [DW-1:0]          M_CSRWrData       ;
-wire [SW-1:0]          M_CSRWrStrb       ;
+wire                   tx_csr_write      ;
+wire [AW-1:0]          tx_csr_addr       ;
+wire [DW-1:0]          tx_csr_wdata      ;
+wire [SW-1:0]          tx_csr_wstrb      ;
+wire                   tx_csr_valid      ;
+wire                   tx_csr_ready      ;
+wire [DW-1:0]          tx_csr_rdata      ;
 
-assign S_CSRValid    = CsrIf_S.CSRValid  ;
-assign S_bCSRWrite   = CsrIf_S.bCSRWrite ;
-assign S_CSRAddr     = CsrIf_S.CSRAddr   ;
-assign S_CSRWrData   = CsrIf_S.CSRWrData ;
-assign S_CSRWrStrb   = CsrIf_S.CSRWrStrb ;
-assign CsrIf_S.CSRReady    = S_CSRReady  ;
-assign CsrIf_S.CSRRdData   = S_CSRRdData ;
+assign rx_csr_write  = csr_rxif.csr_write ;
+assign rx_csr_addr   = csr_rxif.csr_addr  ;
+assign rx_csr_wdata  = csr_rxif.csr_wdata ;
+assign rx_csr_wstrb  = csr_rxif.csr_wstrb ;
+assign rx_csr_valid  = csr_rxif.csr_valid ;
+assign csr_rxif.csr_ready   = rx_csr_ready ;
+assign csr_rxif.csr_rdata   = rx_csr_rdata ;
 
-assign CsrIf_M.CSRValid    = M_CSRValid    ;
-assign CsrIf_M.bCSRWrite   = M_bCSRWrite   ;
-assign CsrIf_M.CSRAddr     = M_CSRAddr     ;
-assign CsrIf_M.CSRWrData   = M_CSRWrData   ;
-assign CsrIf_M.CSRWrStrb   = M_CSRWrStrb   ;
-assign M_CSRReady      = CsrIf_M.CSRReady  ;
-assign M_CSRRdData     = CsrIf_M.CSRRdData ;
+assign csr_txif.csr_write  = tx_csr_write ;
+assign csr_txif.csr_addr   = tx_csr_addr  ;
+assign csr_txif.csr_wdata  = tx_csr_wdata ;
+assign csr_txif.csr_wstrb  = tx_csr_wstrb ;
+assign csr_txif.csr_valid  = tx_csr_valid ;
+assign tx_csr_ready   = csr_txif.csr_ready ;
+assign tx_csr_rdata   = csr_txif.csr_rdata ;
 //statement------------------------------------------------------------------
 reg  rc_csr_rdflag;
 always @(posedge clk_s or negedge rst_n_s)
@@ -76,16 +76,16 @@ begin
     if( !rst_n_s )begin
         rc_csr_rdflag <= 1'b0;
     end
-    else if( clear_s || (S_CSRValid&&S_CSRReady) )begin
+    else if( clear_s || (rx_csr_valid&&rx_csr_ready) )begin
         rc_csr_rdflag <= 1'b0;
     end
-    else if( S_CSRValid && !S_bCSRWrite )begin
+    else if( rx_csr_valid && !rx_csr_write )begin
         rc_csr_rdflag <= 1'b1;
     end
 end
 
-wire                     awr_en     = S_bCSRWrite ? S_CSRValid && S_CSRReady : S_CSRValid && !rc_csr_rdflag;
-wire [SW+DW+AW+1-1:0]    awr_data   = {S_CSRWrStrb,S_CSRWrData,S_CSRAddr,S_bCSRWrite};
+wire                     awr_en     = rx_csr_write ? rx_csr_valid && rx_csr_ready : rx_csr_valid && !rc_csr_rdflag;
+wire [SW+DW+AW+1-1:0]    awr_data   = {rx_csr_wstrb,rx_csr_wdata,rx_csr_addr,rx_csr_write};
 wire                     ard_en     ;
 wire [SW+DW+AW+1-1:0]    ard_data   ;
 wire                     awr_full   ;
@@ -110,12 +110,12 @@ com_async_fifo_reg #(
     .rd_empty             ( ard_empty            ), //o
     .water_level          (                      )  //o
 );
-assign ard_en = M_CSRValid && M_CSRReady;
-assign M_CSRValid = !ard_empty;
-assign {M_CSRWrStrb,M_CSRWrData,M_CSRAddr,M_bCSRWrite} = ard_data;
+assign ard_en = tx_csr_valid && tx_csr_ready;
+assign tx_csr_valid = !ard_empty;
+assign {tx_csr_wstrb,tx_csr_wdata,tx_csr_addr,tx_csr_write} = ard_data;
 
-wire                     rd_wr_en    = M_CSRValid && M_CSRReady && !M_bCSRWrite;
-wire [DW-1:0]            rd_wr_data  = M_CSRRdData;
+wire                     rd_wr_en    = tx_csr_valid && tx_csr_ready && !tx_csr_write;
+wire [DW-1:0]            rd_wr_data  = tx_csr_rdata;
 wire                     rd_rd_en    ;
 wire [DW-1:0]            rd_rd_data  ;
 wire                     rd_wr_full  ;
@@ -141,9 +141,8 @@ com_async_fifo_reg #(
     .water_level          (                      )  //o
 );
 assign rd_rd_en = !rd_rd_empty;
-assign S_CSRReady = S_bCSRWrite ? !awr_full : !rd_rd_empty;
-assign S_CSRRdData= rd_rd_data;
-//assert(RD_Full);
+assign rx_csr_ready = rx_csr_write ? !awr_full : !rd_rd_empty;
+assign rx_csr_rdata = rd_rd_data;
 
 endmodule //end of com_csr_cdc
 `endif //end of com_csr_cdc_v

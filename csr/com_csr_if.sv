@@ -1,32 +1,3 @@
-interface UniCSRIf;
-    parameter  AW = 16;
-    parameter  DW = 32;
-    localparam SW = DW/8;
-
-    wire                   CSRValid          ;
-    wire                   CSRReady          ;
-    wire                   bCSRWrite         ;
-    wire [AW-1:0]          CSRAddr           ;
-    wire [DW-1:0]          CSRRdData         ;
-    wire [DW-1:0]          CSRWrData         ;
-    wire [SW-1:0]          CSRWrStrb         ;
-
-    modport Master(
-        input  CSRReady,CSRRdData,
-        output CSRValid,bCSRWrite,CSRAddr,CSRWrData,CSRWrStrb
-        );
-
-    modport Slave(
-        output CSRReady,CSRRdData,
-        input  CSRValid,bCSRWrite,CSRAddr,CSRWrData,CSRWrStrb
-        );
-
-    modport Monitor(
-        input CSRValid,CSRReady,bCSRWrite
-        );
-endinterface
-
-
 //--------------------------------------------------------------
 interface com_csr_if;
     parameter  AW = 16;
@@ -41,13 +12,13 @@ interface com_csr_if;
     wire                 csr_ready ;
     wire [DW-1:0]        csr_rdata ;
 
-    wire                   CSRValid          ;
-    wire                   CSRReady          ;
-    wire                   bCSRWrite         ;
-    wire [AW-1:0]          CSRAddr           ;
-    wire [DW-1:0]          CSRRdData         ;
-    wire [DW-1:0]          CSRWrData         ;
-    wire [SW-1:0]          CSRWrStrb         ;
+    // wire                   bCSRWrite         ; //used name style before 2022
+    // wire [AW-1:0]          CSRAddr           ;
+    // wire [DW-1:0]          CSRWrData         ;
+    // wire [SW-1:0]          CSRWrStrb         ;
+    // wire                   CSRValid          ;
+    // wire                   CSRReady          ;
+    // wire [DW-1:0]          CSRRdData         ;
 
     modport master(
         input  csr_ready,csr_rdata,

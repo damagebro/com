@@ -1,8 +1,8 @@
 /******************************************************************************
 *
-*  Authors:   dmg
-*    Email:   dmg@sensetime.com
-*     Date:   2020/11/09-10:07:43
+*  Authors:   <someone>
+*    Email:   <someone>@sensetime.com
+*     Date:   2022/04/26-22:29:39
 *
 *  Description:
 *  -
@@ -24,13 +24,13 @@ input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
 
-input  wire                     CSRValid            ,
-output wire                     CSRReady            ,
-input  wire                     bCSRWrite           ,
-input  wire [AW-1:0]            CSRAddr             ,
-output wire [DW-1:0]            CSRRdData           ,
-input  wire [DW-1:0]            CSRWrData           ,
-input  wire [SW-1:0]            CSRWrStrb           ,
+input  wire                     csr_write           ,
+input  wire [AW-1:0]            csr_addr            ,
+input  wire [DW-1:0]            csr_wdata           ,
+input  wire [SW-1:0]            csr_wstrb           ,
+input  wire                     csr_valid           ,
+output wire                     csr_ready           ,
+output wire [DW-1:0]            csr_rdata           ,
 //cu_sta
 input  wire [31:0]              cu_sta_versionD               ,
 //cu_cfg1
@@ -46,9 +46,7 @@ output wire [31:0]              cu_cfg4_nctaid_zR             ,
 //cu_cfg5
 output wire [21:0][31:0]        cu_cfg5_paramR                ,
 //cu_cfg6
-output wire [31:0]              cu_cfg6_warp_szR              ,
-//cu_cfg7
-output wire [31:0]              cu_cfg7_init_pcR              ,
+output wire [31:0]              cu_cfg6_init_pcR              ,
 //cu_cmd
 output wire                     cu_cmd_kernel_startOEn        ,
 output wire                     cu_cmd_kernel_startO          ,
@@ -86,14 +84,13 @@ assign cu_cfg5_offset[18] = 'h158;
 assign cu_cfg5_offset[19] = 'h15c;
 assign cu_cfg5_offset[20] = 'h160;
 assign cu_cfg5_offset[21] = 'h164;
-wire [AW-1:0] cu_cfg6_offset = 'h168;
-wire [AW-1:0] cu_cfg7_offset = 'h190;
+wire [AW-1:0] cu_cfg6_offset = 'h190;
 wire [AW-1:0] cu_cmd_offset = 'h200;
 wire [AW-1:0] cu_dbg_offset = 'h400;
 //statement------------------------------------------------------------------
 
 //cu_cfg1
-wire cu_cfg1_upen = (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg1_offset;
+wire cu_cfg1_upen = (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg1_offset;
 reg  [11:0] rccu_cfg1_ntid_x;
 reg  [11:0] rccu_cfg1_ntid_y;
 reg  [5:0] rccu_cfg1_ntid_z;
@@ -106,10 +103,10 @@ begin
         rccu_cfg1_ntid_x <= 'h400;
     end
     else if( cu_cfg1_upen ) begin
-        if( CSRWrStrb[0] )
-            rccu_cfg1_ntid_x[7:0] <= CSRWrData[7:0];
-        if( CSRWrStrb[1] )
-            rccu_cfg1_ntid_x[11:8] <= CSRWrData[11:8];
+        if( csr_wstrb[0] )
+            rccu_cfg1_ntid_x[7:0] <= csr_wdata[7:0];
+        if( csr_wstrb[1] )
+            rccu_cfg1_ntid_x[11:8] <= csr_wdata[11:8];
     end
 end
 always @(posedge clk or negedge rst_n)
@@ -121,10 +118,10 @@ begin
         rccu_cfg1_ntid_y <= 'h1;
     end
     else if( cu_cfg1_upen ) begin
-        if( CSRWrStrb[1] )
-            rccu_cfg1_ntid_y[3:0] <= CSRWrData[15:12];
-        if( CSRWrStrb[2] )
-            rccu_cfg1_ntid_y[11:4] <= CSRWrData[23:16];
+        if( csr_wstrb[1] )
+            rccu_cfg1_ntid_y[3:0] <= csr_wdata[15:12];
+        if( csr_wstrb[2] )
+            rccu_cfg1_ntid_y[11:4] <= csr_wdata[23:16];
     end
 end
 always @(posedge clk or negedge rst_n)
@@ -136,8 +133,8 @@ begin
         rccu_cfg1_ntid_z <= 'h1;
     end
     else if( cu_cfg1_upen ) begin
-        if( CSRWrStrb[3] )
-            rccu_cfg1_ntid_z[5:0] <= CSRWrData[29:24];
+        if( csr_wstrb[3] )
+            rccu_cfg1_ntid_z[5:0] <= csr_wdata[29:24];
     end
 end
 assign cu_cfg1_ntid_xR = rccu_cfg1_ntid_x;
@@ -145,7 +142,7 @@ assign cu_cfg1_ntid_yR = rccu_cfg1_ntid_y;
 assign cu_cfg1_ntid_zR = rccu_cfg1_ntid_z;
 
 //cu_cfg2
-wire cu_cfg2_upen = (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg2_offset;
+wire cu_cfg2_upen = (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg2_offset;
 reg  [31:0] rccu_cfg2_nctaid_x;
 always @(posedge clk or negedge rst_n)
 begin
@@ -156,20 +153,20 @@ begin
         rccu_cfg2_nctaid_x <= 'h1;
     end
     else if( cu_cfg2_upen ) begin
-        if( CSRWrStrb[0] )
-            rccu_cfg2_nctaid_x[7:0] <= CSRWrData[7:0];
-        if( CSRWrStrb[1] )
-            rccu_cfg2_nctaid_x[15:8] <= CSRWrData[15:8];
-        if( CSRWrStrb[2] )
-            rccu_cfg2_nctaid_x[23:16] <= CSRWrData[23:16];
-        if( CSRWrStrb[3] )
-            rccu_cfg2_nctaid_x[31:24] <= CSRWrData[31:24];
+        if( csr_wstrb[0] )
+            rccu_cfg2_nctaid_x[7:0] <= csr_wdata[7:0];
+        if( csr_wstrb[1] )
+            rccu_cfg2_nctaid_x[15:8] <= csr_wdata[15:8];
+        if( csr_wstrb[2] )
+            rccu_cfg2_nctaid_x[23:16] <= csr_wdata[23:16];
+        if( csr_wstrb[3] )
+            rccu_cfg2_nctaid_x[31:24] <= csr_wdata[31:24];
     end
 end
 assign cu_cfg2_nctaid_xR = rccu_cfg2_nctaid_x;
 
 //cu_cfg3
-wire cu_cfg3_upen = (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg3_offset;
+wire cu_cfg3_upen = (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg3_offset;
 reg  [31:0] rccu_cfg3_nctaid_y;
 always @(posedge clk or negedge rst_n)
 begin
@@ -180,20 +177,20 @@ begin
         rccu_cfg3_nctaid_y <= 'h1;
     end
     else if( cu_cfg3_upen ) begin
-        if( CSRWrStrb[0] )
-            rccu_cfg3_nctaid_y[7:0] <= CSRWrData[7:0];
-        if( CSRWrStrb[1] )
-            rccu_cfg3_nctaid_y[15:8] <= CSRWrData[15:8];
-        if( CSRWrStrb[2] )
-            rccu_cfg3_nctaid_y[23:16] <= CSRWrData[23:16];
-        if( CSRWrStrb[3] )
-            rccu_cfg3_nctaid_y[31:24] <= CSRWrData[31:24];
+        if( csr_wstrb[0] )
+            rccu_cfg3_nctaid_y[7:0] <= csr_wdata[7:0];
+        if( csr_wstrb[1] )
+            rccu_cfg3_nctaid_y[15:8] <= csr_wdata[15:8];
+        if( csr_wstrb[2] )
+            rccu_cfg3_nctaid_y[23:16] <= csr_wdata[23:16];
+        if( csr_wstrb[3] )
+            rccu_cfg3_nctaid_y[31:24] <= csr_wdata[31:24];
     end
 end
 assign cu_cfg3_nctaid_yR = rccu_cfg3_nctaid_y;
 
 //cu_cfg4
-wire cu_cfg4_upen = (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg4_offset;
+wire cu_cfg4_upen = (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg4_offset;
 reg  [31:0] rccu_cfg4_nctaid_z;
 always @(posedge clk or negedge rst_n)
 begin
@@ -204,62 +201,85 @@ begin
         rccu_cfg4_nctaid_z <= 'h1;
     end
     else if( cu_cfg4_upen ) begin
-        if( CSRWrStrb[0] )
-            rccu_cfg4_nctaid_z[7:0] <= CSRWrData[7:0];
-        if( CSRWrStrb[1] )
-            rccu_cfg4_nctaid_z[15:8] <= CSRWrData[15:8];
-        if( CSRWrStrb[2] )
-            rccu_cfg4_nctaid_z[23:16] <= CSRWrData[23:16];
-        if( CSRWrStrb[3] )
-            rccu_cfg4_nctaid_z[31:24] <= CSRWrData[31:24];
+        if( csr_wstrb[0] )
+            rccu_cfg4_nctaid_z[7:0] <= csr_wdata[7:0];
+        if( csr_wstrb[1] )
+            rccu_cfg4_nctaid_z[15:8] <= csr_wdata[15:8];
+        if( csr_wstrb[2] )
+            rccu_cfg4_nctaid_z[23:16] <= csr_wdata[23:16];
+        if( csr_wstrb[3] )
+            rccu_cfg4_nctaid_z[31:24] <= csr_wdata[31:24];
     end
 end
 assign cu_cfg4_nctaid_zR = rccu_cfg4_nctaid_z;
 
 //cu_cfg5
-wire [21:0]cu_cfg5_upen;
-assign cu_cfg5_upen[0]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[0];
-assign cu_cfg5_upen[1]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[1];
-assign cu_cfg5_upen[2]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[2];
-assign cu_cfg5_upen[3]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[3];
-assign cu_cfg5_upen[4]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[4];
-assign cu_cfg5_upen[5]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[5];
-assign cu_cfg5_upen[6]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[6];
-assign cu_cfg5_upen[7]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[7];
-assign cu_cfg5_upen[8]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[8];
-assign cu_cfg5_upen[9]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[9];
-assign cu_cfg5_upen[10]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[10];
-assign cu_cfg5_upen[11]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[11];
-assign cu_cfg5_upen[12]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[12];
-assign cu_cfg5_upen[13]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[13];
-assign cu_cfg5_upen[14]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[14];
-assign cu_cfg5_upen[15]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[15];
-assign cu_cfg5_upen[16]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[16];
-assign cu_cfg5_upen[17]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[17];
-assign cu_cfg5_upen[18]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[18];
-assign cu_cfg5_upen[19]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[19];
-assign cu_cfg5_upen[20]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[20];
-assign cu_cfg5_upen[21]= (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg5_offset[21];
+wire [21:0] cu_cfg5_upen;
+assign cu_cfg5_upen[0]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[0];
+assign cu_cfg5_upen[1]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[1];
+assign cu_cfg5_upen[2]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[2];
+assign cu_cfg5_upen[3]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[3];
+assign cu_cfg5_upen[4]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[4];
+assign cu_cfg5_upen[5]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[5];
+assign cu_cfg5_upen[6]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[6];
+assign cu_cfg5_upen[7]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[7];
+assign cu_cfg5_upen[8]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[8];
+assign cu_cfg5_upen[9]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[9];
+assign cu_cfg5_upen[10]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[10];
+assign cu_cfg5_upen[11]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[11];
+assign cu_cfg5_upen[12]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[12];
+assign cu_cfg5_upen[13]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[13];
+assign cu_cfg5_upen[14]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[14];
+assign cu_cfg5_upen[15]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[15];
+assign cu_cfg5_upen[16]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[16];
+assign cu_cfg5_upen[17]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[17];
+assign cu_cfg5_upen[18]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[18];
+assign cu_cfg5_upen[19]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[19];
+assign cu_cfg5_upen[20]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[20];
+assign cu_cfg5_upen[21]= (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg5_offset[21];
+wire [21:0][31:0] cu_cfg5_param_default;
+assign cu_cfg5_param_default[0]= 'h1;
+assign cu_cfg5_param_default[1]= 'h1;
+assign cu_cfg5_param_default[2]= 'h1;
+assign cu_cfg5_param_default[3]= 'h1;
+assign cu_cfg5_param_default[4]= 'h1;
+assign cu_cfg5_param_default[5]= 'h1;
+assign cu_cfg5_param_default[6]= 'h1;
+assign cu_cfg5_param_default[7]= 'h1;
+assign cu_cfg5_param_default[8]= 'h1;
+assign cu_cfg5_param_default[9]= 'h1;
+assign cu_cfg5_param_default[10]= 'h1;
+assign cu_cfg5_param_default[11]= 'h1;
+assign cu_cfg5_param_default[12]= 'h1;
+assign cu_cfg5_param_default[13]= 'h1;
+assign cu_cfg5_param_default[14]= 'h1;
+assign cu_cfg5_param_default[15]= 'h1;
+assign cu_cfg5_param_default[16]= 'h1;
+assign cu_cfg5_param_default[17]= 'h1;
+assign cu_cfg5_param_default[18]= 'h1;
+assign cu_cfg5_param_default[19]= 'h1;
+assign cu_cfg5_param_default[20]= 'h1;
+assign cu_cfg5_param_default[21]= 'h1;
 reg  [21:0][31:0] rccu_cfg5_param;
 generate
 for( genvar gi=0; gi<22; gi++ ) begin
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n ) begin
-        rccu_cfg5_param[gi] <= 'h0;
+        rccu_cfg5_param[gi] <= cu_cfg5_param_default[gi];
     end
     else if( clear ) begin
-        rccu_cfg5_param[gi] <= 'h0;
+        rccu_cfg5_param[gi] <= cu_cfg5_param_default[gi];
     end
     else if( cu_cfg5_upen[gi] ) begin
-        if( CSRWrStrb[0] )
-            rccu_cfg5_param[gi][7:0] <= CSRWrData[7:0];
-        if( CSRWrStrb[1] )
-            rccu_cfg5_param[gi][15:8] <= CSRWrData[15:8];
-        if( CSRWrStrb[2] )
-            rccu_cfg5_param[gi][23:16] <= CSRWrData[23:16];
-        if( CSRWrStrb[3] )
-            rccu_cfg5_param[gi][31:24] <= CSRWrData[31:24];
+        if( csr_wstrb[0] )
+            rccu_cfg5_param[gi][7:0] <= csr_wdata[7:0];
+        if( csr_wstrb[1] )
+            rccu_cfg5_param[gi][15:8] <= csr_wdata[15:8];
+        if( csr_wstrb[2] )
+            rccu_cfg5_param[gi][23:16] <= csr_wdata[23:16];
+        if( csr_wstrb[3] )
+            rccu_cfg5_param[gi][31:24] <= csr_wdata[31:24];
     end
 end
 end //end of for gi
@@ -267,57 +287,33 @@ endgenerate
 assign cu_cfg5_paramR = rccu_cfg5_param;
 
 //cu_cfg6
-wire cu_cfg6_upen = (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg6_offset;
-reg  [31:0] rccu_cfg6_warp_sz;
+wire cu_cfg6_upen = (csr_valid && csr_ready) && csr_write && csr_addr==cu_cfg6_offset;
+reg  [31:0] rccu_cfg6_init_pc;
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n ) begin
-        rccu_cfg6_warp_sz <= 'h20;
+        rccu_cfg6_init_pc <= 'h1;
     end
     else if( clear ) begin
-        rccu_cfg6_warp_sz <= 'h20;
+        rccu_cfg6_init_pc <= 'h1;
     end
     else if( cu_cfg6_upen ) begin
-        if( CSRWrStrb[0] )
-            rccu_cfg6_warp_sz[7:0] <= CSRWrData[7:0];
-        if( CSRWrStrb[1] )
-            rccu_cfg6_warp_sz[15:8] <= CSRWrData[15:8];
-        if( CSRWrStrb[2] )
-            rccu_cfg6_warp_sz[23:16] <= CSRWrData[23:16];
-        if( CSRWrStrb[3] )
-            rccu_cfg6_warp_sz[31:24] <= CSRWrData[31:24];
+        if( csr_wstrb[0] )
+            rccu_cfg6_init_pc[7:0] <= csr_wdata[7:0];
+        if( csr_wstrb[1] )
+            rccu_cfg6_init_pc[15:8] <= csr_wdata[15:8];
+        if( csr_wstrb[2] )
+            rccu_cfg6_init_pc[23:16] <= csr_wdata[23:16];
+        if( csr_wstrb[3] )
+            rccu_cfg6_init_pc[31:24] <= csr_wdata[31:24];
     end
 end
-assign cu_cfg6_warp_szR = rccu_cfg6_warp_sz;
-
-//cu_cfg7
-wire cu_cfg7_upen = (CSRValid && CSRReady) && bCSRWrite && CSRAddr==cu_cfg7_offset;
-reg  [31:0] rccu_cfg7_init_pc;
-always @(posedge clk or negedge rst_n)
-begin
-    if( !rst_n ) begin
-        rccu_cfg7_init_pc <= 'h0;
-    end
-    else if( clear ) begin
-        rccu_cfg7_init_pc <= 'h0;
-    end
-    else if( cu_cfg7_upen ) begin
-        if( CSRWrStrb[0] )
-            rccu_cfg7_init_pc[7:0] <= CSRWrData[7:0];
-        if( CSRWrStrb[1] )
-            rccu_cfg7_init_pc[15:8] <= CSRWrData[15:8];
-        if( CSRWrStrb[2] )
-            rccu_cfg7_init_pc[23:16] <= CSRWrData[23:16];
-        if( CSRWrStrb[3] )
-            rccu_cfg7_init_pc[31:24] <= CSRWrData[31:24];
-    end
-end
-assign cu_cfg7_init_pcR = rccu_cfg7_init_pc;
+assign cu_cfg6_init_pcR = rccu_cfg6_init_pc;
 
 //cu_cmd
-wire pscu_cmdWEn = (CSRValid && CSRReady) &&  bCSRWrite && CSRAddr==cu_cmd_offset;
+wire pscu_cmdWEn = (csr_valid && csr_ready) && csr_write && csr_addr==cu_cmd_offset;
 assign cu_cmd_kernel_startOEn = pscu_cmdWEn;
-assign cu_cmd_kernel_startO = CSRWrData[0];
+assign cu_cmd_kernel_startO = csr_wdata[0];
 
 //read reg
 wire [DW-1:0] rddata_cu_sta = {cu_sta_versionD};
@@ -348,13 +344,12 @@ assign rddata_cu_cfg5[18] = {cu_cfg5_paramR[18]};
 assign rddata_cu_cfg5[19] = {cu_cfg5_paramR[19]};
 assign rddata_cu_cfg5[20] = {cu_cfg5_paramR[20]};
 assign rddata_cu_cfg5[21] = {cu_cfg5_paramR[21]};
-wire [DW-1:0] rddata_cu_cfg6 = {cu_cfg6_warp_szR};
-wire [DW-1:0] rddata_cu_cfg7 = {cu_cfg7_init_pcR};
+wire [DW-1:0] rddata_cu_cfg6 = {cu_cfg6_init_pcR};
 wire [DW-1:0] rddata_cu_dbg = {cu_dbg_pc_valD};
 
 //flatten
-wire [29:0][DW-1:0] a_rddata;
-wire [29:0][AW-1:0] a_rdaddr;
+wire [28:0][DW-1:0] a_rddata;
+wire [28:0][AW-1:0] a_rdaddr;
 assign a_rddata[0] = rddata_cu_sta;
 assign a_rddata[1] = rddata_cu_cfg1;
 assign a_rddata[2] = rddata_cu_cfg2;
@@ -362,8 +357,7 @@ assign a_rddata[3] = rddata_cu_cfg3;
 assign a_rddata[4] = rddata_cu_cfg4;
 assign a_rddata[26:5] = rddata_cu_cfg5;
 assign a_rddata[27] = rddata_cu_cfg6;
-assign a_rddata[28] = rddata_cu_cfg7;
-assign a_rddata[29] = rddata_cu_dbg;
+assign a_rddata[28] = rddata_cu_dbg;
 
 assign a_rdaddr[0] = cu_sta_offset;
 assign a_rdaddr[1] = cu_cfg1_offset;
@@ -372,19 +366,18 @@ assign a_rdaddr[3] = cu_cfg3_offset;
 assign a_rdaddr[4] = cu_cfg4_offset;
 assign a_rdaddr[26:5] = cu_cfg5_offset;
 assign a_rdaddr[27] = cu_cfg6_offset;
-assign a_rdaddr[28] = cu_cfg7_offset;
-assign a_rdaddr[29] = cu_dbg_offset;
+assign a_rdaddr[28] = cu_dbg_offset;
 
 //rden-------------
-wire csr_rden = CSRValid && !bCSRWrite;
+wire csr_rden = csr_valid && !csr_write;
 
 
 //rdflag stage0
-reg  [29:0] arbb_rdflag_s0;
+reg  [28:0] arbb_rdflag_s0;
 always @*
 begin
-    for ( int i=0; i<30; i++ ) begin
-        arbb_rdflag_s0[i] = CSRAddr==a_rdaddr[i];
+    for ( int i=0; i<29; i++ ) begin
+        arbb_rdflag_s0[i] = csr_addr==a_rdaddr[i];
     end
 end
 
@@ -394,7 +387,7 @@ always @*
 begin
     rbcsr_rddata = 'b0;
     if( csr_rden )begin
-        for ( int i=0; i<30; i++ ) begin
+        for ( int i=0; i<29; i++ ) begin
             if( arbb_rdflag_s0[i] )begin
                 rbcsr_rddata = a_rddata[i];
             end
@@ -403,8 +396,8 @@ begin
 end
 
 //csr interface
-assign CSRReady  = 1'b1;
-assign CSRRdData = rbcsr_rddata;
+assign csr_ready  = 1'b1;
+assign csr_rdata = rbcsr_rddata;
 
 
 endmodule //end of cu_csr_slave_reg

@@ -38,7 +38,7 @@ output wire                     PREADY              ,
 output wire [DW_APB-1:0]        PRDATA              ,
 output wire                     PSLVERR             ,
 
-UniCSRIf.Master                 CsrIf_M             //,
+com_csr_if.master               csr_txif            //,
 );
 //localparam-----------------------------------------------------------------
 localparam ST_IDLE   = 3'b001,
@@ -52,20 +52,20 @@ wire clk   = PCLK;
 wire rst_n = PRESETn;
 wire [AW_APB-1:0] apb_baseaddr = 32'h0000_0000;//<script_target>
 
-wire                   CSRValid          ;
-wire                   CSRReady          ;
-wire                   bCSRWrite         ;
-wire [AW_CSR-1:0]      CSRAddr           ;
-wire [DW_CSR-1:0]      CSRRdData         ;
-wire [DW_CSR-1:0]      CSRWrData         ;
-wire [SW_CSR-1:0]      CSRWrStrb         ;
-assign CsrIf_M.CSRValid    = CSRValid    ;
-assign CsrIf_M.bCSRWrite   = bCSRWrite   ;
-assign CsrIf_M.CSRAddr     = CSRAddr     ;
-assign CsrIf_M.CSRWrData   = CSRWrData   ;
-assign CsrIf_M.CSRWrStrb   = CSRWrStrb   ;
-assign CSRReady      = CsrIf_M.CSRReady  ;
-assign CSRRdData     = CsrIf_M.CSRRdData ;
+wire                   csr_write      ;
+wire [AW_CSR-1:0]      csr_addr       ;
+wire [DW_CSR-1:0]      csr_wdata      ;
+wire [SW_CSR-1:0]      csr_wstrb      ;
+wire                   csr_valid      ;
+wire                   csr_ready      ;
+wire [DW_CSR-1:0]      csr_rdata      ;
+assign csr_txif.csr_write  = csr_write ;
+assign csr_txif.csr_addr   = csr_addr  ;
+assign csr_txif.csr_wdata  = csr_wdata ;
+assign csr_txif.csr_wstrb  = csr_wstrb ;
+assign csr_txif.csr_valid  = csr_valid ;
+assign csr_ready   = csr_txif.csr_ready;
+assign csr_rdata   = csr_txif.csr_rdata;
 //statement------------------------------------------------------------------
 always @(posedge clk or negedge rst_n)
 begin
@@ -118,14 +118,14 @@ begin
 end
 
 wire [AW_APB-1:0] paddr_off0 = paddr_d - apb_baseaddr;
-assign CSRValid  = pout_valid;
-assign bCSRWrite = pwrite_d;
-assign CSRAddr   = paddr_off0[AW_CSR-1:0];//assert(AW_APB>AW_CSR);
-assign CSRWrData = PWDATA;
-assign CSRWrStrb = PSTRB;
+assign csr_valid = pout_valid;
+assign csr_write = pwrite_d;
+assign csr_addr   = paddr_off0[AW_CSR-1:0];//assert(AW_APB>AW_CSR);
+assign csr_wdata = PWDATA;
+assign csr_wstrb = PSTRB;
 
-assign PREADY = CSRReady;
-assign PRDATA = CSRRdData;
+assign PREADY = csr_ready;
+assign PRDATA = csr_rdata;
 assign PSLVERR = 1'b0; //tie to 0
 
 endmodule //end of com_csr_apb2csr
