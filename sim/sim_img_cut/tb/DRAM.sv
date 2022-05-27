@@ -1,6 +1,6 @@
 class DRAM;
 
-localparam  eMEM_DEPTH = 1<<28;
+localparam  eMEM_DEPTH = 1<<25;
 typedef struct{
     string fn;
     int  base_addr;

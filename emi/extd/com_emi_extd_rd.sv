@@ -248,7 +248,7 @@ com_sync_fifo_reg #(
     .rd_empty             ( ra_rd_empty          ), //o
     .water_level          ( ra_water_level       )  //o
 );
-wire b_rd_last_split_flag = ra_rd_data[0];
+wire b_rd_last_split_flag = !ra_rd_empty ? ra_rd_data[0] : 1'b0;
 wire [7:0] rd_split_wordlen = ra_rd_data[1+:8];
 assign b_emi_ra_cmd_avl = b_emi_ra_cmd_avl_t && !ra_wr_full;
 

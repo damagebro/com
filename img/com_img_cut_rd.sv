@@ -104,7 +104,7 @@ begin
 end
 
 //cut_req buffered for bus_unpack
-wire              cut_req_ivld  = cut_rd_vld;
+wire              cut_req_ivld  = cut_rd_vld && !rc_cut_busy;
 wire              cut_req_irdy  ;
 wire [XW*4-1:0]   cut_req_idata = {cut_heigh_m1_use,cut_width_m1_use,cut_ypos,cut_xpos};
 wire              cut_req_ovld  ;
@@ -225,6 +225,20 @@ com_dp_buffer #(
 assign bus_rd_ready = bus_dat_irdy;
 
 //dat decode---
+wire [XW-0:0] buf_cut_heigh = buf_cut_heigh_m1 +1'b1;
+wire [XW*2-1:0] tol_line_word_len = buf_cut_heigh * line_word_len + (XW*2)'(0);
+reg  [XW*2-1:0] rc_bus_dat_cnt;
+always @(posedge clk or negedge rst_n)
+begin
+    if( !rst_n )
+        rc_bus_dat_cnt <= 'b0;
+    else if( clear || pixel_eob )
+        rc_bus_dat_cnt <= 'b0;
+    else if( bus_dat_ovld_t&&bus_dat_ordy_t )
+        rc_bus_dat_cnt <= rc_bus_dat_cnt + 1'b1;
+end
+wire b_bus_dat_cnt_end = rc_bus_dat_cnt>=tol_line_word_len;
+
 reg  rc_dat_decode_busy;
 always @(posedge clk or negedge rst_n)
 begin
@@ -239,9 +253,9 @@ begin
 end
 
 wire cut_idle;
-wire bus_dat_ovld = rc_dat_decode_busy ? bus_dat_ovld_t : 1'b0;
+wire bus_dat_ovld = rc_dat_decode_busy&&!b_bus_dat_cnt_end ? bus_dat_ovld_t : 1'b0;
 wire bus_dat_ordy;
-assign bus_dat_ordy_t = rc_dat_decode_busy ? bus_dat_ordy : 1'b0;
+assign bus_dat_ordy_t = rc_dat_decode_busy&&!b_bus_dat_cnt_end ? bus_dat_ordy : 1'b0;
 com_img_bus_unpack #(
     .XW         ( XW         ), //12
     .PW         ( PW         ), //8
@@ -282,17 +296,17 @@ begin
         rc_pxl_ycnt <= rc_pxl_ycnt+1'b1;
 end
 assign pixel_sob = !rc_dat_decode_busy && bus_dat_ovld_t && cut_idle;
-wire pixel_eob_pre = pxl_xcnt_done && rc_pxl_ycnt==buf_cut_heigh_m1;
+wire pixel_eob_tmp = pxl_xcnt_done && rc_pxl_ycnt==buf_cut_heigh_m1;
 reg  pixel_eob_d;
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
         pixel_eob_d <= 1'b0;
     else
-        pixel_eob_d <= pixel_eob_pre;
+        pixel_eob_d <= pixel_eob_tmp;
 end
-assign pixel_eob = pixel_eob_d;
-assign cut_req_ordy = pixel_eob_d;
+assign pixel_eob = pixel_eob_tmp;
+assign cut_req_ordy = pixel_eob;
 
 endmodule //end of com_img_cut_rd
 `endif //end of com_img_cut_rd_v

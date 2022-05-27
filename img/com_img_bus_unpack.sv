@@ -83,18 +83,34 @@ end
 wire out_buf_ihs;
 wire out_buf_last;
 reg  rc_bus_vld_flag;
+reg  rc_line_end_bus_drop_flag;
+wire ps_line_end_bus_drop;
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
         rc_bus_vld_flag <= 1'b0;
-    else if( clear || cut_cfg_en || out_buf_ihs&&out_buf_last )
+    else if( clear || cut_cfg_en || ps_line_end_bus_drop )
         rc_bus_vld_flag <= 1'b0;
     else if( bus_hs )
         rc_bus_vld_flag <= 1'b1;
+    else if( out_buf_ihs&&out_buf_last )
+        rc_bus_vld_flag <= 1'b0;
+end
+always @(posedge clk or negedge rst_n)
+begin
+    if( !rst_n )
+        rc_line_end_bus_drop_flag <= 1'b0;
+    else if( clear || cut_cfg_en || rc_line_end_bus_drop_flag )
+        rc_line_end_bus_drop_flag <= 1'b0;
+    else if( ps_line_end_bus_drop )
+        rc_line_end_bus_drop_flag <= 1'b1;
 end
 // wire b_bus_dat_fst_invalid = bus_rd_valid && !rc_bus_vld_flag && b_bus_rcv_avl_flag;
-wire bus_dec_vld = b_bus_rcv_avl_flag&&rc_bus_vld_flag ? bus_rd_valid : rc_bus_vld_flag;
-assign bus_rd_ready = b_bus_rcv_avl_flag ? pixel_ready : !rc_bus_vld_flag;
+wire ps_line_nxt_bus_rd_vld;
+wire bus_dec_vld_t = (b_bus_rcv_avl_flag||ps_line_nxt_bus_rd_vld)&&rc_bus_vld_flag ? bus_rd_valid : rc_bus_vld_flag;
+wire bus_dec_vld = bus_dec_vld_t && !rc_line_end_bus_drop_flag;
+wire bus_rd_ready_t = (b_bus_rcv_avl_flag||ps_line_nxt_bus_rd_vld) ? pixel_ready : !rc_bus_vld_flag;
+assign bus_rd_ready = bus_rd_ready_t || rc_line_end_bus_drop_flag;
 assign out_buf_ihs = bus_dec_vld && pixel_ready;
 
 wire [XW-1:0] cut_xpos_s_use = cut_cfg_en ? cut_xpos_s : rc_cut_xpos_s;
@@ -102,7 +118,10 @@ wire [BUS_DW_L2-1:0] cut_xpos_s_use_lo = cut_xpos_s_use + BUS_DW_L2'(0);
 wire [BUS_DW_L2-1:0] bit_pos_start = cut_xpos_s_use_lo*pixel_bitlen;
 wire [BUS_DW_L2-0:0] bit_pos_nxt_t = rc_bit_pos+once_bitlen;
 wire [BUS_DW_L2-0:0] bit_pos_nxt = b_bus_rcv_avl_flag ? bit_pos_nxt_t-BUS_DW : bit_pos_nxt_t;
+wire b_bus_ovf_flag = bit_pos_nxt_t>BUS_DW;
 assign b_bus_rcv_avl_flag = bit_pos_nxt_t>=BUS_DW && !(out_buf_last && bit_pos_nxt_t==BUS_DW);
+assign ps_line_end_bus_drop = out_buf_ihs&&out_buf_last && b_bus_ovf_flag;
+assign ps_line_nxt_bus_rd_vld = out_buf_ihs&&out_buf_last && bus_rd_valid && !b_bus_ovf_flag;
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
@@ -141,10 +160,12 @@ always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
         rc_out_flag <= 1'b0;
-    else if( clear || cut_cfg_en || pixel_hs&&pixel_last )
+    else if( clear || cut_cfg_en )
         rc_out_flag <= 1'b0;
     else if( out_buf_ihs )
         rc_out_flag <= 1'b1;
+    else if( pixel_hs&&pixel_last )
+        rc_out_flag <= 1'b0;
 end
 always @(posedge clk or negedge rst_n)
 begin
@@ -178,7 +199,7 @@ begin
 end
 
 //idle---
-wire ps_bus_fst = bus_hs&&rc_cut_xcnt==XW'(0);
+wire ps_bus_fst = bus_hs&&(rc_cut_xcnt==XW'(0) || ps_line_nxt_bus_rd_vld);
 wire ps_pxl_lst = pixel_hs&&pixel_last;
 reg  [3:0] rc_bus_cnt_rnd;
 reg  [3:0] rc_pxl_cnt_rnd;

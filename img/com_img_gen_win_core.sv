@@ -233,7 +233,7 @@ begin
     else if( clear || in_sof )
         arc_outline_active_flag <= 'b0;
     else if( out_sol )
-        arc_outline_active_flag <= arb_line_active_flag;
+        arc_outline_active_flag <= arc_line_active_flag;
 end
 
 reg  rc_rd_req_line_flag;

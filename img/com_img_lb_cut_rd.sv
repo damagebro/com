@@ -68,7 +68,7 @@ begin
     else if( ra_hs )
         rc_ra_busy_flag <= 1'b1;
 end
-assign ra_cut_rdy = !rc_ra_busy_flag;
+assign ra_cut_rdy = !rc_ra_busy_flag || ra_done;
 
 reg  [XW-1:0] rc_cut_xpos;
 reg  [XW-1:0] rc_cut_width_m1;
