@@ -290,7 +290,7 @@ always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
         rc_pxl_ycnt <= 'b0;
-    else if( clear || cut_rd_hs )
+    else if( clear || pixel_sob )
         rc_pxl_ycnt <= 'b0;
     else if( pxl_xcnt_done )
         rc_pxl_ycnt <= rc_pxl_ycnt+1'b1;
