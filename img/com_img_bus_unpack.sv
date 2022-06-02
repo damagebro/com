@@ -164,7 +164,7 @@ begin
         rc_out_flag <= 1'b0;
     else if( out_buf_ihs )
         rc_out_flag <= 1'b1;
-    else if( pixel_hs&&pixel_last )
+    else if( pixel_hs )
         rc_out_flag <= 1'b0;
 end
 always @(posedge clk or negedge rst_n)

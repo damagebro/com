@@ -167,17 +167,51 @@ endfunction
 //instance module quickreference
 //-------------------------------------------------------------------
 /*
+com_reg_e
+com_counter
 com_arbiter_lite
 com_pipe_ctrl
-com_dp_buffer
+com_dp_buffer + com_dp_ram
 com_sync_fifo_reg
 com_sync_fifo_ram_1p2bank
 com_async_fifo_reg
 com_async_fifo_ram_2p2ck
 com_spram_mate
 com_spram_cell
-com_mimo
+com_mimo + com_simo_no_delay
 */
+
+//-------------------------------------------------------------------
+//com_reg_e
+//-------------------------------------------------------------------
+localparam DW   = 8;
+localparam INIT = 0;
+wire e; //enable
+wire [DW-1:0] d;
+wire [DW-1:0] q;
+
+com_reg_e #( .DW(DW) ) zr_com_reg_e_x( clk,rst_n, e,d,q );
+com_reg_e #( .DW(DW) ) zr_com_reg_e_x( clk,rst_n, e,{d3,d2,d1},{q3,q2,q1} );
+com_reg_e #( .DW(DW) ) zr_com_reg_e_x( clk,rst_n, e,{d3,d2,d1},
+                                                    {q3,q2,q1} );
+com_reg_e #( .DW(DW), .INIT(INIT)) zr_com_reg_e_x( clk,rst_n, e,d,q );
+
+com_reg_ce #( .DW(DW) ) zr_com_reg_ce_x( clk,rst_n,clear, e,d,q );
+com_reg #( .DW(DW) ) zr_com_reg_x( clk,rst_n, d,q );
+
+//-------------------------------------------------------------------
+//com_counter
+//-------------------------------------------------------------------
+localparam DW   = 8;
+localparam STEP = 1;
+localparam INIT = 0;
+wire [DW-1:0] x_cnt_max  ;
+wire          x_cnt_start;
+wire          x_cnt_done ;
+wire          x_cnten    ;
+wire [DW-1:0] x_cnt      ;
+com_counter #( .DW(DW) ) zr_com_counter_x( clk,rst_n,clear||x_cnt_start, x_cnt_max,x_cnten,x_cnt,x_cnt_done );
+com_counter #( .DW(DW), .INIT(INIT), .STEP(STEP) ) zr_com_counter_x( clk,rst_n,clear||x_cnt_start, x_cnt_max,x_cnten,x_cnt,x_cnt_done );
 
 //-------------------------------------------------------------------
 //com_arbiter_lite
@@ -201,7 +235,7 @@ wire [PIPN_N-1:0] x_in_upen  ;
 com_pipe_ctrl #( .NUM_PIPE(PIPN_N) ) zr_com_pipe_ctrl_x( clk, rst_n, clear, x_ivld, x_irdy, x_ovld, x_ordy, x_in_upen );
 
 //-------------------------------------------------------------------
-//com_dp_buffer
+//com_dp_buffer + com_dp_ram
 //-------------------------------------------------------------------
 localparam DW    = 8;
 localparam DEPTH = 4;
@@ -229,6 +263,44 @@ com_dp_buffer #(
 );
 com_dp_buffer #(.DW(DW), .DEPTH(DEPTH)) zr_com_dp_buffer_x ( .clk(clk),.rst_n(rst_n),.clear(clear),
     .ivld(x_ivld), .irdy(x_irdy), .idata(x_idata), .ovld(x_ovld), .ordy(x_ordy), .odata(x_odata) );
+
+localparam AW    = 8;
+localparam DW    = 8;
+localparam DEPTH = 4;
+wire          x_ivld  ;
+wire          x_irdy  ;
+wire [AW-1:0] x_iaddr ;
+wire          x_ovld  ;
+wire          x_ordy  ;
+wire [DW-1:0] x_odata ;
+wire          x_ram_rd_vld  ;
+wire          x_ram_rd_rdy  ;
+wire [AW-1:0] x_ram_rd_addr ;
+wire          x_ram_rd_ack  ;
+wire [DW-1:0] x_ram_rd_data ;
+
+com_dp_ram #(
+    .AW         ( AW         ), //8
+    .DW         ( DW         ), //8
+    .DEPTH      ( DEPTH      )  //2
+)zr_com_dp_ram_x
+(
+    .clk                  ( clk                  ), //i
+    .rst_n                ( rst_n                ), //i
+    .clear                ( clear                ), //i
+
+    .ivld                 ( x_ivld               ), //i
+    .irdy                 ( x_irdy               ), //o
+    .iaddr                ( x_iaddr              ), //i
+    .ovld                 ( x_ovld               ), //o
+    .ordy                 ( x_ordy               ), //i
+    .odata                ( x_odata              ), //o
+    .ram_rd_vld           ( x_ram_rd_vld         ), //o
+    .ram_rd_rdy           ( x_ram_rd_rdy         ), //i
+    .ram_rd_addr          ( x_ram_rd_addr        ), //o
+    .ram_rd_ack           ( x_ram_rd_ack         ), //i
+    .ram_rd_data          ( x_ram_rd_data        )  //i
+);
 
 //-------------------------------------------------------------------
 //com_sync_fifo_reg
@@ -517,7 +589,7 @@ wire [1:0] x_arr_ordy ;
 com_mimo #(
     .ICH        ( 1        ), //1
     .OCH        ( 2        )  //2
-)r_com_mimo_x
+)zr_com_mimo_x
 (
     .clk                  ( clk                  ), //i
     .rst_n                ( rst_n                ), //i
@@ -528,3 +600,8 @@ com_mimo #(
     .arr_ovld             ( x_arr_ovld           ), //o
     .arr_ordy             ( x_arr_ordy           )  //i
 );
+
+com_mimo #( .ICH(1), .OCH(2) ) zr_com_mimo_x( .clk(clk), .rst_n(rst_n), .clear(clear),
+    .arr_ivld(ivld), .arr_irdy(irdy), .arr_ovld(ovld), .arr_ordy(ordy) );
+com_simo_no_delay #( .OCH(2) ) zr_com_simo_no_delay_x( .clk(clk), .rst_n(rst_n), .clear(clear),
+    .ivld(ivld), .irdy(irdy), .ovld(ovld), .ordy(ordy) );
