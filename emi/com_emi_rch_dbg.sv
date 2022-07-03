@@ -30,12 +30,12 @@ module com_emi_rch_dbg #( parameter
 (
 input  wire                     clk                 ,
 input  wire                     rst_n               ,
-input  wire                     clear               ,
+input  wire                     clear               , //spyglass disable W240
 //dp---
 input  wire                     arvalid             ,
 input  wire                     arready             ,
 input  wire [IW-1:0]            arid                ,
-input  wire [AW-1:0]            araddr              ,
+input  wire [AW-1:0]            araddr              , //spyglass disable W240
 input  wire [7:0]               arlen               ,
 
 input  wire                     rvalid              ,

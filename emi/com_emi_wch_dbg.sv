@@ -29,22 +29,22 @@ module com_emi_wch_dbg #( parameter
 (
 input  wire                     clk                 ,
 input  wire                     rst_n               ,
-input  wire                     clear               ,
+input  wire                     clear               , //spyglass disable W240
 
 input  wire                     awvalid             ,
 input  wire                     awready             ,
-input  wire [IW-1:0]            awid                ,
-input  wire [AW-1:0]            awaddr              ,
+input  wire [IW-1:0]            awid                , //spyglass disable W240
+input  wire [AW-1:0]            awaddr              , //spyglass disable W240
 input  wire [7:0]               awlen               ,
 
 input  wire                     wvalid              ,
 input  wire                     wready              ,
-input  wire [DW-1:0]            wdata               ,
+input  wire [DW-1:0]            wdata               , //spyglass disable W240
 input  wire                     wlast               ,
 
 input  wire                     bvalid              ,
 input  wire                     bready              ,
-input  wire [IW-1:0]            bid                 //,
+input  wire [IW-1:0]            bid                 //spyglass disable W240 //,
 );
 //localparam-----------------------------------------------------------------
 //reg  declare---------------------------------------------------------------

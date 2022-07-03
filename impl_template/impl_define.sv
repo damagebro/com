@@ -10,8 +10,9 @@
 //#2.report define
 
 //#3.implement define
+`define COM_RAM_AS_BBOX
 //`define COM_RAM_AS_REG
-//`define COM_CDC_AS_REG
+`define COM_CDC_AS_REG
 //`define COM_CLKGATE_AS_LATCH
 
 //`define COM_FPGA

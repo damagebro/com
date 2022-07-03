@@ -29,52 +29,48 @@ input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
 //axi
-output wire                     xs_arvalid          ,
-input  wire                     xs_arready          ,
-output wire [IW-1:0]            xs_arid             ,
-output wire [AW-1:0]            xs_araddr           ,
-output wire [7:0]               xs_arlen            ,
-output wire [UW-1:0]            xs_aruser           ,
-output wire [2:0]               xs_arsize           ,
-output wire [1:0]               xs_arbusrt          ,//2'b01:INCR
-output wire [3:0]               xs_arcache          ,//4'b0000: non-cache
-output wire [2:0]               xs_arprot           ,//[0]0=non-private, [1]0=securty, [2]0=data/1=instruction
-output wire [3:0]               xs_arqos            ,//priority, larger number high pri.
-output wire [3:0]               xs_arregion         ,//fix 4'b0000
-
-input  wire                     xs_rvalid           ,
-output wire                     xs_rready           ,
-input  wire [IW-1:0]            xs_rid              ,
-input  wire [DW-1:0]            xs_rdata            ,
-input  wire                     xs_rlast            ,
-input  wire [UW-1:0]            xs_ruser            ,
-input  wire [1:0]               xs_rresp            ,//0:OKAY, 1:EXOKAY, 2:SVLERR, 3:DECERR
-
-output wire                     xs_awvalid          ,
-input  wire                     xs_awready          ,
-output wire [IW-1:0]            xs_awid             ,
-output wire [AW-1:0]            xs_awaddr           ,
-output wire [7:0]               xs_awlen            ,
-output wire [UW-1:0]            xs_awuser           ,
-output wire [2:0]               xs_awsize           ,
-output wire [1:0]               xs_awbusrt          ,//2'b01:INCR
-output wire [3:0]               xs_awcache          ,//4'b0000: non-cache
-output wire [2:0]               xs_awprot           ,//[0]0=non-private, [1]0=securty, [2]0=data/1=instruction
-output wire [3:0]               xs_awqos            ,//priority, larger number high pri.
-output wire [3:0]               xs_awregion         ,//fix 4'b0000
-
-output wire                     xs_wvalid           ,
-input  wire                     xs_wready           ,
-output wire [DW-1:0]            xs_wdata            ,
-output wire [DW/8-1:0]          xs_wstrb            ,
-output wire                     xs_wlast            ,
-output wire [UW-1:0]            xs_wuser            ,
-
-input  wire                     xs_bvalid           ,
-output wire                     xs_bready           ,
-input  wire [IW-1:0]            xs_bid              ,
-input  wire [UW-1:0]            xs_buser            ,
-input  wire [1:0]               xs_bresp            ,//0:OKAY, 1:EXOKAY, 2:SVLERR, 3:DECERR
+input  wire [IW-1:0]            xs_arid             ,
+input  wire [AW-1:0]            xs_araddr           ,
+input  wire [7:0]               xs_arlen            ,
+input  wire [UW-1:0]            xs_aruser           ,
+input  wire [2:0]               xs_arsize           ,
+input  wire [1:0]               xs_arbusrt          ,//2'b01:INCR
+input  wire [3:0]               xs_arcache          ,//4'b0000: non-cache
+input  wire [2:0]               xs_arprot           ,//[0]0=non-private, [1]0=securty, [2]0=data/1=instruction
+input  wire [3:0]               xs_arqos            ,//priority, larger number high pri.
+input  wire [3:0]               xs_arregion         ,//fix 4'b0000
+input  wire                     xs_arvalid          ,
+output wire                     xs_arready          ,
+output wire [IW-1:0]            xs_rid              ,
+output wire [DW-1:0]            xs_rdata            ,
+output wire                     xs_rlast            ,
+output wire [UW-1:0]            xs_ruser            ,
+output wire [1:0]               xs_rresp            ,//0:OKAY, 1:EXOKAY, 2:SVLERR, 3:DECERR
+output wire                     xs_rvalid           ,
+input  wire                     xs_rready           ,
+input  wire [IW-1:0]            xs_awid             ,
+input  wire [AW-1:0]            xs_awaddr           ,
+input  wire [7:0]               xs_awlen            ,
+input  wire [UW-1:0]            xs_awuser           ,
+input  wire [2:0]               xs_awsize           ,
+input  wire [1:0]               xs_awbusrt          ,//2'b01:INCR
+input  wire [3:0]               xs_awcache          ,//4'b0000: non-cache
+input  wire [2:0]               xs_awprot           ,//[0]0=non-private, [1]0=securty, [2]0=data/1=instruction
+input  wire [3:0]               xs_awqos            ,//priority, larger number high pri.
+input  wire [3:0]               xs_awregion         ,//fix 4'b0000
+input  wire                     xs_awvalid          ,
+output wire                     xs_awready          ,
+input  wire [DW-1:0]            xs_wdata            ,
+input  wire [DW/8-1:0]          xs_wstrb            ,
+input  wire                     xs_wlast            ,
+input  wire [UW-1:0]            xs_wuser            ,
+input  wire                     xs_wvalid           ,
+output wire                     xs_wready           ,
+output wire [IW-1:0]            xs_bid              ,
+output wire [UW-1:0]            xs_buser            ,
+output wire [1:0]               xs_bresp            ,//0:OKAY, 1:EXOKAY, 2:SVLERR, 3:DECERR
+output wire                     xs_bvalid           ,
+input  wire                     xs_bready           ,
 //emi if
 com_emi_if.tx                   ext_emi_ifm         //,
 );
@@ -93,7 +89,7 @@ assign xs_awready = ext_emi_ifm.emi_awready;
 assign ext_emi_ifm.emi_awuser  = UW'(0) ;
 
 assign ext_emi_ifm.emi_wvalid = xs_wvalid ;
-assign ext_emi_ifm.emi_wid    = IW'(0)    ;
+// assign ext_emi_ifm.emi_wid    = IW'(0)    ;
 assign ext_emi_ifm.emi_wdata  = xs_wdata  ;
 assign ext_emi_ifm.emi_wstrb  = xs_wstrb  ;
 assign ext_emi_ifm.emi_wlast  = xs_wlast  ;

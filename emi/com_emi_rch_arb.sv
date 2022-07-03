@@ -104,8 +104,8 @@ always @*
 begin
     arb_ra_rdy = RCH'(0);
     for( int i=0; i<RCH; i++ )begin
-        if( arid==i[RCH_IW-1:0] )
-            arb_ra_rdy[i] = rch_irdy;
+        if( arid==i[RCH_IW-1:0] )  //spyglass disable W216
+            arb_ra_rdy[i] = rch_irdy; //spyglass disable W415a
     end
 end
 assign rx_arready = arb_ra_rdy;
@@ -149,8 +149,8 @@ begin
         arb_rd_user[i] = tx_ruser;
 
         if( tx_rid==i )begin
-            arb_rd_vld[i] = tx_rvalid;
-            arb_rd_last[i]= tx_rlast;
+            arb_rd_vld[i] = tx_rvalid; //spyglass disable W415a
+            arb_rd_last[i]= tx_rlast; //spyglass disable W415a
         end
     end
 end

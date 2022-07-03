@@ -28,7 +28,7 @@ module com_img_gen_win #( parameter
 input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
-`COM_DFT_IF                     dft_cfg             ,
+`COM_SYS_IF                     sys_cfg             ,
 
 input  wire [XW-1:0]            pic_width_m1        ,
 input  wire [YW-1:0]            pic_heigh_m1        ,
@@ -185,21 +185,19 @@ wire [WIN_H-2:0]               lb_we            ;
 wire [WIN_H-2:0][LB_AW-1:0]    lb_addr          ;
 wire [WIN_H-2:0][LB_DW-1:0]    lb_din           ;
 wire [WIN_H-2:0][LB_DW-1:0]    lb_qout          ;
-wire [WIN_H-2:0] lb_wr_en = ~lb_cen &  lb_we;
-wire [WIN_H-2:0] lb_rd_en = ~lb_cen & ~lb_we;
 com_spram_cell #(
     .DATA_W     ( LB_DW ), //32
     .DEPTH      ( LB_DEPTH )//, //512
 )t_com_spram_cell_lb[WIN_H-2:0]
 (
     .clk                  ( clk              ), //i
-    .mem_cfg              ( dft_cfg          ), //i
+    .mem_cfg              ( sys_cfg          ), //i
 
+    .cen                  ( lb_cen           ), //i
+    .we                   ( lb_we            ), //i
     .addr                 ( lb_addr          ), //i
-    .wr_en                ( lb_wr_en         ), //i
-    .wr_data              ( lb_din           ), //i
-    .rd_en                ( lb_rd_en         ), //i
-    .rd_data              ( lb_qout          )  //o
+    .din                  ( lb_din           ), //i
+    .qout                 ( lb_qout          )  //o
 );
 
 //win_rd_idx->lb_rd_idx--

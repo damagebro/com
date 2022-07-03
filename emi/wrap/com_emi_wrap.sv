@@ -29,7 +29,7 @@ module com_emi_wrap #( parameter
 input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
-`COM_DFT_IF                     dft_cfg             ,
+`COM_SYS_IF                     sys_cfg             ,
 //cfg&status---
 input  wire [7:0]               max_burst_len       ,
 output wire                     clr_ongoing         ,
@@ -39,7 +39,7 @@ com_emi_if.usr_wch_rx           usr_emi_wrifs[WCH-1:0],
 com_emi_if.tx                   ext_emi_ifm           //,
 );
 //localparam-----------------------------------------------------------------
-localparam UW =(USR_W>0?USR_W:1);
+localparam UW =(USR_W>0?USR_W:1); //spyglass disable W362
 localparam SW = DW/8            ;
 localparam IW = $clog2(MAX_CH)  ;
 
@@ -51,15 +51,15 @@ localparam BOUND_BYTES = 4096  ; //4k boundary split required by interleave dram
 localparam WR_RAM_DEPTH = MAX_OSD*MAX_LEN; //write channel data ram depth, typical value is MAX_OSD*MAX_LEN,  available vaule is [0,MAX_OSD*MAX_LEN] \
                    //when RAM_DEPTH==0, the spram_if(cen,we..) don't need connect to sram;
 localparam WR_RAM_ONE_DEPTH = WR_RAM_DEPTH/2;
-localparam WR_RAM_ONE_AW= $clog2(WR_RAM_ONE_DEPTH>2?WR_RAM_ONE_DEPTH:2);
+localparam WR_RAM_ONE_AW= $clog2(WR_RAM_ONE_DEPTH>2?WR_RAM_ONE_DEPTH:2); //spyglass disable W362
 localparam WR_RAM_DW    = USR_W + SW + DW;//, //{user,strb,data}
 
 localparam RD_RAM_DEPTH = 0; //read channel data ram depth, typical value is 0,  available vaule is [0,MAX_OSD*MAX_LEN] \
-                   //recommend use the default value, for user send read request, must make sure read data can by received, \
+                   //recommend use the default value, for user send read request, must make sure read data can be received, \
                    //so emi bus don't need storaged read data \
                    //when RAM_DEPTH==0, the spram_if(cen,we..) don't need connect to sram;
 localparam RD_RAM_ONE_DEPTH = RD_RAM_DEPTH/2;
-localparam RD_RAM_ONE_AW= $clog2(RD_RAM_ONE_DEPTH>2?RD_RAM_ONE_DEPTH:2);
+localparam RD_RAM_ONE_AW= $clog2(RD_RAM_ONE_DEPTH>2?RD_RAM_ONE_DEPTH:2); //spyglass disable W362
 localparam RD_RAM_DW    = USR_W + 1 + IW + DW;//, //{user,rlast,rid,data}
 //reg  declare---------------------------------------------------------------
 //wire declare---------------------------------------------------------------
@@ -114,13 +114,13 @@ if( RD_RAM_DEPTH==0 )begin:gen_rch_sram_n
     assign emi_rch_ram_qout = 'b0;
 end
 else begin:gen_rch_sram_y
-    st_spram_shell #(
-    .DEPTH      ( RD_RAM_ONE_DEPTH  ), //32
-    .DW         ( RD_RAM_DW     )//, //20
-    )t_st_spram_shell_rch[1:0]
+    com_spram_cell #(
+        .DEPTH      ( RD_RAM_ONE_DEPTH  ), //32
+        .DATA_W     ( RD_RAM_DW     )//, //20
+    )t_com_spram_cell[1:0]
     (
         .clk                  ( clk                  ), //i
-        .rst_n                ( rst_n                ), //i
+        .mem_cfg              ( sys_cfg              ), //i
 
         .cen                  ( emi_rch_ram_cen      ), //i
         .we                   ( emi_rch_ram_we       ), //i
@@ -181,7 +181,7 @@ else begin:gen_wch_sram_y
     )t_com_spram_cell[1:0]
     (
        .clk                  ( clk                  ), //i
-       .mem_cfg              ( dft_cfg              ), //i
+       .mem_cfg              ( sys_cfg              ), //i
 
        .cen                  ( emi_wch_ram_cen      ), //i
        .we                   ( emi_wch_ram_we       ), //i
@@ -217,7 +217,7 @@ assign ext_emi_ifm.emi_awlen   = ext_emi_wrifm.emi_awlen  ;
 assign ext_emi_ifm.emi_awuser  = ext_emi_wrifm.emi_awuser ;
 assign ext_emi_wrifm.emi_awready = ext_emi_ifm.emi_awready;
 assign ext_emi_ifm.emi_wvalid  = ext_emi_wrifm.emi_wvalid ;
-assign ext_emi_ifm.emi_wid     = ext_emi_wrifm.emi_wid    ;
+// assign ext_emi_ifm.emi_wid     = ext_emi_wrifm.emi_wid    ;
 assign ext_emi_ifm.emi_wdata   = ext_emi_wrifm.emi_wdata  ;
 assign ext_emi_ifm.emi_wstrb   = ext_emi_wrifm.emi_wstrb  ;
 assign ext_emi_ifm.emi_wlast   = ext_emi_wrifm.emi_wlast  ;

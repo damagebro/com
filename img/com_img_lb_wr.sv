@@ -59,7 +59,7 @@ wire [XW-0:0] pic_width = pic_width_m1+1'b1; //spyglass disable W164b
 wire in_hs = in_valid && in_ready;
 wire lb_hs = lb_wr_vld && lb_wr_rdy;
 generate
-if( LB_PXL_N>1 )begin:gen_nrm
+if( LB_PXL_N>WR_PXL_N )begin:gen_nrm
 
 reg  [LB_PXL_N_L2-1:0] rc_buf_cnt;
 wire [LB_PXL_N_L2-0:0] buf_tol = LB_PXL_N; //spyglass disable W528

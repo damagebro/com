@@ -25,4 +25,5 @@ $COM_PATH/impl_template/stdcell/com_clk_gate.sv
 //--------------------------------------
 //project
 //--------------------------------------
+$RTL_DIR/com/emi/wrap/com_dma_cdc.sv
 $RTL_DIR/com/emi/wrap/com_dma.sv

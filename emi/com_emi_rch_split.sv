@@ -81,7 +81,7 @@ wire [RCH-1:0] ost_fifo_rd_empty;
 //statement------------------------------------------------------------------
 //ra---
 wire [7:0] len_sel = rcb_split_flag ? rc_rem_len : rx_arlen;
-wire [8:0] len_sub = len_sel - max_burst_len - 1'b1;
+wire [8:0] len_sub = len_sel - max_burst_len - 1'b1; //spyglass disable W164b
 wire [7:0] len_out_t = len_sel>max_burst_len ? max_burst_len : len_sel;
 wire [7:0] len_out;
 wire [7:0] len_out_p1 = len_out + 1'b1;
@@ -89,7 +89,7 @@ wire [BOUND_BYTES_L2-1:0] len_out_t_bytes= ((len_out_t+1)<<SW_L2) + BOUND_BYTES_
 
 wire [BOUND_BYTES_L2-1:0] addr_lo_t = rcb_split_flag ? rc_addr[BOUND_BYTES_L2-1:0] : rx_araddr[BOUND_BYTES_L2-1:0];
 wire [BOUND_BYTES_L2-1:0] addr_lo = {addr_lo_t[BOUND_BYTES_L2-1:SW_L2], {SW_L2{1'b0}}};
-wire [BOUND_BYTES_L2-0:0] addr_t  = addr_lo + len_out_t_bytes;
+wire [BOUND_BYTES_L2-0:0] addr_t  = addr_lo + len_out_t_bytes; //spyglass disable W164b
 wire [BOUND_BYTES_L2-0:0] addr_before_ovf = BOUND_BYTES[BOUND_BYTES_L2-0:0] - addr_lo;
 wire [7:0] len_before_ovf_t = addr_before_ovf[BOUND_BYTES_L2-0:SW_L2] + 8'b0;
 wire [7:0] len_before_ovf = len_before_ovf_t - 8'd1;

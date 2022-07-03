@@ -2,6 +2,7 @@
 +incdir+$COM_PATH/emi/wrap/
 +incdir+$COM_PATH/emi/extd/
 +incdir+$COM_PATH/emi/bridge/
++incdir+$COM_PATH/emi/cdc/
 $COM_PATH/emi/com_emi_if.sv
 $COM_PATH/emi/com_emi_rch_arb.sv
 $COM_PATH/emi/com_emi_rch_cascade.sv
@@ -29,3 +30,15 @@ $COM_PATH/emi/extd/com_emi_extd_rd.sv
 
 $COM_PATH/emi/bridge/com_emi_bridge_e2x.sv
 $COM_PATH/emi/bridge/com_emi_bridge_x2e.sv
+
+//cdc-------------
+$COM_PATH/emi/cdc/com_emi_rch_cdc_opt1.sv
+$COM_PATH/emi/cdc/com_emi_rch_cdc_opt2.sv
+$COM_PATH/emi/cdc/com_emi_rch_ext_cdc.sv
+$COM_PATH/emi/cdc/com_emi_rch_req_cdc.sv
+$COM_PATH/emi/cdc/com_emi_wch_cdc_opt1.sv
+$COM_PATH/emi/cdc/com_emi_wch_cdc_opt2.sv
+$COM_PATH/emi/cdc/com_emi_wch_ext_cdc.sv
+$COM_PATH/emi/cdc/com_emi_wch_req_cdc.sv
+$COM_PATH/emi/cdc/com_emi_wrap_cdc_opt2.sv
+$COM_PATH/emi/cdc/com_emi_wrap_cdc.sv

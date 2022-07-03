@@ -5,7 +5,7 @@ bit rst_n ;
 bit clear ;
 
 bit dst_clk   ;
-wire [`COM_DFT_W-1:0] mem_cfg;
+wire [`COM_SYS_W-1:0] mem_cfg;
 
 always #2   clk= ~clk;
 always #3   dst_clk= ~dst_clk;

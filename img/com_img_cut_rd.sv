@@ -64,10 +64,10 @@ localparam LW = BUS_LW;
 //statement------------------------------------------------------------------
 
 //deal cut req---
-wire [XW-0:0] cut_xpos_e = cut_xpos + cut_width_m1;
-wire [XW-1:0] cut_width_m1_use = cut_xpos_e>pic_width_m1 ? pic_width_m1-cut_xpos : cut_width_m1;
-wire [XW-0:0] cut_ypos_e = cut_ypos + cut_heigh_m1;
-wire [XW-1:0] cut_heigh_m1_use = cut_ypos_e>pic_heigh_m1 ? pic_heigh_m1-cut_ypos : cut_heigh_m1;
+wire [XW-0:0] cut_xpos_e = cut_xpos + cut_width_m1; //spyglass disable W164b
+wire [XW-1:0] cut_width_m1_use = cut_xpos_e>{1'b0,pic_width_m1} ? pic_width_m1-cut_xpos : cut_width_m1;
+wire [XW-0:0] cut_ypos_e = cut_ypos + cut_heigh_m1; //spyglass disable W164b
+wire [XW-1:0] cut_heigh_m1_use = cut_ypos_e>{1'b0,pic_heigh_m1} ? pic_heigh_m1-cut_ypos : cut_heigh_m1;
 
 wire cut_rd_hs = cut_rd_vld && cut_rd_rdy;
 wire cut_rd_eob;
@@ -104,14 +104,15 @@ begin
 end
 
 //cut_req buffered for bus_unpack
-wire              cut_req_ivld  = cut_rd_vld;
-wire              cut_req_irdy  ;
-wire [XW*4-1:0]   cut_req_idata = {cut_heigh_m1_use,cut_width_m1_use,cut_ypos,cut_xpos};
-wire              cut_req_ovld  ;
-wire              cut_req_ordy  ;
-wire [XW*4-1:0]   cut_req_odata ;
+wire [LW-1:0] line_word_len_t;
+wire                 cut_req_ivld  = cut_rd_vld && !rc_cut_busy;
+wire                 cut_req_irdy  ;
+wire [XW*4+LW-1:0]   cut_req_idata = {line_word_len_t,cut_heigh_m1_use,cut_width_m1_use,cut_ypos,cut_xpos};
+wire                 cut_req_ovld  ;
+wire                 cut_req_ordy  ;
+wire [XW*4+LW-1:0]   cut_req_odata ;
 com_dp_buffer #(
-    .DW         ( XW*4   ), //8
+    .DW         ( XW*4 +LW   ), //8
     .DEPTH      ( 2      )  //4
 )zr_com_dp_buffer_cut_req
 (
@@ -122,7 +123,7 @@ com_dp_buffer #(
     .ivld                 ( cut_req_ivld         ), //i
     .irdy                 ( cut_req_irdy         ), //o
     .idata                ( cut_req_idata        ), //i
-    .ovld                 ( cut_req_ovld         ), //o
+    .ovld                 ( cut_req_ovld         ), //spyglass disable W528 //o
     .ordy                 ( cut_req_ordy         ), //i
     .odata                ( cut_req_odata        )  //o
 );
@@ -131,11 +132,14 @@ wire [XW-1:0] buf_cut_xpos     ;
 wire [XW-1:0] buf_cut_ypos     ;
 wire [XW-1:0] buf_cut_width_m1 ;
 wire [XW-1:0] buf_cut_heigh_m1 ;
-assign {buf_cut_heigh_m1,buf_cut_width_m1,buf_cut_ypos,buf_cut_xpos} = cut_req_odata;
+wire [LW-1:0] buf_line_word_len;
+assign {buf_line_word_len,buf_cut_heigh_m1,buf_cut_width_m1,buf_cut_ypos,buf_cut_xpos} = cut_req_odata;
 
 //bus req--
-wire [XW-0:0] cut_width = rc_cut_width_m1+1'b1;
-wire [XW+PW-1:0] line_bit_s = rc_cut_xpos*pixel_bitlen;
+wire [XW-1:0] cut_width_m1_s = cut_rd_hs ? cut_width_m1_use : rc_cut_width_m1;
+wire [XW-1:0] cut_xpos_s = cut_rd_hs ? cut_xpos : rc_cut_xpos;
+wire [XW-0:0] cut_width = cut_width_m1_s+1'b1; //spyglass disable W164b
+wire [XW+PW-1:0] line_bit_s = cut_xpos_s*pixel_bitlen; //spyglass disable W164b
 wire [XW+PW-1:0] line_bit_e = line_bit_s + cut_width*pixel_bitlen - 1'b1;
 wire [LW-1:0] line_byte_s = (line_bit_s>>3) + LW'(0);
 wire [LW-1:0] line_word_s = (line_byte_s>>BUS_BYTES) + LW'(0);
@@ -144,6 +148,7 @@ wire [LW-1:0] line_word_e = (line_byte_e>>BUS_BYTES) + (|line_byte_e[BUS_BYTES-1
 wire [LW-1:0] line_word_len = line_word_e-line_word_s;
 wire [AW-1:0] start_line_addr = pic_base_addr + line_stride*rc_cut_ypos + AW'(0);
 wire [AW-1:0] start_cut_addr = start_line_addr + {line_word_s,BUS_BYTES'(0)};
+assign line_word_len_t = line_word_len;
 
 wire bus_req_hs;
 reg  [XW-1:0] rc_ycnt;
@@ -179,7 +184,7 @@ wire       bus_req_irdy     ;
 wire       bus_req_ovld     ;
 wire       bus_req_ordy     = bus_ra_ready;
 wire [0:0] bus_req_in_upen  ;
-com_pipe_ctrl #( .NUM_PIPE(1) ) zr_com_pipe_ctrl_x( clk, rst_n, clear, bus_req_ivld, bus_req_irdy, bus_req_ovld, bus_req_ordy, bus_req_in_upen );
+com_pipe_ctrl #( .NUM_PIPE(1) ) zr_com_pipe_ctrl_x( clk, rst_n, clear, bus_req_ivld, bus_req_irdy, bus_req_ovld, bus_req_ordy, bus_req_in_upen ); //spyglass disable W528
 assign bus_req_hs = bus_req_ivld && bus_req_irdy;
 
 reg  [AW-1:0] rc_out_addr   ;
@@ -225,6 +230,20 @@ com_dp_buffer #(
 assign bus_rd_ready = bus_dat_irdy;
 
 //dat decode---
+wire [XW-0:0] buf_cut_heigh = buf_cut_heigh_m1 +1'b1; //spyglass disable W164b
+wire [XW*2-1:0] tol_line_word_len = buf_cut_heigh * buf_line_word_len + (XW*2)'(0);
+reg  [XW*2-1:0] rc_bus_dat_cnt;
+always @(posedge clk or negedge rst_n)
+begin
+    if( !rst_n )
+        rc_bus_dat_cnt <= 'b0;
+    else if( clear || pixel_eob )
+        rc_bus_dat_cnt <= 'b0;
+    else if( bus_dat_ovld_t&&bus_dat_ordy_t )
+        rc_bus_dat_cnt <= rc_bus_dat_cnt + 1'b1;
+end
+wire b_bus_dat_cnt_end = rc_bus_dat_cnt>=tol_line_word_len;
+
 reg  rc_dat_decode_busy;
 always @(posedge clk or negedge rst_n)
 begin
@@ -239,9 +258,9 @@ begin
 end
 
 wire cut_idle;
-wire bus_dat_ovld = rc_dat_decode_busy ? bus_dat_ovld_t : 1'b0;
+wire bus_dat_ovld = rc_dat_decode_busy&&!b_bus_dat_cnt_end ? bus_dat_ovld_t : 1'b0;
 wire bus_dat_ordy;
-assign bus_dat_ordy_t = rc_dat_decode_busy ? bus_dat_ordy : 1'b0;
+assign bus_dat_ordy_t = rc_dat_decode_busy&&!b_bus_dat_cnt_end ? bus_dat_ordy : 1'b0;
 com_img_bus_unpack #(
     .XW         ( XW         ), //12
     .PW         ( PW         ), //8
@@ -276,23 +295,23 @@ always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
         rc_pxl_ycnt <= 'b0;
-    else if( clear || cut_rd_hs )
+    else if( clear || pixel_sob )
         rc_pxl_ycnt <= 'b0;
     else if( pxl_xcnt_done )
         rc_pxl_ycnt <= rc_pxl_ycnt+1'b1;
 end
 assign pixel_sob = !rc_dat_decode_busy && bus_dat_ovld_t && cut_idle;
-wire pixel_eob_pre = pxl_xcnt_done && rc_pxl_ycnt==buf_cut_heigh_m1;
-reg  pixel_eob_d;
-always @(posedge clk or negedge rst_n)
-begin
-    if( !rst_n )
-        pixel_eob_d <= 1'b0;
-    else
-        pixel_eob_d <= pixel_eob_pre;
-end
-assign pixel_eob = pixel_eob_d;
-assign cut_req_ordy = pixel_eob_d;
+wire pixel_eob_tmp = pxl_xcnt_done && rc_pxl_ycnt==buf_cut_heigh_m1;
+// reg  pixel_eob_d;
+// always @(posedge clk or negedge rst_n)
+// begin
+//     if( !rst_n )
+//         pixel_eob_d <= 1'b0;
+//     else
+//         pixel_eob_d <= pixel_eob_tmp;
+// end
+assign pixel_eob = pixel_eob_tmp;
+assign cut_req_ordy = pixel_eob;
 
 endmodule //end of com_img_cut_rd
 `endif //end of com_img_cut_rd_v

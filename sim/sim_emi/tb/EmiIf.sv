@@ -33,7 +33,7 @@ interface com_emi_tbif( input bit clk );
 
     logic              emi_wvalid  ;
     logic              emi_wready  ;
-    logic [EMI_IW-1:0] emi_wid     ;
+    // logic [EMI_IW-1:0] emi_wid     ;
     logic [EMI_DW-1:0] emi_wdata   ;
     logic [EMI_SW-1:0] emi_wstrb   ;
     logic              emi_wlast   ;
@@ -53,7 +53,7 @@ interface com_emi_tbif( input bit clk );
 
         input  emi_awvalid,emi_awid,emi_awaddr,emi_awlen,emi_awuser;
         output emi_awready;
-        input  emi_wvalid,emi_wid,emi_wdata,emi_wstrb,emi_wlast,emi_wuser;
+        input  emi_wvalid,emi_wdata,emi_wstrb,emi_wlast,emi_wuser;
         output emi_wready;
         output emi_bvalid,emi_bid,emi_buser;
     endclocking

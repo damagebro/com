@@ -20,7 +20,7 @@
 `define com_async_fifo_ctrl_v
 module com_async_fifo_ctrl #( parameter
     DEPTH = 4,
-    AW    = $clog2(DEPTH+1)
+    AW    = $clog2((DEPTH>2?DEPTH:2)+1)
 )
 (
 input  wire                     wr_clk              ,
@@ -29,7 +29,8 @@ input  wire                     wr_clear            ,
 input  wire                     rd_clk              ,
 input  wire                     rd_rst_n            ,
 input  wire                     rd_clear            ,
-output wire [3:0]               reset_signals       , //0:sync_wr_rst_n, 1:sync_wr_clear, 2:sync_rd_rst_n, 3:sync_rd_clear;
+output wire [1:0]               wr_reset_signals    , //0:sync_wr_rst_n, 1:sync_wr_clear;
+output wire [1:0]               rd_reset_signals    , //0:sync_rd_rst_n, 1:sync_rd_clear;
 
 input  wire                     wr_en               ,
 output wire [AW-1:0]            wr_addr             ,
@@ -87,7 +88,7 @@ wire clear_ack_d2s;
 reg  rc_src_clr_ongoing;
 always @(posedge clk_s or negedge rst_src_sync)
 begin
-    if( !rst_src_sync ) 
+    if( !rst_src_sync )
         rc_src_clr_ongoing <= 1'b0;
     else if( ps_clear_s )
         rc_src_clr_ongoing <= 1'b1;
@@ -116,7 +117,7 @@ wire clear_ack_s2d;
 reg  rc_dst_clr_ongoing;
 always @(posedge clk_d or negedge rst_dst_sync)
 begin
-    if( !rst_dst_sync ) 
+    if( !rst_dst_sync )
         rc_dst_clr_ongoing <= 1'b0;
     else if( ps_clear_d )
         rc_dst_clr_ongoing <= 1'b1;
@@ -144,7 +145,8 @@ wire clrs = clear_s || rc_src_clr_ongoing || clear_req_d2s;
 wire clrd = clear_d || rc_dst_clr_ongoing || clear_req_s2d;
 
 //0:sync_wr_rst_n, 1:sync_wr_clear, 2:sync_rd_rst_n, 3:sync_rd_clear;
-assign reset_signals = {clrd,rst_dst_sync,clrs,rst_src_sync};
+assign wr_reset_signals = {clrs,rst_src_sync};
+assign rd_reset_signals = {clrd,rst_dst_sync};
 
 //wrcnt
 wire [AW-0:0] wrcnt_p1  = rc_wrcnt[AW-1:0] + 1'b1; //spyglass disable W164b

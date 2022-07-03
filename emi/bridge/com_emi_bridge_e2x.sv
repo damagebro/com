@@ -30,8 +30,6 @@ input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
 //axi
-output wire                     xm_arvalid          ,
-input  wire                     xm_arready          ,
 output wire [IW-1:0]            xm_arid             ,
 output wire [AW-1:0]            xm_araddr           ,
 output wire [7:0]               xm_arlen            ,
@@ -42,17 +40,15 @@ output wire [3:0]               xm_arcache          ,//4'b0000: non-cache
 output wire [2:0]               xm_arprot           ,//[0]0=non-private, [1]0=securty, [2]0=data/1=instruction
 output wire [3:0]               xm_arqos            ,//priority, larger number high pri.
 output wire [3:0]               xm_arregion         ,//fix 4'b0000
-
-input  wire                     xm_rvalid           ,
-output wire                     xm_rready           ,
+output wire                     xm_arvalid          ,
+input  wire                     xm_arready          ,
 input  wire [IW-1:0]            xm_rid              ,
 input  wire [DW-1:0]            xm_rdata            ,
 input  wire                     xm_rlast            ,
 input  wire [UW-1:0]            xm_ruser            ,
 input  wire [1:0]               xm_rresp            ,//0:OKAY, 1:EXOKAY, 2:SVLERR, 3:DECERR
-
-output wire                     xm_awvalid          ,
-input  wire                     xm_awready          ,
+input  wire                     xm_rvalid           ,
+output wire                     xm_rready           ,
 output wire [IW-1:0]            xm_awid             ,
 output wire [AW-1:0]            xm_awaddr           ,
 output wire [7:0]               xm_awlen            ,
@@ -63,19 +59,19 @@ output wire [3:0]               xm_awcache          ,//4'b0000: non-cache
 output wire [2:0]               xm_awprot           ,//[0]0=non-private, [1]0=securty, [2]0=data/1=instruction
 output wire [3:0]               xm_awqos            ,//priority, larger number high pri.
 output wire [3:0]               xm_awregion         ,//fix 4'b0000
-
-output wire                     xm_wvalid           ,
-input  wire                     xm_wready           ,
+output wire                     xm_awvalid          ,
+input  wire                     xm_awready          ,
 output wire [DW-1:0]            xm_wdata            ,
 output wire [DW/8-1:0]          xm_wstrb            ,
 output wire                     xm_wlast            ,
 output wire [UW-1:0]            xm_wuser            ,
-
-input  wire                     xm_bvalid           ,
-output wire                     xm_bready           ,
+output wire                     xm_wvalid           ,
+input  wire                     xm_wready           ,
 input  wire [IW-1:0]            xm_bid              ,
 input  wire [UW-1:0]            xm_buser            ,
 input  wire [1:0]               xm_bresp            ,//0:OKAY, 1:EXOKAY, 2:SVLERR, 3:DECERR
+input  wire                     xm_bvalid           ,
+output wire                     xm_bready           ,
 //emi if
 com_emi_if.rx                   ext_emi_ifs         //,
 );
@@ -124,7 +120,7 @@ assign xm_arid    = ext_emi_ifs.emi_arid   ;
 assign xm_araddr  = ext_emi_ifs.emi_araddr ;
 assign xm_arlen   = ext_emi_ifs.emi_arlen  ;
 assign ext_emi_ifs.emi_arready = xm_arready;
-// assign ext_emi_ifs.emi_aruser  = xm_aruser  ;
+// assign xm_aruser = ext_emi_ifs.emi_aruser;
 assign xm_aruser   = UW'(0)   ; //TBD
 assign xm_arsize   = SW_L2    ;
 assign xm_arbusrt  = 2'b01    ;//2'b01:INCR
@@ -138,8 +134,8 @@ assign ext_emi_ifs.emi_rid    = xm_rid    ;
 assign ext_emi_ifs.emi_rdata  = xm_rdata  ;
 assign ext_emi_ifs.emi_rlast  = xm_rlast  ;
 assign xm_rready = ext_emi_ifs.emi_rready ;
-// assign xm_ruser  = ext_emi_ifs.emi_ruser  ; TBD
-assign xm_ruser = UW'(0);
+assign ext_emi_ifs.emi_ruser = UW'(0);
+// assign ext_emi_ifs.emi_ruser = xm_ruser; TBD
 
 endmodule //end of com_emi_bridge_e2x
 `endif //end of com_emi_bridge_e2x_v

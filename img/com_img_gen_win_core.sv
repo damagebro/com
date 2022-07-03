@@ -145,14 +145,18 @@ begin
         rc_wr_lb_done_flag <= 1'b1;
 end
 
-wire in_valid_t = in_valid && !b_in_hold_flag;
 wire lb_wr_in_valid;
 wire lb_wr_in_ready;
 wire in_dp_valid;
 wire in_dp_ready;
-assign in_ready = lb_wr_in_ready&&in_dp_ready && !b_in_hold_flag;
-assign lb_wr_in_valid = in_valid_t && in_dp_ready;
-assign in_dp_valid  = in_valid_t && lb_wr_in_ready;
+wire in_valid_t = b_in_hold_flag ? 1'b0 : in_valid;
+wire in_ready_t;
+wire [1:0] out_valid;
+wire [1:0] out_ready = {in_dp_ready,lb_wr_in_ready};
+assign {in_dp_valid,lb_wr_in_valid} = out_valid;
+assign in_ready = b_in_hold_flag ? 1'b0 : in_ready_t;
+com_simo_no_delay #( .OCH(2) ) zr_com_simo_no_delay_in( .clk(clk), .rst_n(rst_n), .clear(clear),
+    .ivld(in_valid_t), .irdy(in_ready_t), .ovld(out_valid), .ordy(out_ready) );
 com_img_lb_wr #(
     .XW         ( XW         ), //12
     .PW         ( PW         ), //8
@@ -233,7 +237,7 @@ begin
     else if( clear || in_sof )
         arc_outline_active_flag <= 'b0;
     else if( out_sol )
-        arc_outline_active_flag <= arb_line_active_flag;
+        arc_outline_active_flag <= arc_line_active_flag;
 end
 
 reg  rc_rd_req_line_flag;
@@ -350,13 +354,13 @@ end
 assign arr_rd_req_lb_xpos_s = { (WIN_H-1){rc_rd_req_xpos} };
 
 
-wire [YW-1:0] rd_req_ycnt_sel = rd_ack_eol ? rd_req_ycnt_nxt[YW-1:0] : rc_rd_req_ycnt;
+wire [YW-1:0] rd_req_ycnt_sel = b_rd_ack_xend ? rd_req_ycnt_nxt[YW-1:0] : rc_rd_req_ycnt;
 wire [6:0] rd_req_ydiff = rc_wr_lb_ycnt - rd_req_ycnt_sel;
 wire b_rd_req_avl = rc_wr_lb_ycnt>=in_avl_ypos_m1 || rc_wr_lb_done_flag&&!rc_rd_req_done_flag;
 
 wire [XW-0:0] rd_ack_xdiff = rc_rd_ack_xcnt - rc_wr_lb_xcnt; //spyglass disable W164b
-assign b_in_hold_flag = !rc_wr_lb_done_flag && in_valid && (rd_req_ydiff[6] || rd_req_ydiff[5:0]>=win_heigh_half ) &&
-                                                           (rd_ack_xdiff[XW]&&!b_rd_ack_xend || rd_ack_xdiff[XW-1:0]<XW'(XDIFF));
+assign b_in_hold_flag = !rc_wr_lb_done_flag && (rd_req_ydiff[6] || rd_req_ydiff[5:0]>=win_heigh_half ) &&
+                                               (rd_ack_xdiff[XW]&&!b_rd_ack_xend || rd_ack_xdiff[XW-1:0]<XW'(XDIFF));
 //assert(!b_in_hold_flag);
 
 // reg  [WIN_H-2:0][RD_CW-1:0] arb_rd_req_otf_cnt_t;

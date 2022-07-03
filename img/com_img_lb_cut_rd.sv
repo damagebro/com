@@ -41,7 +41,6 @@ output wire                         ra_cut_rdy          ,
 input  wire [XW-1:0]                ra_cut_xpos         ,
 input  wire [XW-1:0]                ra_cut_width_m1     ,
 output wire [LINE_N-1:0][RD_PXL_N-1:0][PW-1:0]  rd_data ,
-output wire [LINE_N-1:0]                        rd_last ,
 output wire [LINE_N-1:0]                        rd_vld  ,
 input  wire [LINE_N-1:0]                        rd_rdy  ,
 //mem
@@ -63,12 +62,14 @@ always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
         rc_ra_busy_flag <= 1'b0;
-    else if( clear || ra_done )
+    else if( clear )
         rc_ra_busy_flag <= 1'b0;
     else if( ra_hs )
         rc_ra_busy_flag <= 1'b1;
+    else if( ra_done )
+        rc_ra_busy_flag <= 1'b0;
 end
-assign ra_cut_rdy = !rc_ra_busy_flag;
+assign ra_cut_rdy = !rc_ra_busy_flag || ra_done;
 
 reg  [XW-1:0] rc_cut_xpos;
 reg  [XW-1:0] rc_cut_width_m1;
@@ -185,20 +186,20 @@ com_img_lb_rd #(
     .lb_rd_data           ( lb_rd_data           )  //i
 );
 
-wire [LINE_N-1:0][XW-1:0] out_xcnt;
-wire [LINE_N-1:0] out_cnt_done;
-com_counter #( .DW(XW), .STEP(RD_PXL_N) ) zr_com_counter_out_xcnt[LINE_N-1:0] ( clk,rst_n,clear||lb_flush_p||ra_hs,
-    rc_cut_width_m1,rd_vld&rd_rdy ,out_xcnt,out_cnt_done );
-reg  [LINE_N-1:0] arb_out_last;
-always @*
-begin
-    for( int i=0; i<LINE_N; i++ )
-        arb_out_last[i] = rd_vld[i] && out_xcnt[i]>=rc_cut_width_m1;
-end
+// wire [LINE_N-1:0][XW-1:0] out_xcnt;
+// wire [LINE_N-1:0] out_cnt_done;
+// com_counter #( .DW(XW), .STEP(RD_PXL_N) ) zr_com_counter_out_xcnt[LINE_N-1:0] ( clk,rst_n,clear||lb_flush_p||ra_hs,
+//     rc_cut_width_m1,rd_vld&rd_rdy ,out_xcnt,out_cnt_done );
+// reg  [LINE_N-1:0] arb_out_last;
+// always @*
+// begin
+//     for( int i=0; i<LINE_N; i++ )
+//         arb_out_last[i] = rd_vld[i] && out_xcnt[i]>=rc_cut_width_m1;
+// end
 
 assign rd_vld = lb_ovld;
 assign rd_data= lb_odata;
-assign rd_last= arb_out_last;
+// assign rd_last= arb_out_last;
 assign lb_ordy= rd_rdy;
 
 //debug only begin------------------------------------------

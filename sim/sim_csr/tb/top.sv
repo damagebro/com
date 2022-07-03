@@ -69,6 +69,35 @@ ip_apb_top u_ip_apb_top
 );
 
 //-------------------------------------------------------
+//ahb2csr
+//-------------------------------------------------------
+AhbTbIf  ahb_if( .clk(pclk) );
+ahb_test ahb_t1( ahb_if );
+ip_ahb_top u_ip_ahb_top
+(
+    .clk                  ( clk                  ), //i
+    .rst_n                ( rst_n                ), //i
+    .clear                ( clear                ), //i
+
+    .HCLK                 ( pclk                 ), //i
+    .HRESETn              ( prst_n               ), //i
+
+    .HSELx                ( ahb_if.hselx         ), //i
+    .HREADY               ( ahb_if.hready        ), //i
+    .HADDR                ( ahb_if.haddr         ), //i
+    .HTRANS               ( ahb_if.htrans        ), //i
+    .HWRITE               ( ahb_if.hwrite        ), //i
+    .HSIZE                ( ahb_if.hsize         ), //i
+    .HBURST               ( ahb_if.hburst        ), //i
+    .HPROT                ( ahb_if.hprot         ), //i
+    .HWDATA               ( ahb_if.hwdata        ), //i
+
+    .HRDATA               ( ahb_if.hrdata        ), //o
+    .HREADYOUT            ( ahb_if.hready_out    ), //o
+    .HRESP                ( ahb_if.hresp         )  //o
+);
+
+//-------------------------------------------------------
 //dump fsdb
 //-------------------------------------------------------
 `ifdef DUMP_FSDB

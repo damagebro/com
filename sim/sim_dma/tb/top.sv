@@ -41,7 +41,7 @@ com_dma #(
     .clk                  ( clk                  ), //i
     .rst_n                ( rst_n                ), //i
     .clear                ( clear                ), //i
-    .dft_cfg              (                      ), //i
+    .sys_cfg              (                      ), //i
     //cfg&status---
     .wdma_burst_len       ( dma_if.wdma_burst_len ), //i
     .rdma_burst_len       ( dma_if.rdma_burst_len ), //i

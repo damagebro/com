@@ -43,9 +43,9 @@ input  wire [AW-1:0]            rx_awaddr           ,
 input  wire [7:0]               rx_awlen            ,
 input  wire [UW-1:0]            rx_awuser           ,
 
-input  wire                     rx_wvalid           ,
-input  wire                     rx_wready           ,
-input  wire                     rx_wlast            ,
+// input  wire                     rx_wvalid           ,
+// input  wire                     rx_wready           ,
+// input  wire                     rx_wlast            ,
 
 output wire                     rx_bvalid           ,
 input  wire                     rx_bready           ,
@@ -91,7 +91,7 @@ wire ost_wb_fifo_wr_full ;
 
 //wa---
 wire [7:0] len_sel = rcb_split_flag ? rc_rem_len : rx_awlen;
-wire [8:0] len_sub = len_sel - max_burst_len - 1'b1;
+wire [8:0] len_sub = len_sel - max_burst_len - 1'b1; //spyglass disable W164b
 wire [7:0] len_out_t = len_sel>max_burst_len ? max_burst_len : len_sel;
 wire [7:0] len_out;
 wire [7:0] len_out_p1 = len_out + 1'b1;
@@ -99,7 +99,7 @@ wire [BOUND_BYTES_L2-1:0] len_out_t_bytes= ((len_out_t+1)<<SW_L2) + BOUND_BYTES_
 
 wire [BOUND_BYTES_L2-1:0] addr_lo_t = rcb_split_flag ? rc_addr[BOUND_BYTES_L2-1:0] : rx_awaddr[BOUND_BYTES_L2-1:0];
 wire [BOUND_BYTES_L2-1:0] addr_lo = {addr_lo_t[BOUND_BYTES_L2-1:SW_L2], {SW_L2{1'b0}}};
-wire [BOUND_BYTES_L2-0:0] addr_t  = addr_lo + len_out_t_bytes;
+wire [BOUND_BYTES_L2-0:0] addr_t  = addr_lo + len_out_t_bytes; //spyglass disable W164b
 wire [BOUND_BYTES_L2-0:0] addr_before_ovf = BOUND_BYTES[BOUND_BYTES_L2-0:0] - addr_lo;
 wire [7:0] len_before_ovf_t = addr_before_ovf[BOUND_BYTES_L2-0:SW_L2] + 8'b0;
 wire [7:0] len_before_ovf = len_before_ovf_t - 8'd1;
@@ -231,27 +231,27 @@ com_sync_fifo_reg #(
     .water_level          (                      )  //o
 );
 wire [7:0] tx_wlen = ost_wd_rd_data;
-assign ost_wd_fifo_rd_empty = ost_wd_rd_empty;
+assign ost_wd_fifo_rd_empty = ost_wd_rd_empty; //spyglass disable W528
 assign ost_wd_fifo_wr_full  = ost_wd_wr_full ;
 assign tx_wvalid   = ost_wd_rd_empty ? 1'b0 : tx_wvalid_i;
 assign tx_wready_i = ost_wd_rd_empty ? 1'b0 : tx_wready  ;
 
-wire rx_whs = rx_wvalid && rx_wready;
+// wire rx_whs = rx_wvalid && rx_wready;
 wire tx_whs = tx_wvalid && tx_wready;
-reg  [7:0] rc_rx_wcnt;
+// reg  [7:0] rc_rx_wcnt;
 reg  [7:0] rc_tx_wcnt;
-always @(posedge clk or negedge rst_n)
-begin
-    if( !rst_n )begin
-        rc_rx_wcnt <= 'b0;
-    end
-    else if( clear || (rx_whs&&rx_wlast) )begin
-        rc_rx_wcnt <= 'b0;
-    end
-    else if( rx_whs )begin
-        rc_rx_wcnt <= rc_rx_wcnt + 1'b1;
-    end
-end
+// always @(posedge clk or negedge rst_n)
+// begin
+//     if( !rst_n )begin
+//         rc_rx_wcnt <= 'b0;
+//     end
+//     else if( clear || (rx_whs&&rx_wlast) )begin
+//         rc_rx_wcnt <= 'b0;
+//     end
+//     else if( rx_whs )begin
+//         rc_rx_wcnt <= rc_rx_wcnt + 1'b1;
+//     end
+// end
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )begin
@@ -268,55 +268,55 @@ assign tx_wlast = tx_wvalid && rc_tx_wcnt==tx_wlen;
 
 
 //debug only begin---
-wire       dbg_rx_wlen_wr_en    = rx_awvalid&&rx_awready;
-wire [7:0] dbg_rx_wlen_wr_data  = rx_awlen;
-wire       dbg_rx_wlen_wr_full  ;
-wire       dbg_rx_wlen_rd_en    ;
-wire [7:0] dbg_rx_wlen_rd_data  ;
-wire       dbg_rx_wlen_rd_empty ;
-com_sync_fifo_reg #(
-    .DW         ( 8        ), //8
-    .DEPTH      ( MAX_OSD+4)  //4
-)r_com_sync_fifo_reg_dbg_rx_wlen
-(
-    .clk                  ( clk                  ), //i
-    .rst_n                ( rst_n                ), //i
-    .clear                ( clear                ), //i
+// wire       dbg_rx_wlen_wr_en    = rx_awvalid&&rx_awready;
+// wire [7:0] dbg_rx_wlen_wr_data  = rx_awlen;
+// wire       dbg_rx_wlen_wr_full  ;
+// wire       dbg_rx_wlen_rd_en    ;
+// wire [7:0] dbg_rx_wlen_rd_data  ;
+// wire       dbg_rx_wlen_rd_empty ;
+// com_sync_fifo_reg #(
+//     .DW         ( 8        ), //8
+//     .DEPTH      ( MAX_OSD+4)  //4
+// )r_com_sync_fifo_reg_dbg_rx_wlen
+// (
+//     .clk                  ( clk                  ), //i
+//     .rst_n                ( rst_n                ), //i
+//     .clear                ( clear                ), //i
 
-    .wr_en                ( dbg_rx_wlen_wr_en    ), //i
-    .wr_data              ( dbg_rx_wlen_wr_data  ), //i
-    .wr_full              ( dbg_rx_wlen_wr_full  ), //o
-    .rd_en                ( dbg_rx_wlen_rd_en    ), //i
-    .rd_data              ( dbg_rx_wlen_rd_data  ), //o
-    .rd_empty             ( dbg_rx_wlen_rd_empty ), //o
-    .water_level          (                      )  //o
-);
-wire dbg_rx_wd_wr_en    = rx_wvalid&&rx_wready&&rx_wlast;
-wire dbg_rx_wd_wr_data  = 1'b0; //not use
-wire dbg_rx_wd_wr_full  ;
-wire dbg_rx_wd_rd_en    ;
-wire dbg_rx_wd_rd_data  ;
-wire dbg_rx_wd_rd_empty ;
-com_sync_fifo_reg #(
-    .DW         ( 1        ), //8
-    .DEPTH      ( MAX_OSD+4)  //4
-)r_com_sync_fifo_reg_dbg_rx_wd
-(
-    .clk                  ( clk                  ), //i
-    .rst_n                ( rst_n                ), //i
-    .clear                ( clear                ), //i
+//     .wr_en                ( dbg_rx_wlen_wr_en    ), //i
+//     .wr_data              ( dbg_rx_wlen_wr_data  ), //i
+//     .wr_full              ( dbg_rx_wlen_wr_full  ), //o
+//     .rd_en                ( dbg_rx_wlen_rd_en    ), //i
+//     .rd_data              ( dbg_rx_wlen_rd_data  ), //o
+//     .rd_empty             ( dbg_rx_wlen_rd_empty ), //o
+//     .water_level          (                      )  //o
+// );
+// wire dbg_rx_wd_wr_en    = rx_wvalid&&rx_wready&&rx_wlast;
+// wire dbg_rx_wd_wr_data  = 1'b0; //not use
+// wire dbg_rx_wd_wr_full  ;
+// wire dbg_rx_wd_rd_en    ;
+// wire dbg_rx_wd_rd_data  ;
+// wire dbg_rx_wd_rd_empty ;
+// com_sync_fifo_reg #(
+//     .DW         ( 1        ), //8
+//     .DEPTH      ( MAX_OSD+4)  //4
+// )r_com_sync_fifo_reg_dbg_rx_wd
+// (
+//     .clk                  ( clk                  ), //i
+//     .rst_n                ( rst_n                ), //i
+//     .clear                ( clear                ), //i
 
-    .wr_en                ( dbg_rx_wd_wr_en      ), //i
-    .wr_data              ( dbg_rx_wd_wr_data    ), //i
-    .wr_full              ( dbg_rx_wd_wr_full    ), //o
-    .rd_en                ( dbg_rx_wd_rd_en      ), //i
-    .rd_data              ( dbg_rx_wd_rd_data    ), //o
-    .rd_empty             ( dbg_rx_wd_rd_empty   ), //o
-    .water_level          (                      )  //o
-);
-assign dbg_rx_wlen_rd_en = !dbg_rx_wlen_rd_empty && !dbg_rx_wd_rd_empty;
-assign dbg_rx_wd_rd_en   = !dbg_rx_wlen_rd_empty && !dbg_rx_wd_rd_empty;
-wire [7:0] rx_wlen = dbg_rx_wlen_rd_data;
+//     .wr_en                ( dbg_rx_wd_wr_en      ), //i
+//     .wr_data              ( dbg_rx_wd_wr_data    ), //i
+//     .wr_full              ( dbg_rx_wd_wr_full    ), //o
+//     .rd_en                ( dbg_rx_wd_rd_en      ), //i
+//     .rd_data              ( dbg_rx_wd_rd_data    ), //o
+//     .rd_empty             ( dbg_rx_wd_rd_empty   ), //o
+//     .water_level          (                      )  //o
+// );
+// assign dbg_rx_wlen_rd_en = !dbg_rx_wlen_rd_empty && !dbg_rx_wd_rd_empty;
+// assign dbg_rx_wd_rd_en   = !dbg_rx_wlen_rd_empty && !dbg_rx_wd_rd_empty;
+// wire [7:0] rx_wlen = dbg_rx_wlen_rd_data; //spyglass disable W528
 //assert( rc_rx_wcnt==rx_wlen && rx_whs&&rx_wlast && !dbg_rx_wlen_rd_empty );
 //debug only end  ---
 

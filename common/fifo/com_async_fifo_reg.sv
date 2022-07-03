@@ -45,11 +45,12 @@ output wire [AW-1:0]            water_level         //,
 //reg  declare---------------------------------------------------------------
 reg  [DEPTH-1:0][DW-1:0] arc_mem;
 //wire declare---------------------------------------------------------------
-wire [3:0] afifo_reset_signals; //0:sync_wr_rst_n, 1:sync_wr_clear, 2:sync_rd_rst_n, 3:sync_rd_clear;
-wire sync_wr_rst_n = afifo_reset_signals[0]; //wr clk domain
-wire sync_wr_clear = afifo_reset_signals[1]; //wr clk domain
-wire sync_rd_rst_n = afifo_reset_signals[2]; //rd clk domain
-wire sync_rd_clear = afifo_reset_signals[3]; //rd clk domain
+wire [1:0] afifo_wr_reset_signals; //0:sync_wr_rst_n, 1:sync_wr_clear;
+wire [1:0] afifo_rd_reset_signals; //0:sync_rd_rst_n, 1:sync_rd_clear;
+wire sync_wr_rst_n = afifo_wr_reset_signals[0]; //wr clk domain
+wire sync_wr_clear = afifo_wr_reset_signals[1]; //wr clk domain
+wire sync_rd_rst_n = afifo_rd_reset_signals[0]; //rd clk domain
+wire sync_rd_clear = afifo_rd_reset_signals[1]; //rd clk domain
 //statement------------------------------------------------------------------
 
 wire          afifo_wr_en   = wr_en;
@@ -68,7 +69,8 @@ com_async_fifo_ctrl #(
     .rd_clk               ( rd_clk               ), //i
     .rd_rst_n             ( rd_rst_n             ), //i
     .rd_clear             ( rd_clear             ), //i
-    .reset_signals        ( afifo_reset_signals  ), //o
+    .wr_reset_signals     ( afifo_wr_reset_signals ), //o
+    .rd_reset_signals     ( afifo_rd_reset_signals ), //o
 
     .wr_en                ( afifo_wr_en          ), //i
     .wr_addr              ( afifo_wr_addr        ), //o

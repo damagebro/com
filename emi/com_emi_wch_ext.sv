@@ -37,15 +37,15 @@ output wire                     rx_awready          ,
 input  wire [IW-1:0]            rx_awid             ,
 input  wire [AW-1:0]            rx_awaddr           ,
 input  wire [7:0]               rx_awlen            ,
-input  wire [UW-1:0]            rx_awuser           ,
+input  wire [UW-1:0]            rx_awuser           , //spyglass disable W240
 
 input  wire                     rx_wvalid           ,
 output wire                     rx_wready           ,
-input  wire [IW-1:0]            rx_wid              ,
+// input  wire [IW-1:0]            rx_wid              ,
 input  wire [DW-1:0]            rx_wdata            ,
 input  wire [SW-1:0]            rx_wstrb            ,
 input  wire                     rx_wlast            ,
-input  wire [UW-1:0]            rx_wuser            ,
+input  wire [UW-1:0]            rx_wuser            , //spyglass disable W240
 
 output wire                     rx_bvalid           ,
 input  wire                     rx_bready           ,
@@ -56,7 +56,7 @@ com_emi_if.ext_wch_tx           ext_emi_ifm         //,
 );
 //localparam-----------------------------------------------------------------
 localparam WA_FIFO_DW = USR_W + 8 + IW + AW   ; //{user,alen,awid,addr}
-localparam WD_FIFO_DW = USR_W + 1 + IW + SW+DW; //{user,wlast,wid,strb+data}
+localparam WD_FIFO_DW = USR_W + 1 + SW+DW; //{user,wlast,strb+data}
 localparam WB_FIFO_DW = USR_W + IW; //{user,bid}
 //reg  declare---------------------------------------------------------------
 //wire declare---------------------------------------------------------------
@@ -68,7 +68,7 @@ wire [7:0]     tx_awlen   ;
 wire [UW-1:0]  tx_awuser  ;
 wire           tx_wvalid  ;
 wire           tx_wready  ;
-wire [IW-1:0]  tx_wid     ;
+// wire [IW-1:0]  tx_wid     ;
 wire [DW-1:0]  tx_wdata   ;
 wire [SW-1:0]  tx_wstrb   ;
 wire           tx_wlast   ;
@@ -164,8 +164,8 @@ generate
       assign {tx_awlen,tx_awid,tx_awaddr} = ext_wa_odata;
       assign tx_awuser = UW'(0);
 
-      assign ext_wd_idata = {rx_wlast,rx_wid,rx_wstrb,rx_wdata};
-      assign {tx_wlast,tx_wid,tx_wstrb,tx_wdata} = ext_wd_odata;
+      assign ext_wd_idata = {rx_wlast,rx_wstrb,rx_wdata};
+      assign {tx_wlast,tx_wstrb,tx_wdata} = ext_wd_odata;
       assign tx_wuser = UW'(0);
 
       assign ext_wb_idata = {tx_bid};
@@ -176,8 +176,8 @@ generate
       assign ext_wa_idata = {rx_awuser,rx_awlen,rx_awid,rx_awaddr};
       assign {tx_awuser,tx_awlen,tx_awid,tx_awaddr} = ext_wa_odata;
 
-      assign ext_wd_idata = {rx_wuser,rx_wlast,rx_wid,rx_wstrb,rx_wdata};
-      assign {rx_wuser,tx_wlast,tx_wid,tx_wstrb,tx_wdata} = ext_wd_odata;
+      assign ext_wd_idata = {rx_wuser,rx_wlast,rx_wstrb,rx_wdata};
+      assign {rx_wuser,tx_wlast,tx_wstrb,tx_wdata} = ext_wd_odata;
 
       assign ext_wb_idata = {tx_buser,tx_bid};
       assign {rx_buser,rx_bid} = ext_wb_odata;
@@ -230,7 +230,7 @@ assign ext_emi_ifm.emi_awuser  = tx_awuser  ;
 assign tx_awready_t = wa_wr_full ? 1'b0 : ext_emi_ifm.emi_awready;
 
 assign ext_emi_ifm.emi_wvalid = tx_wvalid_t;
-assign ext_emi_ifm.emi_wid    = tx_wid    ;
+// assign ext_emi_ifm.emi_wid    = tx_wid    ;
 assign ext_emi_ifm.emi_wdata  = tx_wdata  ;
 assign ext_emi_ifm.emi_wstrb  = tx_wstrb  ;
 assign ext_emi_ifm.emi_wlast  = tx_wlast  && tx_wvalid_t;

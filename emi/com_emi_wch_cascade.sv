@@ -205,9 +205,9 @@ com_emi_wch_split #(
     .rx_awlen             ( arb_awlen            ), //i
     .rx_awuser            ( arb_awuser           ), //i
 
-    .rx_wvalid            ( dp_rx_wvalid         ), //i
-    .rx_wready            ( dp_rx_wready         ), //i
-    .rx_wlast             ( dp_rx_wlast          ), //i
+    // .rx_wvalid            ( dp_rx_wvalid         ), //i
+    // .rx_wready            ( dp_rx_wready         ), //i
+    // .rx_wlast             ( dp_rx_wlast          ), //i
 
     .rx_bvalid            ( arb_bvalid           ), //o
     .rx_bready            ( arb_bready           ), //i

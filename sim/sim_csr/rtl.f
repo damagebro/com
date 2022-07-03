@@ -28,4 +28,4 @@ $COM_PATH/impl_template/stdcell/com_clk_gate.sv
 ${SIM_DIR}/csr_example/cu_csr_slave/cu_csr_slave.sv
 ${SIM_DIR}/csr_example/cu_csr_slave/cu_csr_slave_reg.sv
 ${SIM_DIR}/csr_example/ip_apb_top.sv
-//${SIM_DIR}/csr_example/ip_ahb_top.sv
+${SIM_DIR}/csr_example/ip_ahb_top.sv

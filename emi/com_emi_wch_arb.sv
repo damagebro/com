@@ -46,7 +46,7 @@ output wire [UW-1:0]            tx_awuser           ,
 
 output wire                     tx_wvalid           ,
 input  wire                     tx_wready           ,
-output wire [IW-1:0]            tx_wid              ,
+// output wire [IW-1:0]            tx_wid              ,
 output wire [DW-1:0]            tx_wdata            ,
 output wire [SW-1:0]            tx_wstrb            ,
 output wire                     tx_wlast            ,
@@ -121,8 +121,8 @@ always @*
 begin
     arb_wa_rdy = WCH'(0);
     for( int i=0; i<WCH; i++ )begin
-        if( awid==i[WCH_IW-1:0] )
-            arb_wa_rdy[i] = wch_irdy;
+        if( awid==i[WCH_IW-1:0] ) //spyglass disable W216
+            arb_wa_rdy[i] = wch_irdy;  //spyglass disable W415a
     end
 end
 assign rx_awready = arb_wa_rdy;
@@ -188,8 +188,8 @@ begin
     arb_wd_rdy = WCH'(0);
     if( !wch_rd_empty )begin
         for( int i=0; i<WCH; i++ )begin
-            if( wid==i[WCH_IW-1:0] )
-                arb_wd_rdy[i] = !wch_wr_full && tx_wready;
+            if( wid==i[WCH_IW-1:0] ) //spyglass disable W216
+                arb_wd_rdy[i] = !wch_wr_full && tx_wready;  //spyglass disable W415a
         end
     end
 end
@@ -206,13 +206,13 @@ begin
         arb_wb_user[i] = tx_buser;
 
         if( tx_bid==i )begin
-            arb_wb_vld[i] = tx_bvalid;
+            arb_wb_vld[i] = tx_bvalid; //spyglass disable W415a
         end
     end
 end
 
 //out---
-wire [SW-1:0] awstrb = |rc_awaddr_lo ? ((1<<rc_awaddr_lo) - 1) : {SW{1'b1}};
+wire [SW-1:0] awstrb = |rc_awaddr_lo ? ((1<<rc_awaddr_lo) - 1) : {SW{1'b1}}; //spyglass disable W164b,W528
 assign tx_awvalid = wch_ovld;
 assign tx_awid    = rc_awid  ;
 assign tx_awaddr  = rc_awaddr;
@@ -221,7 +221,7 @@ assign tx_awuser  = rc_awuser;
 // assign tx_awstrb_tmp = awstrb;
 
 assign tx_wvalid  = rx_wvalid[wid] && !wch_rd_empty;
-assign tx_wid     = wid + IW'(0);
+// assign tx_wid     = wid + IW'(0);
 assign tx_wdata   = rx_wdata [wid];
 assign tx_wstrb   = rx_wstrb [wid];
 assign tx_wlast   = rx_wlast [wid];

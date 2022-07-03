@@ -1,0 +1,92 @@
+Magic 271485
+Revision Verdi_O-2018.09-SP2
+
+; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
+viewPort 0 27 1920 450 563 171
+
+; File list:
+; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
+openDirFile -d / "" "/nfs54/project/timx/tangyin/proj/V4/git/sim/sim_tmp_ic/sim_img_win/bin/run.fsdb"
+
+; file time scale:
+; fileTimeScale ### s|ms|us|ns|ps
+
+; signal spacing:
+signalSpacing 5
+
+; windowTimeUnit is used for zoom, cursor & marker
+windowTimeUnit 1ns
+
+; waveform viewport range
+zoom 0.000000 1291.352036 1n
+cursor 178.000000
+marker 46.000000
+
+; user define markers
+; userMarker time_pos marker_name color linestyle
+userMarker 197.8814 M1 ID_GREEN5 long_dashed
+
+; visible top row signal index
+top 0
+; marker line index
+markerPos 35
+
+; event list
+; addEvent event_name event_expression
+; curEvent event_name
+
+
+
+COMPLEX_EVENT_BEGIN
+
+
+COMPLEX_EVENT_END
+
+
+
+; toolbar current search type
+; curSTATUS search_type
+curSTATUS ByChange
+
+
+addGroup "img_win_if" -e FALSE
+activeDirFile "" "/nfs54/project/timx/tangyin/proj/V4/git/sim/sim_tmp_ic/sim_img_win/bin/run.fsdb"
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_img_gen_win/pic_width[11:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope pic_heigh[11:0]
+addSignal -h 15 /BLANK
+addSignal -h 15 /top/u_com_img_gen_win/in_sof
+addSignal -h 15 -holdScope in_valid
+addSignal -h 15 -holdScope in_ready
+addSignal -h 15 -UNSIGNED -HEX -holdScope in_data[7:0]
+addSignal -h 15 -holdScope in_last
+addSignal -h 15 /BLANK
+addSignal -h 15 /top/u_com_img_gen_win/win_sof
+addSignal -h 15 -holdScope win_valid
+addSignal -h 15 -holdScope win_ready
+addSignal -h 15 -holdScope win_last
+addSignal -h 15 /top/u_com_img_gen_win/u_com_img_gen_win_core/win_data[0][2:0]
+addGroup "ctrl_path" -e FALSE
+addSignal -h 15 /top/u_com_img_gen_win/u_com_img_gen_win_core/rc_wr_lb_ycnt[11:0]
+addSignal -h 15 -holdScope rc_wr_lb_xcnt[11:0]
+addSignal -h 15 -holdScope rc_rd_req_ycnt[11:0]
+addSignal -h 15 -holdScope rc_rd_req_xcnt[11:0]
+addSignal -h 15 -holdScope rc_genw_ycnt[11:0]
+addSignal -h 15 -holdScope rc_genw_xcnt[11:0]
+addSignal -h 15 -holdScope rc_out_ycnt[11:0]
+addSignal -h 15 -holdScope rc_out_xcnt[11:0]
+addSignal -h 15 /BLANK
+addSignal -h 15 /top/u_com_img_gen_win/u_com_img_gen_win_core/rd_req_sof
+addSignal -h 15 -holdScope rd_req_eof
+addSignal -h 15 -holdScope rd_req_sol
+addSignal -h 15 -holdScope rd_req_eol
+addSignal -h 15 -holdScope rd_dat_eol
+addSignal -h 15 -holdScope out_sol
+addSignal -h 15 -holdScope out_eol
+addSignal -h 15 -holdScope obuf_eol
+addSignal -h 15 -holdScope b_in_hold_flag
+addSignal -h 15 /BLANK
+addGroup "G4"
+
+; getSignalForm Scope Hierarchy Status
+; active file of getSignalForm
+

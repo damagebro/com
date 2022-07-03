@@ -100,7 +100,7 @@ wire        la_rd_empty ;
 com_sync_fifo_reg #(
     .DW         ( 16       ), //8
     .DEPTH      ( MAX_OSD+4)  //4
-)r_com_sync_fifo_reg_arb_wch
+)r_com_sync_fifo_reg_arb_rch
 (
     .clk                  ( clk                  ), //i
     .rst_n                ( rst_n                ), //i
@@ -118,11 +118,11 @@ com_sync_fifo_reg #(
 wire [15:0] ta = la_rd_data;
 wire [15:0] td = la_rd_en ? rc_la_cnt : 16'b0;
 wire [16:0] td_comp = 17'h1_0000 - ta;
-wire [16:0] t_minus = td - ta;
+wire [16:0] t_minus = td - ta; //spyglass disable W164b
 wire [15:0] t_span = !t_minus[16] ? t_minus[15:0] : (td+td_comp[15:0]);
 
 reg  [18:0] rb_la_sum;
-wire [15:0] la_avg = rb_la_sum>>3;
+wire [15:0] la_avg = rb_la_sum>>3; //spyglass disable W528
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
@@ -139,7 +139,7 @@ always @*
 begin
     rb_la_sum = 0;
     for( int i=0; i<8; i++ )
-        rb_la_sum = rb_la_sum + arc_la_val[i];
+        rb_la_sum = rb_la_sum + arc_la_val[i]; //spyglass disable SelfAssignment-ML,W415a
 end
 
 //bandwidth---
@@ -181,7 +181,7 @@ begin
     else if( clear )
         arc_bw_val <= 'b0;
     else if( bw_done )
-        arc_bw_val[rc_bw_idx] <= rc_bw_cnt;
+        arc_bw_val[rc_bw_idx] <= rc_bw_cnt; //spyglass disable W528
 end
 
 //synopsys translate_off

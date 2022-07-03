@@ -3,10 +3,12 @@ module top();
 bit clk   ;
 bit rst_n ;
 bit clear ;
+bit axi_clk   ;
 event all_done;
 string tc_dir = "../tc/";
 
 always #2   clk= ~clk;
+always #2   axi_clk= ~axi_clk;
 
 task reset();
     #10; rst_n = 1'b1;
@@ -133,6 +135,7 @@ com_img_cut_rd #(
 );
 
 //dma----
+// com_emi_tbif #( .EMI_AW(EMI_AW), .EMI_DW(EMI_DW), .EMI_MAX_CH(EMI_MAX_CH), .EMI_UW(4) )  emi_resp_if(axi_clk);
 com_emi_tbif #( .EMI_AW(EMI_AW), .EMI_DW(EMI_DW), .EMI_MAX_CH(EMI_MAX_CH), .EMI_UW(4) )  emi_resp_if(clk);
 emi_test t_emi_test();
 com_dma #(
@@ -148,7 +151,9 @@ com_dma #(
     .clk                  ( clk                  ), //i
     .rst_n                ( rst_n                ), //i
     .clear                ( clear                ), //i
-    .dft_cfg              (                      ), //i
+    // .axi_clk              ( axi_clk              ), //i
+    // .axi_rst_n            ( rst_n                ), //i
+    .sys_cfg              (                      ), //i
     //cfg&status---
     .wdma_burst_len       ( 8'd7                 ), //i
     .rdma_burst_len       ( 8'd7                 ), //i

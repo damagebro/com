@@ -59,7 +59,7 @@ com_sync_fifo_reg #(
     .rd_en                ( rd_en                ), //i
     .rd_data              ( rd_data              ), //o
     .rd_empty             ( rd_empty             ), //o
-    .water_level          (                      )  //spyglass disable PartConnPort-ML //o,
+    .water_level          (                      )  //spyglass disable PartConnPort-ML,W287b //o,
 );
 assign irdy = !wr_full;
 assign ovld = !rd_empty;

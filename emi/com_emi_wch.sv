@@ -65,7 +65,7 @@ wire [7:0]    arb_awlen      ;
 wire [UW-1:0] arb_awuser     ;
 wire          arb_wvalid     ;
 wire          arb_wready     ;
-wire [IW-1:0] arb_wid        ;
+// wire [IW-1:0] arb_wid        ;
 wire [DW-1:0] arb_wdata      ;
 wire [SW-1:0] arb_wstrb      ;
 wire          arb_wlast      ;
@@ -98,7 +98,7 @@ com_emi_wch_arb #(
 
     .tx_wvalid            ( arb_wvalid           ), //o
     .tx_wready            ( arb_wready           ), //i
-    .tx_wid               ( arb_wid              ), //o
+    // .tx_wid               ( arb_wid              ), //spyglass disable W528 //o
     .tx_wdata             ( arb_wdata            ), //o
     .tx_wstrb             ( arb_wstrb            ), //o
     .tx_wlast             ( arb_wlast            ), //o
@@ -114,15 +114,15 @@ com_emi_wch_arb #(
 //dp-
 wire          dp_rx_wvalid    = arb_wvalid;
 wire          dp_rx_wready    ;
-wire [IW-1:0] dp_rx_wid       = IW'(0); //not implement wid;
+// wire [IW-1:0] dp_rx_wid       = IW'(0); //spyglass disable W528 //not implement wid;
 wire [DW-1:0] dp_rx_wdata     = arb_wdata;
 wire [SW-1:0] dp_rx_wstrb     = arb_wstrb;
 wire          dp_rx_wlast     = arb_wlast;
-wire [UW-1:0] dp_rx_wuser     = arb_wuser;
+wire [UW-1:0] dp_rx_wuser     = arb_wuser; //spyglass disable W528
 
 wire          dp_tx_wvalid    ;
 wire          dp_tx_wready    ;
-wire [IW-1:0] dp_tx_wid       = IW'(0);
+// wire [IW-1:0] dp_tx_wid       = IW'(0);
 wire [DW-1:0] dp_tx_wdata     ;
 wire [SW-1:0] dp_tx_wstrb     ;
 // wire          dp_tx_wlast     ;
@@ -209,9 +209,9 @@ com_emi_wch_split #(
     .rx_awlen             ( arb_awlen            ), //i
     .rx_awuser            ( arb_awuser           ), //i
 
-    .rx_wvalid            ( dp_rx_wvalid         ), //i
-    .rx_wready            ( dp_rx_wready         ), //i
-    .rx_wlast             ( dp_rx_wlast          ), //i
+    // .rx_wvalid            ( dp_rx_wvalid         ), //i
+    // .rx_wready            ( dp_rx_wready         ), //i
+    // .rx_wlast             ( dp_rx_wlast          ), //i
 
     .rx_bvalid            ( arb_bvalid           ), //o
     .rx_bready            ( arb_bready           ), //i
@@ -303,7 +303,7 @@ com_emi_wch_ext #(
 
     .rx_wvalid            ( clr_wvalid           ), //i
     .rx_wready            ( clr_wready           ), //o
-    .rx_wid               ( dp_tx_wid            ), //i
+    // .rx_wid               ( dp_tx_wid            ), //i
     .rx_wdata             ( dp_tx_wdata          ), //i
     .rx_wstrb             ( dp_tx_wstrb          ), //i
     .rx_wlast             ( clr_wlast            ), //i

@@ -29,7 +29,7 @@ module com_dma #( parameter
 input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
-`COM_DFT_IF                     dft_cfg             ,
+`COM_SYS_IF                     sys_cfg             ,
 //cfg&status---
 input  wire [WCH-1:0][7:0]      wdma_burst_len      ,
 input  wire [RCH-1:0][7:0]      rdma_burst_len      ,
@@ -156,7 +156,7 @@ for( genvar gi=0; gi<WCH; gi++ )begin:gen_wch
         .clk                  ( clk                  ), //i
         .rst_n                ( rst_n                ), //i
         .clear                ( clear                ), //i
-        .dft_cfg              ( dft_cfg              ), //i
+        .sys_cfg              ( sys_cfg              ), //i
         .max_burst_len        ( wdma_burst_len[gi]   ), //i
 
         .bus_wa_valid         ( bus_wa_valid  [gi]   ), //i
@@ -194,7 +194,7 @@ for( genvar gi=0; gi<RCH; gi++ )begin:gen_rch
         .clk                  ( clk                  ), //i
         .rst_n                ( rst_n                ), //i
         .clear                ( clear                ), //i
-        .dft_cfg              ( dft_cfg              ), //i
+        .sys_cfg              ( sys_cfg              ), //i
         .max_burst_len        ( rdma_burst_len[gi]   ), //i
         .rd_buf_bypass        ( 1'b0                 ), //i  //0: read buffer not bypass, 1: read buffer bypass;
 
@@ -225,7 +225,7 @@ com_emi_wrap #(
     .clk                  ( clk                  ), //i
     .rst_n                ( rst_n                ), //i
     .clear                ( clear                ), //i
-    .dft_cfg              ( dft_cfg              ), //i
+    .sys_cfg              ( sys_cfg              ), //i
     //cfg&status---
     .max_burst_len        ( axi_burst_len        ), //i
     .clr_ongoing          ( clr_ongoing          ), //o

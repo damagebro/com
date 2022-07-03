@@ -149,7 +149,7 @@ if( RAM_DEPTH>0 )begin:GEN_RAM_FIFO
         .rd_empty             ( ram_rd_empty         ), //o
         .water_level          ( ram_water_level_t    )  //o
     );
-    wire [RAM_AW-0:0] ram_water_level = ram_water_level_t - ram_rd_ack;
+    wire [RAM_AW-0:0] ram_water_level = {1'b0,ram_water_level_t} - ram_rd_ack;
 
     //ram signal
     reg  rc_ram_rd_ack;
@@ -169,12 +169,12 @@ if( RAM_DEPTH>0 )begin:GEN_RAM_FIFO
 
     wire [OUT_AW-0:0] out_buf_needed = out_wr_en + (OUT_AW+1)'(0);
     wire   ram_wr_en_t = !ram_rd_empty_do || out_wr_full ? !in_rd_empty&&!ram_wr_full : 1'b0;
-    wire   ram_rd_en_t = !ram_rd_empty && out_water_level>out_buf_needed;
+    wire   ram_rd_en_t = !ram_rd_empty && {1'b0,out_water_level}>out_buf_needed;
     // assign ram_wr_en   = ram_wr_en_t && !ram_wr_hold;
     // assign ram_rd_en   = ram_rd_en_t;
     assign ram_wr_en = ram_wr_en_t;
     assign ram_rd_en = ram_rd_en_t && !ram_rd_hold;
-    assign water_level = in_water_level + out_water_level + ram_water_level;
+    assign water_level = in_water_level + out_water_level + ram_water_level; //spyglass disable W164b
 
     // assign ram_wr_hold = ram_rd_en && (ram_wr_addr[0]==ram_rd_addr[0]);
     assign ram_rd_hold = ram_rd_en_t && ram_wr_en && (ram_wr_addr[0]==ram_rd_addr[0]);
@@ -195,7 +195,7 @@ else begin:GEN_NO_RAM_FIFO
 
     assign ram_wr_en   = 1'b0;
     assign ram_rd_en   = 1'b0;
-    assign water_level = in_water_level + out_water_level;
+    assign water_level = in_water_level + out_water_level; //spyglass disable W164b
 
     // assign ram_wr_hold = 1'b0;
     assign ram_rd_hold = 1'b0;

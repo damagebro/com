@@ -12,7 +12,7 @@ module com_sprom_cell#(
     parameter DEPTH                    ,        // Depth of memory. No default value.
     parameter ADDR_W    = $clog2(DEPTH),        // Address width, extra bits will be truncated.
     parameter MEM_USER  = 0            ,        // Memory user diy
-    parameter MCFG_W    = `COM_DFT_W            // Default configuration width. Users can override it for special cases.
+    parameter MCFG_W    = `COM_SYS_W            // Default configuration width. Users can override it for special cases.
     )(
     input                       clk    ,
     input   logic [MCFG_W-1: 0] mem_cfg,

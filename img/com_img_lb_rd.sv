@@ -21,7 +21,7 @@ module com_img_lb_rd #( parameter
     PW       = 8   ,
     RD_PXL_N = 1   ,
     LB_PXL_N = 8   ,
-    LB_DEPTH       ,
+    LB_DEPTH = 32  ,//{2::}
 
     LB_AW = $clog2(LB_DEPTH),
     LB_DW = LB_PXL_N*PW     //,
@@ -83,31 +83,11 @@ begin
 end
 wire b_buf_vld = rc_buf_vld || lb_rd_ack&&!rc_buf_vld;
 
-wire rd_hs = rd_vld&&rd_rdy;
-reg  rc_lb_rd_vld_flag;
-reg  [XW-1:0] rc_rd_xpos_s;
-always @(posedge clk or negedge rst_n)
-begin
-    if( !rst_n )
-        rc_lb_rd_vld_flag <= 1'b0;
-    else if( clear || lb_flush_p || (lb_rd_hs&&!rc_rd_sta[IDX_RDS]) )
-        rc_lb_rd_vld_flag <= 1'b0;
-    else if( !rc_lb_rd_vld_flag && lb_rd_vld )
-        rc_lb_rd_vld_flag <= 1'b1;
-end
-always @(posedge clk or negedge rst_n)
-begin
-    if( !rst_n )
-        rc_rd_xpos_s <= 'b0;
-    else if( rd_hs )
-        rc_rd_xpos_s <= rd_xpos_s;
-end
-wire [XW-1:0] rd_xpos_s_sel = rc_lb_rd_vld_flag ? rc_rd_xpos_s : rd_xpos_s;
-
-wire [XW-1:0] rd_xpos_e = rd_xpos_s_sel+RD_PXL_N-1;
-wire [XW-1:0] rd_xpos_s_alg = rd_xpos_s_sel>>LB_PXL_N_L2;
+// wire rd_hs = rd_vld&&rd_rdy;
+wire [XW-1:0] rd_xpos_e = rd_xpos_s+RD_PXL_N-1;
+wire [XW-1:0] rd_xpos_s_alg = rd_xpos_s>>LB_PXL_N_L2;
 wire [XW-1:0] rd_xpos_e_alg = rd_xpos_e>>LB_PXL_N_L2;
-wire [LB_PXL_N_L2-1:0] rd_xpos_s_lsb = rd_xpos_s_sel[LB_PXL_N_L2-1:0];
+wire [LB_PXL_N_L2-1:0] rd_xpos_s_lsb = rd_xpos_s[LB_PXL_N_L2-1:0];
 wire [LB_PXL_N_L2-1:0] rd_xpos_e_lsb = rd_xpos_e[LB_PXL_N_L2-1:0]; //spyglass disable W528
 wire b_rd_xpos_s_equ =(b_buf_vld && rd_xpos_s_alg==rc_prev_xpos) || (rd_xpos_s_alg==rd_xpos_e_alg);
 wire b_rd_xpos_e_equ = b_buf_vld && rd_xpos_e_alg==rc_prev_xpos;
@@ -219,7 +199,7 @@ end
 
 wire [LB_PXL_N+RD_PXL_N-1:0][PW-1:0] lb_dat_extd = {lb_rd_data[0+:RD_PXL_N*PW], lb_rd_data};
 wire [LB_PXL_N+RD_PXL_N-1:0][PW-1:0] buf_dat_extd = {lb_rd_data[0+:RD_PXL_N*PW],arc_buf};
-assign rd_rdy = !rc_rd_busy || (lb_rd_ack&&b_rd_xpos_equ);
+assign rd_rdy = lb_rd_vld ? lb_rd_rdy : (!rc_rd_busy || (lb_rd_ack&&b_rd_xpos_equ));
 assign rd_ack = rc_hit_ack || (rc_rd_sta[2]&&lb_rd_ack);
 assign rd_data = (rc_mis_equ_flag && lb_rd_ack) ? lb_dat_extd[rd_xpos_s_lsb_d +:RD_PXL_N] : buf_dat_extd[rd_xpos_s_lsb_d +:RD_PXL_N];
 

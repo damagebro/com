@@ -64,10 +64,10 @@ localparam LW = BUS_LW;
 //wire declare---------------------------------------------------------------
 wire pixel_eob;
 //statement------------------------------------------------------------------
-wire [XW-0:0] cut_xpos_e = cut_xpos + cut_width_m1;
-wire [XW-1:0] cut_width_m1_use = cut_xpos_e>pic_width_m1 ? pic_width_m1-cut_xpos : cut_width_m1;
-wire [XW-0:0] cut_ypos_e = cut_ypos + cut_heigh_m1;
-wire [XW-1:0] cut_heigh_m1_use = cut_ypos_e>pic_heigh_m1 ? pic_heigh_m1-cut_ypos : cut_heigh_m1;
+wire [XW-0:0] cut_xpos_e = cut_xpos + cut_width_m1; //spyglass disable W164b
+wire [XW-1:0] cut_width_m1_use = cut_xpos_e>{1'b0,pic_width_m1} ? pic_width_m1-cut_xpos : cut_width_m1;
+wire [XW-0:0] cut_ypos_e = cut_ypos + cut_heigh_m1; //spyglass disable W164b
+wire [XW-1:0] cut_heigh_m1_use = cut_ypos_e>{1'b0,pic_heigh_m1} ? pic_heigh_m1-cut_ypos : cut_heigh_m1;
 
 wire cut_wr_hs = cut_wr_vld && cut_wr_rdy;
 wire cut_wr_eob;
@@ -122,7 +122,7 @@ com_dp_buffer #(
     .ivld                 ( cut_req_ivld         ), //i
     .irdy                 ( cut_req_irdy         ), //o
     .idata                ( cut_req_idata        ), //i
-    .ovld                 ( cut_req_ovld         ), //o
+    .ovld                 ( cut_req_ovld         ), //spyglass disable W528 //o
     .ordy                 ( cut_req_ordy         ), //i
     .odata                ( cut_req_odata        )  //o
 );
@@ -131,8 +131,8 @@ wire [XW-1:0] buf_cut_heigh_m1 ;
 assign {buf_cut_heigh_m1} = cut_req_odata;
 
 //bus req--
-wire [XW-0:0] cut_width = rc_cut_width_m1+1'b1;
-wire [XW+PW-1:0] line_bit_s = rc_cut_xpos*pixel_bitlen;
+wire [XW-0:0] cut_width = rc_cut_width_m1+1'b1; //spyglass disable W164b
+wire [XW+PW-1:0] line_bit_s = rc_cut_xpos*pixel_bitlen + 0; //spyglass disable W164b
 wire [XW+PW-1:0] line_bit_e = line_bit_s + cut_width*pixel_bitlen - 1'b1;
 wire [LW-1:0] line_byte_s = (line_bit_s>>3) + LW'(0);
 wire [LW-1:0] line_word_s = (line_byte_s>>BUS_BYTES) + LW'(0);
@@ -176,7 +176,7 @@ wire       bus_req_irdy     ;
 wire       bus_req_ovld     ;
 wire       bus_req_ordy     = bus_wa_ready;
 wire [0:0] bus_req_in_upen  ;
-com_pipe_ctrl #( .NUM_PIPE(1) ) zr_com_pipe_ctrl_x( clk, rst_n, clear, bus_req_ivld, bus_req_irdy, bus_req_ovld, bus_req_ordy, bus_req_in_upen );
+com_pipe_ctrl #( .NUM_PIPE(1) ) zr_com_pipe_ctrl_x( clk, rst_n, clear, bus_req_ivld, bus_req_irdy, bus_req_ovld, bus_req_ordy, bus_req_in_upen ); //spyglass disable W528
 assign bus_req_hs = bus_req_ivld && bus_req_irdy;
 
 reg  [AW-1:0] rc_out_addr   ;

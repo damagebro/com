@@ -50,7 +50,7 @@ reg  [BUS_DW-1:0] rc_bus_data;
 reg  [BUS_DW_L2-1:0] rc_bit_pos;
 reg  [XW-1:0] rc_xcnt;
 //wire declare---------------------------------------------------------------
-wire [XW-0:0] cut_width = cut_width_m1+1'b1;
+wire [XW-0:0] cut_width = cut_width_m1+1'b1; //spyglass disable W164b
 wire [3:0] pxl_num;
 wire [BUS_DW_L2-1:0] once_bitlen = pxl_num*pixel_bitlen + BUS_DW_L2'(0);
 wire b_out_avl_flag;
@@ -59,8 +59,8 @@ wire b_out_avl_flag;
 wire pixel_hs = pixel_valid && pixel_ready;
 wire bus_hs = bus_wd_valid && bus_wd_ready;
 
-wire [XW-0:0] xcnt_nxt = rc_xcnt+PXL_N;
-assign pxl_num = pixel_last ? (cut_width-rc_xcnt) : PXL_N;
+wire [XW-0:0] xcnt_nxt = rc_xcnt+PXL_N; //spyglass disable W164b
+assign pxl_num = pixel_last ? (cut_width-rc_xcnt) : PXL_N; //spyglass disable W164b
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
@@ -71,7 +71,7 @@ begin
         rc_xcnt <= xcnt_nxt;
 end
 
-wire [BUS_DW_L2-0:0] bit_pos_nxt_t = rc_bit_pos+once_bitlen;
+wire [BUS_DW_L2-0:0] bit_pos_nxt_t = rc_bit_pos+once_bitlen; //spyglass disable W164b
 wire [BUS_DW_L2-0:0] bit_pos_nxt = b_out_avl_flag ? bit_pos_nxt_t-BUS_DW : bit_pos_nxt_t;
 wire b_out_avl_flag_extend = bit_pos_nxt_t>BUS_DW;
 assign b_out_avl_flag = bit_pos_nxt_t>=BUS_DW;
@@ -85,7 +85,7 @@ begin
         rc_bit_pos <= bit_pos_nxt;
 end
 
-wire [PW-1:0] one_pxl_mask = (1<<pixel_bitlen) - 1;
+wire [PW-1:0] one_pxl_mask = (1<<pixel_bitlen) - 1; //spyglass disable W164b
 reg  [PXL_N*PW-1:0] rb_pxl_pack_data; //maybe the true bitlen=pixel_bitlen*PXL_N;
 always @*
 begin
@@ -96,10 +96,10 @@ begin
 end
 
 reg  rc_bus_last_extend_flag;
-wire [BUS_DW-1:0] bus_data_mask = (1<<rc_bit_pos)-1;
+wire [BUS_DW-1:0] bus_data_mask = (1<<rc_bit_pos)-1; //spyglass disable W164b
 wire [BUS_DW-1:0] bus_data_avl = rc_bus_data & bus_data_mask;
 wire [BUS_DW+PW*PXL_N-1:0] bus_data_avl_t = {(PW*PXL_N)'(0),bus_data_avl};
-wire [BUS_DW+PW*PXL_N-1:0] bus_data_append = rb_pxl_pack_data<<rc_bit_pos;
+wire [BUS_DW+PW*PXL_N-1:0] bus_data_append = rb_pxl_pack_data<<rc_bit_pos; //spyglass disable W164b
 wire [BUS_DW+PW*PXL_N-1:0] bus_data_extend = bus_data_avl_t | bus_data_append;
 wire [BUS_DW-1:0] bus_data_ovf = bus_data_extend[BUS_DW +:PW*PXL_N] + BUS_DW'(0);
 wire [BUS_DW-1:0] bus_data_nxt = b_out_avl_flag ? bus_data_ovf : bus_data_extend[BUS_DW-1:0];

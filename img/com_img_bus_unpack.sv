@@ -58,7 +58,7 @@ reg  [PXL_N-1:0][PW-1:0] arc_out_buf;
 reg  rc_out_flag;
 //wire declare---------------------------------------------------------------
 wire [3:0] pxl_num;
-wire [BUS_DW_L2-1:0] once_bitlen = pixel_bitlen*pxl_num;
+wire [BUS_DW_L2-1:0] once_bitlen = pixel_bitlen*pxl_num + 0; //spyglass disable W164b
 wire b_bus_rcv_avl_flag;
 //statement------------------------------------------------------------------
 
@@ -83,26 +83,45 @@ end
 wire out_buf_ihs;
 wire out_buf_last;
 reg  rc_bus_vld_flag;
+reg  rc_line_end_bus_drop_flag;
+wire ps_line_end_bus_drop;
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
         rc_bus_vld_flag <= 1'b0;
-    else if( clear || cut_cfg_en || out_buf_ihs&&out_buf_last )
+    else if( clear || cut_cfg_en || ps_line_end_bus_drop )
         rc_bus_vld_flag <= 1'b0;
     else if( bus_hs )
         rc_bus_vld_flag <= 1'b1;
+    else if( out_buf_ihs&&out_buf_last )
+        rc_bus_vld_flag <= 1'b0;
+end
+always @(posedge clk or negedge rst_n)
+begin
+    if( !rst_n )
+        rc_line_end_bus_drop_flag <= 1'b0;
+    else if( clear || cut_cfg_en || rc_line_end_bus_drop_flag )
+        rc_line_end_bus_drop_flag <= 1'b0;
+    else if( ps_line_end_bus_drop )
+        rc_line_end_bus_drop_flag <= 1'b1;
 end
 // wire b_bus_dat_fst_invalid = bus_rd_valid && !rc_bus_vld_flag && b_bus_rcv_avl_flag;
-wire bus_dec_vld = b_bus_rcv_avl_flag&&rc_bus_vld_flag ? bus_rd_valid : rc_bus_vld_flag;
-assign bus_rd_ready = b_bus_rcv_avl_flag ? pixel_ready : !rc_bus_vld_flag;
+wire ps_line_nxt_bus_rd_vld;
+wire bus_dec_vld_t = (b_bus_rcv_avl_flag||ps_line_nxt_bus_rd_vld)&&rc_bus_vld_flag ? bus_rd_valid : rc_bus_vld_flag;
+wire bus_dec_vld = bus_dec_vld_t && !rc_line_end_bus_drop_flag;
+wire bus_rd_ready_t = (b_bus_rcv_avl_flag||ps_line_nxt_bus_rd_vld) ? pixel_ready : !rc_bus_vld_flag;
+assign bus_rd_ready = bus_rd_ready_t || rc_line_end_bus_drop_flag;
 assign out_buf_ihs = bus_dec_vld && pixel_ready;
 
 wire [XW-1:0] cut_xpos_s_use = cut_cfg_en ? cut_xpos_s : rc_cut_xpos_s;
 wire [BUS_DW_L2-1:0] cut_xpos_s_use_lo = cut_xpos_s_use + BUS_DW_L2'(0);
 wire [BUS_DW_L2-1:0] bit_pos_start = cut_xpos_s_use_lo*pixel_bitlen;
-wire [BUS_DW_L2-0:0] bit_pos_nxt_t = rc_bit_pos+once_bitlen;
+wire [BUS_DW_L2-0:0] bit_pos_nxt_t = rc_bit_pos+once_bitlen; //spyglass disable W164b
 wire [BUS_DW_L2-0:0] bit_pos_nxt = b_bus_rcv_avl_flag ? bit_pos_nxt_t-BUS_DW : bit_pos_nxt_t;
+wire b_bus_ovf_flag = bit_pos_nxt_t>BUS_DW;
 assign b_bus_rcv_avl_flag = bit_pos_nxt_t>=BUS_DW && !(out_buf_last && bit_pos_nxt_t==BUS_DW);
+assign ps_line_end_bus_drop = out_buf_ihs&&out_buf_last && b_bus_ovf_flag;
+assign ps_line_nxt_bus_rd_vld = out_buf_last && bus_rd_valid && !b_bus_ovf_flag;
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
@@ -123,16 +142,16 @@ begin
 end
 wire [BUS_DW+PW*PXL_N-1:0] bus_data_extend = {bus_rd_data[0+:PW*PXL_N],rc_bus_data};
 wire [PXL_N*PW-1:0] pxl_unpack_data = bus_data_extend[ rc_bit_pos +:PXL_N*PW ];  //maybe the true bitlen=pixel_bitlen*PXL_N;
-wire [PW-1:0] one_pxl_mask = (1<<pixel_bitlen) - 1;
+wire [PW-1:0] one_pxl_mask = (1<<pixel_bitlen) - 1; //spyglass disable W164b
 reg  [PXL_N-1:0][PW-1:0] arb_pxl_unpack_data;
-reg  [BUS_DW-1:0] rb_shift_bitlen;
+// reg  [BUS_DW-1:0] rb_shift_bitlen;
 reg  [PW-1:0] rb_shift_pxl;
 always @*
 begin
     for( int i=0; i<PXL_N; i++ )begin
-        rb_shift_bitlen = pixel_bitlen*i + BUS_DW'(0);
-        rb_shift_pxl = pxl_unpack_data>>(pixel_bitlen*i);
-        arb_pxl_unpack_data[i] = rb_shift_pxl & one_pxl_mask;
+        // rb_shift_bitlen = pixel_bitlen*i + BUS_DW'(0);
+        rb_shift_pxl = pxl_unpack_data>>(pixel_bitlen*i); //spyglass disable W415a
+        arb_pxl_unpack_data[i] = rb_shift_pxl & one_pxl_mask; //spyglass disable W415a
     end
 end
 
@@ -141,10 +160,12 @@ always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
         rc_out_flag <= 1'b0;
-    else if( clear || cut_cfg_en || pixel_hs&&pixel_last )
+    else if( clear || cut_cfg_en )
         rc_out_flag <= 1'b0;
     else if( out_buf_ihs )
         rc_out_flag <= 1'b1;
+    else if( pixel_hs )
+        rc_out_flag <= 1'b0;
 end
 always @(posedge clk or negedge rst_n)
 begin
@@ -154,7 +175,7 @@ begin
         arc_out_buf <= arb_pxl_unpack_data;
 end
 wire cut_xcnt_done = out_buf_ihs && out_buf_last;
-wire [XW-0:0] cut_xcnt_nxt = rc_cut_xcnt+PXL_N;
+wire [XW-0:0] cut_xcnt_nxt = rc_cut_xcnt+PXL_N; //spyglass disable W164b
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
@@ -164,7 +185,7 @@ begin
     else if( out_buf_ihs )
         rc_cut_xcnt <= cut_xcnt_nxt;
 end
-wire [XW-0:0] cut_width = rc_cut_width_m1+1'b1;
+wire [XW-0:0] cut_width = rc_cut_width_m1+1'b1; //spyglass disable W164b
 assign out_buf_last = cut_xcnt_nxt>=cut_width;
 assign pxl_num = out_buf_last ? (cut_width-rc_cut_xcnt) : PXL_N;
 
@@ -178,7 +199,7 @@ begin
 end
 
 //idle---
-wire ps_bus_fst = bus_hs&&rc_cut_xcnt==XW'(0);
+wire ps_bus_fst = bus_hs&&(rc_cut_xcnt==XW'(0) || ps_line_nxt_bus_rd_vld);
 wire ps_pxl_lst = pixel_hs&&pixel_last;
 reg  [3:0] rc_bus_cnt_rnd;
 reg  [3:0] rc_pxl_cnt_rnd;

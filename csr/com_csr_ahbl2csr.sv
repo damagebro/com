@@ -28,10 +28,10 @@ input  wire                     HRESETn             ,
 input  wire                     HSELx               ,
 input  wire                     HREADY              ,
 input  wire [AW_AHB-1:0]        HADDR               ,
-input  wire [1:0]               HTRANS              ,
+input  wire [1:0]               HTRANS              ,//0:idle, 1:busy, 2:nonseq, 3:seq
 input  wire                     HWRITE              ,
-input  wire [2:0]               HSIZE               ,
-input  wire [2:0]               HBURST              ,
+input  wire [2:0]               HSIZE               ,//bytelen = 2^size
+input  wire [2:0]               HBURST              ,//0:single, 1:incr
 input  wire [3:0]               HPROT               ,
 input  wire [DW_AHB-1:0]        HWDATA              ,
 

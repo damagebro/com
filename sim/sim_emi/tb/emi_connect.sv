@@ -22,7 +22,7 @@ for( genvar gi=0; gi<EMI_WCH; gi++ )begin
     assign `EMI_TOP.wch_if[gi].emi_awready = `EMI_TOP.usr_emi_wrif[gi].emi_awready ;
 
     assign `EMI_TOP.usr_emi_wrif[gi].emi_wvalid = `EMI_TOP.wch_if[gi].emi_wvalid ;
-    assign `EMI_TOP.usr_emi_wrif[gi].emi_wid    = `EMI_TOP.wch_if[gi].emi_wid    ;
+    // assign `EMI_TOP.usr_emi_wrif[gi].emi_wid    = `EMI_TOP.wch_if[gi].emi_wid    ;
     assign `EMI_TOP.usr_emi_wrif[gi].emi_wdata  = `EMI_TOP.wch_if[gi].emi_wdata  ;
     assign `EMI_TOP.usr_emi_wrif[gi].emi_wstrb  = `EMI_TOP.wch_if[gi].emi_wstrb  ;
     assign `EMI_TOP.usr_emi_wrif[gi].emi_wlast  = `EMI_TOP.wch_if[gi].emi_wlast  ;
@@ -63,7 +63,7 @@ assign `EMI_TOP.resp_if.emi_awuser  = `EMI_TOP.ext_emi_if.emi_awuser  ;
 assign `EMI_TOP.ext_emi_if.emi_awready = `EMI_TOP.resp_if.emi_awready ;
 
 assign `EMI_TOP.resp_if.emi_wvalid = `EMI_TOP.ext_emi_if.emi_wvalid ;
-assign `EMI_TOP.resp_if.emi_wid    = `EMI_TOP.ext_emi_if.emi_wid    ;
+// assign `EMI_TOP.resp_if.emi_wid    = `EMI_TOP.ext_emi_if.emi_wid    ;
 assign `EMI_TOP.resp_if.emi_wdata  = `EMI_TOP.ext_emi_if.emi_wdata  ;
 assign `EMI_TOP.resp_if.emi_wstrb  = `EMI_TOP.ext_emi_if.emi_wstrb  ;
 assign `EMI_TOP.resp_if.emi_wlast  = `EMI_TOP.ext_emi_if.emi_wlast  ;

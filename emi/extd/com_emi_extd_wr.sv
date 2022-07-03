@@ -24,7 +24,7 @@ module com_emi_extd_wr #( parameter
 input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
-`COM_DFT_IF                     dft_cfg             ,
+`COM_SYS_IF                     sys_cfg             ,
 //cfg&status---
 input  wire [7:0]               max_burst_len       ,
 //dp---
@@ -53,7 +53,7 @@ reg  [15:0] rc_wa_cnt;
 reg  [15:0] rc_wd_cnt; //wd_rx_cnt
 reg  [15:0] rc_wd_tx_cnt; //wd_tx_cnt
 //wire declare---------------------------------------------------------------
-wire [15:0] max_burst_bytelen = (max_burst_len+1) * SW;
+wire [15:0] max_burst_bytelen = (max_burst_len+1) * SW; //spyglass disable W164b
 
 wire [AW-1:0] emi_awaddr  ;
 wire [7:0]    emi_awlen   ;
@@ -76,6 +76,8 @@ assign emi_usr_wrif.emi_wvalid = emi_wvalid;
 assign emi_wready = emi_usr_wrif.emi_wready;
 assign emi_bvalid = emi_usr_wrif.emi_bvalid;
 
+assign emi_usr_wrif.emi_awuser = 'b0;
+assign emi_usr_wrif.emi_wuser = 'b0;
 // wire [UW-1:0] emi_awuser  ;//= emi_usr_wrif.emi_awuser ;
 // wire [UW-1:0] emi_wuser   ;//= emi_usr_wrif.emi_wuser  ;
 // wire [UW-1:0] emi_buser   ;//= emi_usr_wrif.emi_buser  ;
@@ -87,13 +89,13 @@ wire emi_wa_hs = emi_awvalid && emi_awready;
 reg  rc_first_split_flag;
 reg  [AW-1:0] rc_addr;
 reg  [LW-1:0] rc_req_bytelen;
-wire [LW-0:0] req_bytelen_true = rc_first_split_flag ? (rc_req_bytelen + rc_addr[SW_L2-1:0]) : rc_req_bytelen;
+wire [LW-0:0] req_bytelen_true = rc_first_split_flag ? (rc_req_bytelen + rc_addr[SW_L2-1:0]) : {1'b0,rc_req_bytelen}; //spyglass disable W164b
 wire [LW-0:0] req_bytelen_nxt_t = req_bytelen_true - max_burst_bytelen;
 wire [LW-1:0] req_bytelen_nxt = req_bytelen_nxt_t[LW] ? rc_req_bytelen : req_bytelen_nxt_t;
 wire b_last_split_flag = req_bytelen_nxt_t[LW] || req_bytelen_nxt_t[LW-1:0]==LW'(0);
 wire [8:0] req_wordlen = req_bytelen_true[LW-1:SW_L2] + |req_bytelen_true[SW_L2-1:0];
 wire [7:0] req_once_wordlen_m1 = b_last_split_flag ? req_wordlen-1 : max_burst_len;
-wire [8:0] req_once_wordlen = req_once_wordlen_m1+1'b1;
+wire [8:0] req_once_wordlen = req_once_wordlen_m1+1'b1; //spyglass disable W164b
 wire ps_wa_last_split = b_last_split_flag && emi_wa_hs;
 always @(posedge clk or negedge rst_n)
 begin
@@ -166,7 +168,7 @@ com_spram_cell #(
 )zt_com_spram_cell[1:0]
 (
     .clk                  ( clk                  ), //i
-    .mem_cfg              ( dft_cfg              ), //i
+    .mem_cfg              ( sys_cfg              ), //i
 
     .cen                  ( ram_cen              ), //i
     .we                   ( ram_we               ), //i
@@ -196,7 +198,7 @@ begin
         if( emi_wd_hs ) rc_wd_tx_cnt <= rc_wd_tx_cnt+1'b1;
     end
 end
-wire [16:0] wd_minus_wa_t1 = rc_wd_cnt - rc_wa_cnt;
+wire [16:0] wd_minus_wa_t1 = rc_wd_cnt - rc_wa_cnt; //spyglass disable W164b
 wire [16:0] wd_minus_wa_t2 = (17'h10000+rc_wd_cnt) - rc_wa_cnt;
 wire [15:0] wd_minus_wa = wd_minus_wa_t1[16] ? wd_minus_wa_t2 : wd_minus_wa_t1;
 wire b_emi_wa_cmd_avl = wd_minus_wa>=16'(req_once_wordlen);
@@ -277,8 +279,8 @@ wire b_last_strb_flag = wd_b_lst_split_flag && emi_wlast;
 wire [SW_L2-1:0] addr_lo = wd_addr_lo;
 wire [SW_L2-1:0] lst_addr_lo = wd_bytelen_lo;
 wire [SW-1:0] strb_nrm = {SW{1'b1}};
-wire [SW-1:0] strb_fst_t = (1<<addr_lo)-1;
-wire [SW-1:0] strb_lst_t = (1<<lst_addr_lo)-1;
+wire [SW-1:0] strb_fst_t = (1<<addr_lo)-1; //spyglass disable W164b
+wire [SW-1:0] strb_lst_t = (1<<lst_addr_lo)-1; //spyglass disable W164b
 wire [SW-1:0] strb_fst = !(|addr_lo) ? strb_nrm : ~strb_fst_t;
 wire [SW-1:0] strb_lst = !(|lst_addr_lo) ? strb_nrm : strb_lst_t;
 assign emi_wstrb = b_first_strb_flag&&b_last_strb_flag ? strb_fst&strb_lst : b_first_strb_flag ? strb_fst : b_last_strb_flag ? strb_lst : strb_nrm;

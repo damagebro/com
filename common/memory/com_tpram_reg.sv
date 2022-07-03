@@ -28,11 +28,11 @@ module com_tpram_reg #(
 
     always@(posedge wr_clk)
     for(int i=0; i<BE_W; i++) if(wr_en[i]) begin
-        regfile[wr_addr][i*BYTE_W+:BYTE_W] <= wr_data[i*BYTE_W+:BYTE_W];
+        regfile[wr_addr][i*BYTE_W+:BYTE_W] <= wr_data[i*BYTE_W+:BYTE_W]; //spyglass disable ResetFlop-ML
     end
 
     always@(posedge rd_clk) if(rd_en) begin
-        rd_data <= regfile[rd_addr];
+        rd_data <= regfile[rd_addr]; //spyglass disable ResetFlop-ML
     end
 
 endmodule

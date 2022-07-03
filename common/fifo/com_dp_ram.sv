@@ -67,7 +67,7 @@ com_sync_fifo_reg #(
     .rd_en                ( rd_en                ), //i
     .rd_data              ( rd_data              ), //o
     .rd_empty             ( rd_empty             ), //o
-    .water_level          ( wl                   )  //spyglass disable PartConnPort-ML //o,
+    .water_level          ( wl                   )  //spyglass disable PartConnPort-ML,W287b //o,
 );
 
 reg  [CW-1:0] rc_otf_cnt;

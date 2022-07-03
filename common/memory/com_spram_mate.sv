@@ -56,8 +56,8 @@ input  wire                     wr_rdy              //,   //when CON_NEXT mode, 
 );
 //localparam-----------------------------------------------------------------
 localparam PRI_MODE= "round_hold_small"; //small_first, large_first, round_from_small, round_from_large, round_hold_small, round_hold_large
-localparam WCH_AW= $clog2(WCH>2?WCH:2);
-localparam RCH_AW= $clog2(RCH>2?RCH:2);
+localparam WCH_AW= $clog2(WCH>2?WCH:2); //spyglass disable W362
+localparam RCH_AW= $clog2(RCH>2?RCH:2); //spyglass disable W362
 integer i;
 //reg  declare---------------------------------------------------------------
 //wire declare---------------------------------------------------------------
@@ -118,7 +118,7 @@ reg  [RCH-1:0] abrb_rdack;
 always @*
 begin
     for( i=0; i<RCH; i=i+1 )begin
-        abrb_rdack[i] = i[RCH_AW-1:0]==rdch_id_s ? rdack_e : 1'b0;
+        abrb_rdack[i] = i[RCH_AW-1:0]==rdch_id_s ? rdack_e : 1'b0; //spyglass disable W216
     end
 end
 assign arr_rd_ack  = abrb_rdack;
@@ -145,7 +145,7 @@ com_sync_fifo_reg #(
     .rd_en                ( ack_rd_en            ), //i
     .rd_data              ( ack_rd_data          ), //o
     .rd_empty             ( ack_rd_empty         ), //o
-    .water_level          (                      )  //o
+    .water_level          (                      )  //spyglass disable PartConnPort-ML,W287b //o
 );
 assign rdch_id_s = ack_rd_data;
 

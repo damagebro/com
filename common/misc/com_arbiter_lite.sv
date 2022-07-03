@@ -48,9 +48,9 @@ case(STR_MODE)
     begin
         rb_id = 'b0;
         for( i=0; i<NUM_CH; i=i+1 )begin
-            idx = NUM_CH-1-i;
+            idx = NUM_CH-1-i; //spyglass disable W415a
             if( requests[idx] )
-                rb_id = idx;
+                rb_id = idx; //spyglass disable W415a
         end
     end
 end
@@ -59,9 +59,9 @@ end
     begin
         rb_id = 'b0;
         for( i=0; i<NUM_CH; i=i+1 )begin
-            idx = i;
+            idx = i; //spyglass disable W415a
             if( requests[idx] )
-                rb_id = idx;
+                rb_id = idx; //spyglass disable W415a
         end
     end
 end
@@ -76,18 +76,18 @@ end
         rb_tmp = 'b0;
         rb_find_flag = 1'b0;
         for( i=0; i<NUM_CH; i=i+1 )begin
-            rb_tmp = rc_gnt+i+1;
-            idx = rb_tmp < NUM_CH ? rb_tmp : (rb_tmp-NUM_CH);
+            rb_tmp = rc_gnt+i+1;  //spyglass disable W415a
+            idx = rb_tmp < NUM_CH ? rb_tmp : (rb_tmp-NUM_CH); //spyglass disable W362,W415a
             if( requests[idx] && !rb_find_flag )begin
-                rb_id = idx;
-                rb_find_flag = 1'b1;
+                rb_id = idx; //spyglass disable W415a
+                rb_find_flag = 1'b1; //spyglass disable W415a
             end
         end
     end
     always @(posedge clk or negedge rst_n)
     begin
         if( !rst_n )
-            rc_gnt <= const_max_ch;
+            rc_gnt <= const_max_ch; //spyglass disable NonConstReset-ML
         else if( clear )
             rc_gnt <= const_max_ch;
         else if( gnt_upen )
@@ -105,10 +105,10 @@ end:gen_round_from_small
         rb_find_flag = 1'b0;
         for( i=0; i<NUM_CH; i=i+1 )begin
             rb_tmp = rc_gnt-i-1;
-            idx = rb_tmp[CH_DW] ? $signed({1'b0,NUM_CH[CH_DW-1:0]})+$signed(rb_tmp) : rb_tmp;
+            idx = rb_tmp[CH_DW] ? $signed({1'b0,NUM_CH[CH_DW-1:0]})+$signed(rb_tmp) : rb_tmp; //spyglass disable W362,W415a
             if( requests[idx] && !rb_find_flag )begin
-                rb_id = idx;
-                rb_find_flag = 1'b1;
+                rb_id = idx; //spyglass disable W415a
+                rb_find_flag = 1'b1; //spyglass disable W415a
             end
         end
     end
@@ -133,11 +133,11 @@ end:gen_round_from_large
         rb_find_flag = 1'b0;
         rb_tmp = 'b0;
         for( i=0; i<NUM_CH; i=i+1 )begin
-            rb_tmp = rc_gnt+i;
-            idx = rb_tmp < NUM_CH ? rb_tmp : (rb_tmp-NUM_CH);
+            rb_tmp = rc_gnt+i; //spyglass disable W415a
+            idx = rb_tmp < NUM_CH ? rb_tmp : (rb_tmp-NUM_CH); //spyglass disable W362,W415a
             if( requests[idx] && !rb_find_flag )begin
-                rb_id = idx;
-                rb_find_flag = 1'b1;
+                rb_id = idx; //spyglass disable W415a
+                rb_find_flag = 1'b1; //spyglass disable W415a
             end
         end
     end
@@ -164,18 +164,18 @@ end
         rb_id = 'b0;
         rb_find_flag = 1'b0;
         for( i=0; i<NUM_CH; i=i+1 )begin
-            rb_tmp = rc_gnt-i;
-            idx = rb_tmp[CH_DW] ? $signed({1'b0,NUM_CH[CH_DW-1:0]})+$signed(rb_tmp) : rb_tmp;
+            rb_tmp = rc_gnt-i; //spyglass disable W415a
+            idx = rb_tmp[CH_DW] ? $signed({1'b0,NUM_CH[CH_DW-1:0]})+$signed(rb_tmp) : rb_tmp; //spyglass disable W362,W415a
             if( requests[idx] && !rb_find_flag )begin
-                rb_id = idx;
-                rb_find_flag = 1'b1;
+                rb_id = idx; //spyglass disable W415a
+                rb_find_flag = 1'b1; //spyglass disable W415a
             end
         end
     end
     always @(posedge clk or negedge rst_n)
     begin
         if( !rst_n ) begin
-            rc_gnt <= const_max_ch;
+            rc_gnt <= const_max_ch; //spyglass disable NonConstReset-ML
         end
         else if( clear )begin
             rc_gnt <= const_max_ch;
