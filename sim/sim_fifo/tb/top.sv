@@ -109,10 +109,10 @@ FifoIf #( .DW(FIFO_RAM2P_DW), .DEPTH(FIFO_RAM2P_DEPTH) ) fifo_ram2p_if( clk );
 fifo_test #( virtual FifoIf #(.DW(FIFO_RAM2P_DW), .DEPTH(FIFO_RAM2P_DEPTH)) ) fifo_ram2p_t1( fifo_ram2p_if );
 wire [FIFO_RAM2P_TOL_AW-1:0] ram2p_water_level;
 wire                     ram2p1ck_wr_en   ;
-wire [FIFO_RAM2P_CW-1:0] ram2p1ck_wr_addr ;
+wire [FIFO_RAM2P_AW-1:0] ram2p1ck_wr_addr ;
 wire [FIFO_RAM2P_DW-1:0] ram2p1ck_wr_data ;
 wire                     ram2p1ck_rd_en   ;
-wire [FIFO_RAM2P_CW-1:0] ram2p1ck_rd_addr ;
+wire [FIFO_RAM2P_AW-1:0] ram2p1ck_rd_addr ;
 wire [FIFO_RAM2P_DW-1:0] ram2p1ck_rd_data ;
 wire [FIFO_RAM2P_AW-1:0] ram2p1ck_wr_addr_t = ram2p1ck_wr_addr;
 wire [FIFO_RAM2P_AW-1:0] ram2p1ck_rd_addr_t = ram2p1ck_rd_addr;
@@ -191,10 +191,10 @@ AFifoIf #(.DW(AFIFO_RAM2CK_DW), .DEPTH(AFIFO_RAM2CK_DEPTH)) afifo2ck_if( .wr_clk
 afifo_test #( virtual AFifoIf #(.DW(AFIFO_RAM2CK_DW), .DEPTH(AFIFO_RAM2CK_DEPTH)) ) afifo2ck_t1( afifo2ck_if );
 
 wire                       ram2ck_wr_en   ;
-wire [AFIFO_RAM2CK_CW-1:0] ram2ck_wr_addr ;
+wire [AFIFO_RAM2CK_AW-1:0] ram2ck_wr_addr ;
 wire [AFIFO_RAM2CK_DW-1:0] ram2ck_wr_data ;
 wire                       ram2ck_rd_en   ;
-wire [AFIFO_RAM2CK_CW-1:0] ram2ck_rd_addr ;
+wire [AFIFO_RAM2CK_AW-1:0] ram2ck_rd_addr ;
 wire [AFIFO_RAM2CK_DW-1:0] ram2ck_rd_data ;
 wire [AFIFO_RAM2CK_CW-1:0] afifo2ck_water_level ;
 wire [AFIFO_RAM2CK_AW-1:0] ram2ck_wr_addr_t = ram2ck_wr_addr;
@@ -251,10 +251,10 @@ afifo_test #( virtual AFifoIf #(.DW(AFIFO_RAM1CK_DW), .DEPTH(AFIFO_RAM1CK_DEPTH)
 
 wire [AFIFO_RAM1CK_TOL_AW-1:0] afifo1ck_water_level ;
 wire                       ram1ck_wr_en   ;
-wire [AFIFO_RAM1CK_CW-1:0] ram1ck_wr_addr ;
+wire [AFIFO_RAM1CK_AW-1:0] ram1ck_wr_addr ;
 wire [AFIFO_RAM1CK_DW-1:0] ram1ck_wr_data ;
 wire                       ram1ck_rd_en   ;
-wire [AFIFO_RAM1CK_CW-1:0] ram1ck_rd_addr ;
+wire [AFIFO_RAM1CK_AW-1:0] ram1ck_rd_addr ;
 wire [AFIFO_RAM1CK_DW-1:0] ram1ck_rd_data ;
 wire [AFIFO_RAM1CK_AW-1:0] ram1ck_wr_addr_t = ram1ck_wr_addr;
 wire [AFIFO_RAM1CK_AW-1:0] ram1ck_rd_addr_t = ram1ck_rd_addr;

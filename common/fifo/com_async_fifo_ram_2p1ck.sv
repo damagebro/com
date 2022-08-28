@@ -31,7 +31,7 @@ module com_async_fifo_ram_2p1ck #( parameter
     OUT_DEPTH = 8,
     TOL_DEPTH = RAM_DEPTH+IN_DEPTH+OUT_DEPTH,
     TOL_AW    = $clog2(TOL_DEPTH+1),
-    RAM_AW    = $clog2(RAM_DEPTH+1)//,
+    RAM_AW    = $clog2(RAM_DEPTH)//,
 )
 (
 input  wire                     wr_clk              ,
@@ -57,8 +57,9 @@ output wire [RAM_AW-1:0]        ram_rd_addr         ,
 input  wire [DW    -1:0]        ram_rd_data         //,
 );
 //localparam-----------------------------------------------------------------
-localparam IN_AW  = $clog2(IN_DEPTH +1);
-localparam OUT_AW = $clog2(OUT_DEPTH+1);
+localparam IN_CW  = $clog2(IN_DEPTH +1);
+localparam OUT_CW = $clog2(OUT_DEPTH+1);
+localparam RAM_CW = $clog2(RAM_DEPTH+1);
 //reg  declare---------------------------------------------------------------
 reg  [RAM_AW-0:0] rc_wrcnt;
 reg  [RAM_AW-0:0] rc_rdcnt;
@@ -79,7 +80,7 @@ wire              in_wr_en      ;
 wire [DW-1:0]     in_wr_data    ;
 wire              in_rd_en      ;
 wire [DW-1:0]     in_rd_data    ;
-wire [IN_AW-1:0]  in_water_level;
+wire [IN_CW-1:0]  in_water_level;
 generate
 if( IN_DEPTH>0 )begin:gen_in_fifo_y
     assign in_wr_en      = (!in_rd_empty || !ram_rd_empty_do || out_wr_full) ? wr_en   : 1'b0;
@@ -120,7 +121,7 @@ wire              out_wr_en    = out_wr_en_tmp && !out_wr_full;
 wire [DW    -1:0] out_wr_data  = !ram_rd_empty_do ? ram_rd_data : !in_rd_empty ? in_rd_data : wr_data;
 wire              out_rd_en    = rd_en;
 wire [DW    -1:0] out_rd_data  ;
-wire [OUT_AW-1:0] out_water_level;
+wire [OUT_CW-1:0] out_water_level;
 com_async_fifo_reg #(
     .DW         ( DW        ), //8
     .DEPTH      ( OUT_DEPTH )  //4
@@ -149,7 +150,7 @@ assign wr_full = in_wr_full;
 generate
 if( RAM_DEPTH>0 )begin:GEN_RAM_FIFO
 
-    wire [RAM_AW-1:0] ram_water_level_t;
+    wire [RAM_CW-1:0] ram_water_level_t;
     com_sync_fifo_ctrl #(
         .DEPTH      ( RAM_DEPTH )  //4
     )u_com_sync_fifo_ctrl_ram
@@ -166,7 +167,7 @@ if( RAM_DEPTH>0 )begin:GEN_RAM_FIFO
         .rd_empty             ( ram_rd_empty         ), //o
         .water_level          ( ram_water_level_t    )  //o
     );
-    wire [RAM_AW-1:0] ram_water_level = ram_water_level_t - ram_rd_ack;
+    wire [RAM_CW-1:0] ram_water_level = ram_water_level_t - ram_rd_ack;
 
     //ram signal
     reg  rc_ram_rd_ack;
@@ -181,7 +182,7 @@ if( RAM_DEPTH>0 )begin:GEN_RAM_FIFO
     end
     assign ram_rd_ack = rc_ram_rd_ack;
 
-    wire [OUT_AW-0:0] out_buf_needed = out_wr_en + (OUT_AW+1)'(0);
+    wire [OUT_CW-0:0] out_buf_needed = out_wr_en + (OUT_CW+1)'(0);
     wire   ram_wr_en_t = !ram_rd_empty_do || out_wr_full ? !in_rd_empty : 1'b0;
     assign ram_wr_en   = ram_wr_en_t && !ram_wr_full;
     assign ram_wr_data = in_rd_data;

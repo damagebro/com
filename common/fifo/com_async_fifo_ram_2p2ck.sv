@@ -10,7 +10,7 @@
 *  -the ram's wr/rd clk in the different clock domain
 *--------------
 *  -advantage: whether wr_clk faster than rd_clk, or wr_clk slower than rd_clk, the performance is ok;
-*  -disadvantage: the RAM_DEPTH must be 2^n
+*  -disadvantage: the RAM_DEPTH must be 2*n
 *
 *  Modify:
 *  -

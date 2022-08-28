@@ -18,7 +18,7 @@
 module com_sync_fifo_reg #( parameter
     DW      = 8,
     DEPTH   = 4,
-    AW      = $clog2(DEPTH+1)
+    CW      = $clog2(DEPTH+1)
 )
 (
 input  wire                     clk                 ,
@@ -31,10 +31,10 @@ output wire                     wr_full             ,
 input  wire                     rd_en               ,
 output wire [DW-1:0]            rd_data             ,
 output wire                     rd_empty            ,
-output wire [AW-1:0]            water_level         //,
+output wire [CW-1:0]            water_level         //,
 );
 //localparam-----------------------------------------------------------------
-// localparam AW = $clog2(DEPTH+1);
+localparam AW = $clog2(DEPTH);
 //reg  declare---------------------------------------------------------------
 reg  [DEPTH-1:0][DW-1:0] arc_mem;
 //wire declare---------------------------------------------------------------

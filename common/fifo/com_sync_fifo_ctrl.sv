@@ -17,7 +17,8 @@
 `define com_sync_fifo_ctrl_v
 module com_sync_fifo_ctrl #( parameter
     DEPTH   = 4,
-    AW      = $clog2(DEPTH+1)
+    AW      = $clog2(DEPTH),
+    CW      = $clog2(DEPTH+1)
 )
 (
 input  wire                     clk                 ,
@@ -30,7 +31,7 @@ output wire                     wr_full             ,
 input  wire                     rd_en               ,
 output wire [AW-1:0]            rd_addr             ,
 output wire                     rd_empty            ,
-output wire [AW-1:0]            water_level         //,
+output wire [CW-1:0]            water_level         //,
 );
 //localparam-----------------------------------------------------------------
 // localparam AW = $clog2(DEPTH+1);
