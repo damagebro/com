@@ -59,12 +59,12 @@ module com_cdc_sig#(
 //------------------------------------------------------------------------------
 // Report & Assertion.
 //------------------------------------------------------------------------------
-`ifdef COM_REPORT_ON
-    `ifdef COM_CDC_AS_REG
-        initial begin
-            $warning("COM Warning: Use reg for cdc at %m");
-        end
-    `endif
-`endif
+// `ifdef COM_REPORT_ON
+//     `ifdef COM_CDC_AS_REG
+//         initial begin
+//             $warning("COM Warning: Use reg for cdc at %m");
+//         end
+//     `endif
+// `endif
 
 endmodule

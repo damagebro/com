@@ -1,0 +1,6 @@
+0xff080000 0x1000_8000   //test1
+0xff080004 0x400        //test2
+0xff080008 0x1          //test2
+//test comment
+0xff080010 1024
+0xff080014 100

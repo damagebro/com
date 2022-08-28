@@ -47,7 +47,7 @@ localparam MAX_OSD = 16;
 localparam RAM_DW    = DW;
 localparam RAM_ONE_DEPTH = RAM_DEPTH/2;
 localparam RAM_ONE_AW= $clog2(RAM_ONE_DEPTH>2?RAM_ONE_DEPTH:2);
-localparam TOL_AW =$clog2( RAM_DEPTH+3+3 ); //ram_depth+in_depth>=3+out_depth>=3;
+localparam TOL_AW =$clog2( RAM_DEPTH+3 +1 ); //total_depth = ram_depth+out_depth;
 //reg  declare---------------------------------------------------------------
 reg  rc_busy;
 reg  [15:0] rc_ra_cnt; //emi ra cnt

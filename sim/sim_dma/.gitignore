@@ -1,1 +1,2 @@
-*tc/*
+*tc/dump_*
+*tc/*.bin
