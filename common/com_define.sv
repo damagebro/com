@@ -9,8 +9,8 @@
     `define COM_SYS_W 4
 `endif
 
-`define COM_DFT_IF input wire [`COM_SYS_W-1:0]
-`define COM_SYS_IF input wire [`COM_SYS_W-1:0]
+// `define COM_DFT_IF input wire [`COM_DFT_W-1:0]
+// `define COM_SYS_IF input wire [`COM_DFT_W-1:0]
 
 //--------------------------------------------------------------------------------
 //FUNCTION DEFINE
@@ -26,17 +26,13 @@
     initial begin                                                    \
         assert(cond) else $fatal("Com Parameter Error: '%s'",estr);  \
     end                                                              \
-`else                                                                \
-/*empty statement for lint;*/                                        \
-`endif                                                               \
+`endif
 
 `define COM_SIGNAL_ASSERT( str_property, clk,rst_n, key,cond,estr )  \
 `ifdef COM_ASSERT_ON                                                 \
     str_property: assert property (                                  \
         @(posedge clk) disable iff (!rst_n) key |-> (cond)           \
     ) else begin #100; $fatal("Com Signal Error: '%s'",estr); end    \
-`else                                                                \
-/*empty statement for lint;*/                                        \
 `endif
 
 `define COM_SIGNAL_ASSERT_LITE( str_property, key,cond,estr )        \
@@ -44,6 +40,4 @@
     str_property: assert property (                                  \
         @(posedge clk) disable iff (!rst_n) key |-> (cond)           \
     ) else begin #100; $fatal("Com Signal Error: '%s'",estr); end    \
-`else                                                                \
-/*empty statement for lint;*/                                        \
 `endif
