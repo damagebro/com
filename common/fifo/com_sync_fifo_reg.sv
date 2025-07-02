@@ -15,10 +15,11 @@
 
 `ifndef com_sync_fifo_reg_v
 `define com_sync_fifo_reg_v
-module com_sync_fifo_reg #(
-    parameter  DW      = 8,
-    parameter  DEPTH   = 4,
-    localparam CW      = $clog2(DEPTH+1)
+module com_sync_fifo_reg #( parameter
+    DW    = 8,
+    DEPTH = 4,
+    //localparam in param_list feature support after verilog2009, need verdi "-2009" option; to prevant localparam ambiguous in eda software, still use parameter bellow:
+    parameter CW = $clog2(DEPTH+1)
 )
 (
 input  wire                     clk                 ,
@@ -87,12 +88,12 @@ begin
     if( !rst_n )begin
         r_wr_full <= 1'b0;
         r_rd_empty<= 1'b1;
-        r_water_level <= '0;
+        r_water_level <= DEPTH[CW-1:0];
     end
     else if( clear )begin
         r_wr_full <= 1'b0;
         r_rd_empty<= 1'b1;
-        r_water_level <= '0;
+        r_water_level <= DEPTH[CW-1:0];
     end
     else if( rd_en || wr_en )begin
         r_wr_full <= tmp_full;

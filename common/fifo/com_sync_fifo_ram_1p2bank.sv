@@ -22,13 +22,15 @@
 `ifndef com_sync_fifo_ram_1p2bank_v
 `define com_sync_fifo_ram_1p2bank_v
 module com_sync_fifo_ram_1p2bank #( parameter
-    DW = 8,
-    RAM_DEPTH = 4, //ram_depth,
-    OUT_DEPTH = 3,
-    RAM_ONE_DEPTH = RAM_DEPTH/2,
-    TOL_DEPTH = RAM_DEPTH+OUT_DEPTH,
-    TOL_AW    = $clog2(TOL_DEPTH+1),
-    RAM_ONE_AW= $clog2(RAM_ONE_DEPTH>2?RAM_ONE_DEPTH:2)//,
+    RAM_RD_DELAY = 1, //ram read cmd req->read data ack delay cycles, range=[1:8]
+    DW        = 8,
+    RAM_DEPTH = 4, //fifo_ram depth    , range=[0::2]
+    OUT_DEPTH = 3, //out fifo_reg depth, range=[2+RAM_RD_DELAY::]
+    //localparam in param_list feature support after verilog2009, need verdi "-2009" option; to prevant localparam ambiguous in eda software, still use parameter bellow:
+    parameter RAM_ONE_DEPTH = RAM_DEPTH/2,
+    parameter TOL_DEPTH     = RAM_DEPTH+OUT_DEPTH,
+    parameter TOL_CW        = $clog2(TOL_DEPTH+1),
+    parameter RAM_ONE_AW    = $clog2(RAM_ONE_DEPTH>2?RAM_ONE_DEPTH:2)//,
 )
 (
 input  wire                       clk               ,
@@ -41,7 +43,7 @@ output wire                       wr_full           ,
 input  wire                       rd_en             ,
 output wire [DW-1:0]              rd_data           ,
 output wire                       rd_empty          ,
-output wire [TOL_AW-1:0]          water_level       ,
+output wire [TOL_CW-1:0]          water_level       ,
 
 output wire [1:0]                 ram_cen           ,
 output wire [1:0]                 ram_we            ,
@@ -53,9 +55,11 @@ input  wire [1:0][DW-1:0]         ram_qout          //,
 localparam RAM_AW = $clog2(RAM_DEPTH);
 localparam RAM_CW = $clog2(RAM_DEPTH+1);
 localparam OUT_CW = $clog2(OUT_DEPTH+1);
+localparam RAM_RD_DELAY_L2 = $clog2(RAM_RD_DELAY>2?RAM_RD_DELAY:2);
 
 `COM_PARAM_ASSERT( OUT_DEPTH>=3, "fifo_1p2bank out_depth must larger than 3" );
 //reg  declare---------------------------------------------------------------
+reg  [RAM_RD_DELAY_L2-0:0] r_otf_cnt;  //read ram cmd otf cnt, rd_en+1, rd_ack-1;
 //wire declare---------------------------------------------------------------
 wire out_wr_full;
 wire out_rd_empty;
@@ -65,7 +69,7 @@ wire ram_wr_full  ;
 wire ram_rd_empty ;
 wire ram_rd_en    ;
 wire ram_rd_ack   ;
-wire ram_rd_empty_do = ram_rd_empty && !ram_rd_ack;
+wire ram_rd_empty_do = ram_rd_empty && !(|r_otf_cnt);
 wire [DW-1:0] ram_rd_data;
 //statement------------------------------------------------------------------
 
@@ -99,7 +103,7 @@ assign wr_full = ram_wr_full;
 
 //ram fifo---
 generate
-if( RAM_DEPTH>0 )begin:GEN_RAM_FIFO
+if( RAM_DEPTH>0 )begin:gen_ram_fifo
     wire [RAM_AW-1:0] ram_wr_addr;
     wire [RAM_AW-1:0] ram_rd_addr;
     wire [RAM_CW-1:0] ram_water_level_t;
@@ -119,21 +123,21 @@ if( RAM_DEPTH>0 )begin:GEN_RAM_FIFO
         .rd_empty             ( ram_rd_empty         ), //o
         .water_level          ( ram_water_level_t    )  //o
     );
-    wire [RAM_AW-0:0] ram_water_level = {1'b0,ram_water_level_t} - ram_rd_ack;
+    wire [RAM_CW-0:0] ram_water_level = {ram_water_level_t} - r_otf_cnt;
 
     //in buf---
     //deal 2sram conflic bellow
     // >>>
-    // T1: 写ping(d0);
-    // T2: 写pong(d1);
-    // T3: 写ping(d2), 读ping(d0);  读写冲突，d2->ibuf
-    // T4: 写pong(d3); //若读pong(d1), 对应情况(1)
-    // T5: 写ping(d4); //若读pong(d1), 对应情况(3)
-    // //T3发生冲突后，T4~T5时钟周期有以下4种情况
-    // (1) T4又写又读, 写pong(d3)->ibuf, 读pong(d1), ibuf(d2)->ping;
-    // (2) T4不写不读, ibuf(d2)->ping;
-    // (3) T4只写不读, 写pong(d3), ibuf(d2)->ping
-    // (4) T4不写只读, 读pong(d1), ibuf(d2)->ping
+    // T1: write ping(d0);
+    // T2: write pong(d1);
+    // T3: write ping(d2), read ping(d0);  write/read conflict, d2->ibuf
+    // T4: write pong(d3); //if read pong(d1), refer condition(1)
+    // T5: write ping(d4); //if read pong(d1), refer condition(3)
+    // //when T3 conflict, T4~T5 have four condition bellow:
+    // (1) T4 write yes read yes, write pong(d3)->ibuf, read pong(d1), ibuf(d2)->ping;
+    // (2) T4 write no  read no , ibuf(d2)->ping;
+    // (3) T4 write yes read no , write pong(d3), ibuf(d2)->ping
+    // (4) T4 write no  read yes, read  pong(d1), ibuf(d2)->ping
     // >>>
     reg  rc_ibuf_busy;
     wire ram_conflict = ram_wr_en&&ram_rd_en && ram_wr_addr[0]==ram_rd_addr[0];
@@ -165,32 +169,47 @@ if( RAM_DEPTH>0 )begin:GEN_RAM_FIFO
     end
 
     //ram signal
-    reg  rc_ram_rd_ack;
-    reg  rc_rd_banksel_flag;
+    wire rd_banksel_flag = ram_rd_en && ram_rd_addr[0];
+    reg  [RAM_RD_DELAY-1:0] rc_ram_rd_ack;
+    reg  [RAM_RD_DELAY-1:0] rc_rd_banksel_flag;
     always @(posedge clk or negedge rst_n)
     begin
         if( !rst_n ) begin
-            rc_ram_rd_ack <= 1'b0;
-            rc_rd_banksel_flag <= 1'b0;
+            rc_ram_rd_ack      <= '0;
+            rc_rd_banksel_flag <= '0;
+        end
+        else if( clear )begin
+            rc_ram_rd_ack      <= '0;
+            rc_rd_banksel_flag <= '0;
         end
         else begin
-            rc_ram_rd_ack <= ram_rd_en;
-            rc_rd_banksel_flag <= ram_rd_en && ram_rd_addr[0];
+            rc_ram_rd_ack     [0] <= ram_rd_en;
+            rc_rd_banksel_flag[0] <= rd_banksel_flag;
+            for( int i=1; i<RAM_RD_DELAY; i++ )begin
+                rc_ram_rd_ack     [i] <= rc_ram_rd_ack     [i-1];
+                rc_rd_banksel_flag[i] <= rc_rd_banksel_flag[i-1];
+            end
         end
     end
-    assign ram_rd_ack = rc_ram_rd_ack;
+    assign ram_rd_ack = rc_ram_rd_ack[RAM_RD_DELAY-1];
+
+    always @(posedge clk or negedge rst_n)
+    begin
+        if( !rst_n )
+            r_otf_cnt <= '0;
+        else if( clear )
+            r_otf_cnt <= '0;
+        else if( ram_rd_en || ram_rd_ack )
+            r_otf_cnt <= r_otf_cnt + ram_rd_en - ram_rd_ack;
+    end
 
     wire [OUT_CW-0:0] out_buf_needed = out_wr_en + (OUT_CW+1)'(0);
     wire   ram_wr_en_t = !ram_rd_empty_do || out_wr_full ? wr_en : 1'b0;
     wire   ram_rd_en_t = !ram_rd_empty && {1'b0,out_water_level}>out_buf_needed;
-    // assign ram_wr_en   = ram_wr_en_t && !ram_wr_hold;
-    // assign ram_rd_en   = ram_rd_en_t;
     assign ram_wr_en = ram_wr_en_t;
     assign ram_rd_en = ram_rd_en_t;
-    assign water_level = out_water_level + ram_water_level; //spyglass disable W164b
+    assign water_level = out_water_level + TOL_CW'(ram_water_level);
 
-    // assign ram_wr_hold = ram_rd_en && (ram_wr_addr[0]==ram_rd_addr[0]);
-    // assign ram_rd_hold = ram_rd_en_t && ram_wr_en && (ram_wr_addr[0]==ram_rd_addr[0]);
     wire ram_wr_en_do = ram_wr_en && !ram_conflict;
     assign ram_cen [0] = !( (ram_wr_en_do && ram_wr_addr[0]==1'b0) || (ram_rd_en && ram_rd_addr[0]==1'b0) || (rc_ibuf_busy && ram_conflict_addr[0]==1'b0) );
     assign ram_we  [0] = (ram_wr_en_do && ram_wr_addr[0]==1'b0) || (rc_ibuf_busy && ram_conflict_addr[0]==1'b0);
@@ -200,9 +219,9 @@ if( RAM_DEPTH>0 )begin:GEN_RAM_FIFO
     assign ram_we  [1] = (ram_wr_en_do && ram_wr_addr[0]==1'b1) || (rc_ibuf_busy && ram_conflict_addr[0]==1'b1);
     assign ram_addr[1] = (ram_wr_en_do && ram_wr_addr[0]==1'b1) ? ram_wr_addr[RAM_AW-1:1] : (rc_ibuf_busy && ram_conflict_addr[0]==1'b1) ? ram_conflict_addr[RAM_AW-1:1] : ram_rd_addr[RAM_AW-1:1];
     assign ram_din [1] = (rc_ibuf_busy && ram_conflict_addr[0]==1'b1) ? rc_ibuf : wr_data;
-    assign ram_rd_data = !rc_rd_banksel_flag ? ram_qout[0] : ram_qout[1];
+    assign ram_rd_data = !rc_rd_banksel_flag[RAM_RD_DELAY-1] ? ram_qout[0] : ram_qout[1];
 end//end of if(RAM_DEPTH)
-else begin:GEN_NO_RAM_FIFO
+else begin:gen_no_ram_fifo
     assign ram_wr_full  = 1'b0;
     assign ram_rd_empty = 1'b1;
     assign ram_rd_ack   = 1'b0;
@@ -211,17 +230,15 @@ else begin:GEN_NO_RAM_FIFO
     assign ram_rd_en   = 1'b0;
     assign water_level = out_water_level; //spyglass disable W164b
 
-    // assign ram_wr_hold = 1'b0;
-    assign ram_rd_hold = 1'b0;
     assign ram_cen [0] = 1'b0;
     assign ram_we  [0] = 1'b0;
-    assign ram_addr[0] = RAM_ONE_AW'(0);
-    assign ram_din [0] = DW'(0);
+    assign ram_addr[0] = '0;
+    assign ram_din [0] = '0;
     assign ram_cen [1] = 1'b0;
     assign ram_we  [1] = 1'b0;
-    assign ram_addr[1] = RAM_ONE_AW'(0);
-    assign ram_din [1] = DW'(0);
-    assign ram_rd_data = DW'(0);
+    assign ram_addr[1] = '0;
+    assign ram_din [1] = '0;
+    assign ram_rd_data = '0;
 end//end of else(RAM_DEPTH)
 endgenerate
 

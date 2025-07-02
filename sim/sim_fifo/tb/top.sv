@@ -56,6 +56,7 @@ com_sync_fifo_reg #(
 //-------------------------------------------------------
 //com_sync_fifo_ram_1p2bank
 //-------------------------------------------------------
+localparam RAM_RD_DELAY = 1;
 FifoIf #( .DW(FIFO_RAM1P_DW), .DEPTH(FIFO_RAM1P_DEPTH) ) fifo_ram1p_if( clk );
 fifo_test #( virtual FifoIf #(.DW(FIFO_RAM1P_DW), .DEPTH(FIFO_RAM1P_DEPTH)) ) fifo_ram1p_t1( fifo_ram1p_if );
 
@@ -64,7 +65,22 @@ wire [1:0]                        ram1p_we   ;
 wire [1:0][FIFO_RAM1P_ONE_AW-1:0] ram1p_addr ;
 wire [1:0][FIFO_RAM1P_DW-1:0]     ram1p_din  ;
 wire [1:0][FIFO_RAM1P_DW-1:0]     ram1p_qout ;
+wire [1:0][FIFO_RAM1P_DW-1:0]     ram1p_qout_d ;
+generate
+if (RAM_RD_DELAY>1) begin
+    reg  [RAM_RD_DELAY-2:0][1:0][FIFO_RAM1P_DW-1:0] r_rdata;
+    assign ram1p_qout_d = r_rdata[RAM_RD_DELAY-2];
+    always @( posedge clk )begin
+        r_rdata[0] <= ram1p_qout;
+        for( int i=0; i<RAM_RD_DELAY-2; i++ )
+            r_rdata[i+1] <= r_rdata[i];
+    end
+end
+else begin
+    assign ram1p_qout_d = ram1p_qout;
+end
 com_sync_fifo_ram_1p2bank #(
+    .RAM_RD_DELAY( RAM_RD_DELAY    ), //1
     .DW         ( FIFO_RAM1P_DW     ), //8
     .RAM_DEPTH  ( FIFO_RAM1P_DEPTH  )//, //4
 )u_com_sync_fifo_ram_1p2bank
@@ -85,7 +101,7 @@ com_sync_fifo_ram_1p2bank #(
     .ram_we               ( ram1p_we               ), //o
     .ram_addr             ( ram1p_addr             ), //o
     .ram_din              ( ram1p_din              ), //o
-    .ram_qout             ( ram1p_qout             )  //i
+    .ram_qout             ( ram1p_qout_d           )  //i
 );
 com_spram_cell #(
     .DATA_W     ( FIFO_RAM1P_DW        ), //32
@@ -116,6 +132,7 @@ wire [FIFO_RAM2P_AW-1:0] ram2p1ck_rd_addr ;
 wire [FIFO_RAM2P_DW-1:0] ram2p1ck_rd_data ;
 wire [FIFO_RAM2P_AW-1:0] ram2p1ck_wr_addr_t = ram2p1ck_wr_addr;
 wire [FIFO_RAM2P_AW-1:0] ram2p1ck_rd_addr_t = ram2p1ck_rd_addr;
+endgenerate
 com_sync_fifo_ram_2p1ck #(
     .DW         ( FIFO_RAM2P_DW    ), //8
     .RAM_DEPTH  ( FIFO_RAM2P_DEPTH )  //4
