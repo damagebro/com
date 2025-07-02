@@ -55,11 +55,11 @@ input  wire [1:0][DW-1:0]         ram_qout          //,
 localparam RAM_AW = $clog2(RAM_DEPTH);
 localparam RAM_CW = $clog2(RAM_DEPTH+1);
 localparam OUT_CW = $clog2(OUT_DEPTH+1);
-localparam RAM_RD_DELAY_L2 = $clog2(RAM_RD_DELAY>2?RAM_RD_DELAY:2);
+localparam RAM_RD_DELAY_L2 = $clog2(RAM_RD_DELAY+1);
 
 `COM_PARAM_ASSERT( OUT_DEPTH>=3, "fifo_1p2bank out_depth must larger than 3" );
 //reg  declare---------------------------------------------------------------
-reg  [RAM_RD_DELAY_L2-0:0] r_otf_cnt;  //read ram cmd otf cnt, rd_en+1, rd_ack-1;
+reg  [RAM_RD_DELAY_L2-1:0] r_otf_cnt;  //read ram cmd otf cnt, rd_en+1, rd_ack-1;
 //wire declare---------------------------------------------------------------
 wire out_wr_full;
 wire out_rd_empty;
@@ -123,7 +123,7 @@ if( RAM_DEPTH>0 )begin:gen_ram_fifo
         .rd_empty             ( ram_rd_empty         ), //o
         .water_level          ( ram_water_level_t    )  //o
     );
-    wire [RAM_CW-0:0] ram_water_level = {ram_water_level_t} - r_otf_cnt;
+    wire [RAM_CW-1:0] ram_water_level = {ram_water_level_t} - r_otf_cnt;
 
     //in buf---
     //deal 2sram conflic bellow
