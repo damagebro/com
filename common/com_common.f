@@ -29,7 +29,7 @@ $COM_PATH/common/misc/com_simo_no_delay.sv
 
 //2025/7 new,
 $COM_PATH/common/misc/new/com_arbiter_rr.sv
-$COM_PATH/common/misc/new/com_find_lsb_fst_one.sv
+$COM_PATH/common/misc/new/com_find_tail1.sv
 $COM_PATH/common/misc/new/com_pipe_ctrl_vlds.sv
 $COM_PATH/common/misc/new/com_pipe_ctrl_vld.sv
 $COM_PATH/common/misc/new/com_pipe_data_rdy.sv
