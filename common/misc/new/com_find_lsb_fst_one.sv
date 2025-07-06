@@ -39,11 +39,11 @@ assign w_oht = ~req_msk & i_req_dat;
 always @(*)begin
     w_idx = '0;
     for( int i=0; i<N; i++ )
-        if( w_oht )
+        if( w_oht[i] )
             w_idx = i[N_L2-1:0];
 end
 
-//other method, use complement---
+//another method, use complement---
 // wire [N-1:0] w_oht = ~(i_req_dat-1'b1) | i_req_dat;
 
 //out-
