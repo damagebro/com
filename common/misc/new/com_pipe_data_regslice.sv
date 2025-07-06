@@ -69,9 +69,10 @@ com_pipe_data_rdy #(
     .ovld                 ( w_mid_bwd_vld        ), //o
     .ordy                 ( w_mid_bwd_rdy        )  //i
 );
-com_pipe_data_vld #(
+com_pipe_data_vlds #(
+    .PIPE_NUM   ( 1          ), //1
     .DW         ( DW         )  //8
-)u_com_pipe_data_vld
+)u_com_pipe_data_vlds
 (
     .clk                  ( clk                  ), //i
     .rst_n                ( rst_n                ), //i

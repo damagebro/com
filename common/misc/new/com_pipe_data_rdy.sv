@@ -5,7 +5,7 @@
 *     Date:   2025/07/05-21:55:11
 *
 *  Description:
-*   data ready-only pipe
+*   ready-only single-stage pipeline with data;
 *
 *  Modify:
 *  -

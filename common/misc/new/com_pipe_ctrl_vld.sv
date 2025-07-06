@@ -5,7 +5,7 @@
 *     Date:   2025/07/05-21:50:45
 *
 *  Description:
-*  -
+*   single-stage pipeline, only ctrl flow, signal 'pipe_upen' to used by data_flow;
 *
 *  Modify:
 *  -

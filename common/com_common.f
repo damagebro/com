@@ -34,4 +34,4 @@ $COM_PATH/common/misc/new/com_pipe_ctrl_vlds.sv
 $COM_PATH/common/misc/new/com_pipe_ctrl_vld.sv
 $COM_PATH/common/misc/new/com_pipe_data_rdy.sv
 $COM_PATH/common/misc/new/com_pipe_data_regslice.sv
-$COM_PATH/common/misc/new/com_pipe_data_vld.sv
+$COM_PATH/common/misc/new/com_pipe_data_vlds.sv
