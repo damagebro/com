@@ -12,283 +12,316 @@
 *
 ******************************************************************************/
 
-`ifndef com_emi_extd_rd_v
-`define com_emi_extd_rd_v
 module com_emi_extd_rd #( parameter
-    AW = 32  ,
-    DW = 128 ,
-    LW = 32  ,
-    RAM_DEPTH = 256//,  //max_burst_len * max_outstanding_num;
+    AW          = 32  , //range=[8:64]
+    DW          = 128 , //range=[8::2^n]
+    EBUS_LW     = 32  , //range=[8:AW] ebus max_burst_bytelen.bit_width;
+    AXI_LW      = 8   , //range=[1:8], axi  max_burst_wordlen.bit_width;
+    UW          = 1   , //range=[1:],  ebus_axusr and axi_axusr, axuser go-though this module;
+    BOUND_BYTES = 4096, //range=[DW/8:4096:2^n], addr boundary split bytesize;
+    MAX_OSD     = 128 , //range=[1:1024], max axi_cmd outstanding num
+    BUF_DEPTH   = 0   //, //range=[0::2],  fifo_ram //if BUF_DEPTH=0, axi_osd=MAX_OSD; if BUF_DEPTH>0, "to confirm rd_bus perfomance, only rd_buffer remain space then send rd_cmd to axi_bus", axi_osd=min(MAX_OSD, BUF_DEPTH/max_burst_len), and assert(BUF_DEPTH>max_burst_len)
 )
 (
-input  wire                     clk                 ,
-input  wire                     rst_n               ,
-input  wire                     clear               ,
-`COM_SYS_IF                     sys_cfg             ,
+input  wire                     clk                  ,
+input  wire                     rst_n                ,
+input  wire                     clear                ,
+input  wire [`COM_SYS_W-1:0]    sys_cfg              ,
 //cfg&status---
-input  wire [7:0]               max_burst_len       ,
-input  wire                     rd_buf_bypass       ,
+input  wire [7:0]               i_cfg_max_blen_m1    , //max burst_len
+input  wire [15:0]              i_cfg_max_rdcmd_osd  , //if(i_cfg_max_rdcmd_osd==0), axi_osd=MAX_OSD; else if(i_cfg_max_rdcmd_osd>0), axi_osd=min(MAX_OSD,i_cfg_max_rdcmd_osd,func(BUF_DEPTH,i_cfg_max_blen_m1))
+output wire [15:0]              o_sta_rdbuf_wl       , //the status of rdbuf water_level signal, wl is remain space of rd_buf;
 //dp---
-input  wire [AW-1:0]            bus_ra_addr         ,
-input  wire [LW-1:0]            bus_ra_bytelen      ,
-input  wire                     bus_ra_valid        ,
-output wire                     bus_ra_ready        ,
-output wire [DW-1:0]            bus_rd_data         ,
-output wire                     bus_rd_valid        ,
-input  wire                     bus_rd_ready        ,
-output wire                     bus_rd_done         ,
-com_emi_if.usr_rch_tx           emi_usr_rdif        //,
+input  wire [UW-1:0]            ebus_ra_user         ,
+input  wire [AW-1:0]            ebus_ra_addr         ,
+input  wire [EBUS_LW-1:0]       ebus_ra_bytelen      ,
+input  wire                     ebus_ra_valid        ,
+output wire                     ebus_ra_ready        ,
+output wire [DW-1:0]            ebus_rd_data         ,
+output wire                     ebus_rd_last         ,
+output wire                     ebus_rd_valid        ,
+input  wire                     ebus_rd_ready        ,
+
+output wire [AW-1:0]            axi_araddr           ,
+output wire [AXI_LW-1:0]        axi_arlen            ,
+output wire [UW-1:0]            axi_aruser           ,
+output wire                     axi_arvalid          ,
+input  wire                     axi_arready          ,
+input  wire [DW-1:0]            axi_rdata            ,
+input  wire                     axi_rlast            ,
+input  wire                     axi_rvalid           ,
+output wire                     axi_rready           //,
 );
 //localparam-----------------------------------------------------------------
 localparam SW = DW/8;
 localparam SW_L2 = $clog2(SW);
-localparam MAX_OSD = 16;
+localparam BOUND_L2 = $clog2(BOUND_BYTES);
+localparam BUF_CW = $clog2((BUF_DEPTH+1)>2?(BUF_DEPTH+1):2);
+localparam RA_INFO_DEPTH = MAX_OSD;
+localparam RA_INFO_CW    = $clog2(RA_INFO_DEPTH+1);
 
-localparam RAM_DW    = DW;
-localparam RAM_ONE_DEPTH = RAM_DEPTH/2;
-localparam RAM_ONE_AW= $clog2(RAM_ONE_DEPTH>2?RAM_ONE_DEPTH:2);
-localparam TOL_AW =$clog2( RAM_DEPTH+3 +1 ); //total_depth = ram_depth+out_depth;
-//reg  declare---------------------------------------------------------------
-reg  rc_busy;
-reg  [15:0] rc_ra_cnt; //emi ra cnt
-reg  [15:0] rc_rd_cnt; //bus rd cnt
-reg  [15:0] rc_rd_rx_cnt; //emi rd cnt, debug only
-//wire declare---------------------------------------------------------------
-wire [15:0] max_burst_bytelen = (max_burst_len+1) * SW; //spyglass disable W164b
+localparam MAX_REG_FIFO_DEPTH = 16;
+localparam REG_FIFO_DEPTH = BUF_DEPTH>MAX_REG_FIFO_DEPTH ? MAX_REG_FIFO_DEPTH : BUF_DEPTH;
+localparam RAM_FIFO_DEPTH = BUF_DEPTH>MAX_REG_FIFO_DEPTH ? BUF_DEPTH-MAX_REG_FIFO_DEPTH  : 0;
+localparam RAM_ONE_DEPTH  = RAM_FIFO_DEPTH/2;
+localparam RAM_ONE_AW     = $clog2(RAM_ONE_DEPTH>2?RAM_ONE_DEPTH:2);
+localparam RAM_DW         = DW + 1; //{rlast,rdata}
+`COM_PARAM_ASSERT( BOUND_BYTES<=4096 || (1<<BOUND_L2)==BOUND_BYTES, "BOUND_BYTES range illegal" );
+`COM_PARAM_ASSERT( BUF_DEPTH%2==0, "BUF_DEPTH must be even number" );
+//signal declare-------------------------------------------------------------
+wire tie_rdbuf_bypass_flag;
+wire ebus_cmd_hs; // = ebus_ra_valid && ebus_ra_ready;
+wire axi_cmd_hs ; // = axi_arvalid && axi_arready;
+wire axi_rd_hs  ; // = axi_rvalid && axi_rready;
+wire ebus_rd_hs ; // = ebus_rd_valid && ebus_rd_ready;
+wire [EBUS_LW-0:0] ebus_bytelen_modify;
 
-wire [AW-1:0] emi_araddr  ;
-wire [7:0]    emi_arlen   ;
-wire          emi_arvalid ;
-wire          emi_arready ;
-wire [DW-1:0] emi_rdata   ;
-wire          emi_rlast   ;
-wire          emi_rvalid  ;
-wire          emi_rready  = 1'b1;
-assign emi_usr_rdif.emi_araddr  = emi_araddr ;
-assign emi_usr_rdif.emi_arlen   = emi_arlen  ;
-assign emi_usr_rdif.emi_arvalid = emi_arvalid;
-assign emi_arready = emi_usr_rdif.emi_arready;
-assign emi_rdata   = emi_usr_rdif.emi_rdata  ;
-assign emi_rlast   = emi_usr_rdif.emi_rlast  ;
-assign emi_rvalid  = emi_usr_rdif.emi_rvalid ;
-// assign emi_usr_rdif.emi_rready  = emi_rready ;
-// wire [UW-1:0] emi_aruser  ;//= emi_usr_rdif.emi_aruser ;
-// wire [UW-1:0] emi_ruser   ;//= emi_usr_rdif.emi_ruser  ;
-assign emi_usr_rdif.emi_aruser = 'b0;
+reg                r_split_busy;
+reg  [EBUS_LW-1:0] r_rem_bytelen;
+reg  [AW-1:0]      r_addr;
+reg  [UW-1:0]      r_user;
+reg                r_fst_split_flag;
+wire               b_lst_split_flag;
+wire [SW_L2-1:0]   fst_split_addr_lsb;
+wire [SW_L2-1:0]   lst_split_addr_lsb;
+wire [AXI_LW-1:0]  fnl_wordlen_m1;
+
+reg  [BUF_CW-1:0] r_otf_cnt;
+wire b_rdbuf_avl;  //if(BUF_DEPTH>0), only when rdbuf remain one_burst_space, then arcmd send out to fabric;
+wire b_rdosd_avl;  //axi_cmd osd_num limit by (MAX_OSD + i_cfg_max_rdcmd_osd),
+
+wire [BUF_CW-1:0]          u_rdfifo_water_level; //meaning fifo remain space;
+wire                       u_rdfifo_wr_en    ;
+wire [RAM_DW-1:0]          u_rdfifo_wr_data  ;
+wire                       u_rdfifo_wr_full  ;
+wire                       u_rdfifo_rd_en    ;
+wire [RAM_DW-1:0]          u_rdfifo_rd_data  ;
+wire                       u_rdfifo_rd_empty ;
+wire [1:0]                 u_rdfifo_ram_cen  ;
+wire [1:0]                 u_rdfifo_ram_we   ;
+wire [1:0][RAM_ONE_AW-1:0] u_rdfifo_ram_addr ;
+wire [1:0][RAM_DW-1:0]     u_rdfifo_ram_din  ;
+wire [1:0][RAM_DW-1:0]     u_rdfifo_ram_qout ;
+wire                       u_rainfo_wr_en    ;
+wire [1-1:0]               u_rainfo_wr_data  ; //each bytelen is_split_last;
+wire                       u_rainfo_wr_full  ;
+wire                       u_rainfo_rd_en    ;
+wire [1-1:0]               u_rainfo_rd_data  ;
+wire                       u_rainfo_rd_empty ;
+wire [RA_INFO_CW-1:0]      u_rainfo_water_level;
 //statement------------------------------------------------------------------
+assign tie_rdbuf_bypass_flag = BUF_DEPTH==0;
+assign ebus_cmd_hs = ebus_ra_valid && ebus_ra_ready;
+assign axi_cmd_hs  = axi_arvalid && axi_arready;
+assign axi_rd_hs   = axi_rvalid && axi_rready;
+assign ebus_rd_hs  = ebus_rd_valid && ebus_rd_ready;
+assign ebus_bytelen_modify = ebus_ra_bytelen + ebus_ra_addr[SW_L2-1:0]; //assert( ebus_bytelen_modify[EBUS_LW]==1'b0 )
 
-//split+addr---
-wire bus_ra_hs = bus_ra_valid && bus_ra_ready;
-wire emi_ra_hs = emi_arvalid && emi_arready;
-reg  rc_first_split_flag;
-reg  [AW-1:0] rc_addr;
-reg  [LW-1:0] rc_req_bytelen;
-wire [LW-0:0] req_bytelen_true = rc_first_split_flag ? (rc_req_bytelen + rc_addr[SW_L2-1:0]) : {1'b0,rc_req_bytelen}; //spyglass disable W164b
-wire [LW-0:0] req_bytelen_nxt_t = req_bytelen_true - max_burst_bytelen;
-wire [LW-1:0] req_bytelen_nxt = req_bytelen_nxt_t[LW] ? rc_req_bytelen : req_bytelen_nxt_t;
-wire b_last_split_flag = req_bytelen_nxt_t[LW] || req_bytelen_nxt_t[LW-1:0]==LW'(0);
-wire [8:0] req_wordlen = req_bytelen_true[LW-1:SW_L2] + |req_bytelen_true[SW_L2-1:0];
-wire [7:0] req_once_wordlen_m1 = b_last_split_flag ? req_wordlen-1 : max_burst_len;
-wire [8:0] req_once_wordlen = req_once_wordlen_m1+1'b1;  //spyglass disable W164b
-wire ps_ra_last_split = b_last_split_flag && emi_ra_hs;
-always @(posedge clk or negedge rst_n)
-begin
+assign axi_araddr  = r_addr;
+assign axi_arlen   = fnl_wordlen_m1;
+assign axi_aruser  = r_user;
+assign axi_arvalid = r_split_busy && b_rdbuf_avl && b_rdosd_avl;
+assign axi_rready = tie_rdbuf_bypass_flag ? ebus_rd_ready : !u_rdfifo_wr_full; //assert(!tie_rdbuf_bypass_flag && !u_rdfifo_wr_full); when BUF_DEPTH>0, axi_rready===1;
+assign ebus_ra_ready = !r_split_busy || (r_split_busy&&b_lst_split_flag&&axi_cmd_hs);
+assign ebus_rd_data  = tie_rdbuf_bypass_flag ? axi_rdata : u_rdfifo_rd_data[0 +:DW];
+assign ebus_rd_last  =(tie_rdbuf_bypass_flag ?(axi_rlast && u_rainfo_rd_data==1'b1) : u_rdfifo_rd_data[DW +:1]) && ebus_rd_valid;
+assign ebus_rd_valid = tie_rdbuf_bypass_flag ? axi_rvalid : !u_rdfifo_rd_empty;
+assign o_sta_rdbuf_wl = 16'(u_rdfifo_water_level);
+
+//1. split
+wire [8:0]         tie_axi_wordlen = 9'b1<<AXI_LW;
+wire [12:0]        tie_bound_bytelen = BOUND_BYTES[12:0];
+wire [8:0]         tie_bound_wordlen = 9'(tie_bound_bytelen[12:SW_L2]);
+wire [8:0]         cfg_max_blen      = i_cfg_max_blen_m1+1'b1;  //assert(cfg_max_blen<=tie_axi_wordlen || tie_bound_bytelen<=tie_axi_wordlen)
+wire [9+SW_L2-1:0] cfg_burst_bytelen = {cfg_max_blen,{SW_L2{1'b0}}};
+wire b_bound_only = cfg_burst_bytelen>(9+SW_L2)'(tie_bound_bytelen);
+wire [12:0] sel_bytelen = b_bound_only ?  tie_bound_bytelen : 13'(cfg_burst_bytelen);
+
+wire [AW-1:0] addr_alg = {r_addr[AW-1:SW_L2], {SW_L2{1'b0}}};
+wire b_burst_split = r_rem_bytelen>EBUS_LW'(sel_bytelen);
+wire [12:0]   tmp_bytelen  = b_burst_split ? sel_bytelen : 13'(r_rem_bytelen);
+wire [AW-1:0] tmp_addr_nxt = addr_alg + tmp_bytelen;
+wire b_bound_split = tmp_addr_nxt[BOUND_L2]!=addr_alg[BOUND_L2] && |tmp_addr_nxt[BOUND_L2-1:0]; //tmp_addr_nxt[BOUND_L2:0]>tie_bound_bytelen
+wire [12:0]   ovf_bytelen  = tie_bound_bytelen - addr_alg[BOUND_L2-1:0];
+wire [AW-1:0] ovf_addr_nxt = addr_alg + ovf_bytelen; //word_alg
+wire [12:0]   fnl_bytelen  = b_bound_split ? ovf_bytelen : tmp_bytelen ;
+wire [AW-1:0] fnl_addr_nxt = b_bound_split ? ovf_addr_nxt: tmp_addr_nxt;
+wire [11:0]   fnl_wordlen  = 12'(fnl_bytelen[12:SW_L2]) + |fnl_bytelen[SW_L2-1:0];
+wire [EBUS_LW-1:0] nxt_bytelen = r_rem_bytelen - fnl_bytelen;
+assign fnl_wordlen_m1 = AXI_LW'(fnl_wordlen - 1'b1);
+assign b_lst_split_flag = !b_burst_split && !b_bound_split;
+assign fst_split_addr_lsb = r_fst_split_flag ? r_addr[SW_L2-1:0] : '0;
+assign lst_split_addr_lsb = b_lst_split_flag ? r_rem_bytelen[SW_L2-1:0] : '0;
+always @(posedge clk or negedge rst_n)begin
     if( !rst_n )
-        rc_busy <= 1'b0;
-    else if( clear || ps_ra_last_split )
-        rc_busy <= 1'b0;
-    else if( bus_ra_hs )
-        rc_busy <= 1'b1;
+        r_split_busy <= 1'b0;
+    else if( clear )
+        r_split_busy <= 1'b0;
+    else if( ebus_cmd_hs )
+        r_split_busy <= 1'b1;
+    else if( axi_cmd_hs && b_lst_split_flag )
+        r_split_busy <= 1'b0;
 end
-always @(posedge clk or negedge rst_n)
-begin
+always @(posedge clk or negedge rst_n)begin
     if( !rst_n )
-        rc_req_bytelen <= 'b0;
-    else if( bus_ra_hs )
-        rc_req_bytelen <= bus_ra_bytelen;
-    else if( emi_ra_hs )
-        rc_req_bytelen <= req_bytelen_nxt;
+        r_fst_split_flag <= 1'b0;
+    else if( clear )
+        r_fst_split_flag <= 1'b0;
+    else if( ebus_cmd_hs )
+        r_fst_split_flag <= 1'b1;
+    else if( axi_cmd_hs )
+        r_fst_split_flag <= 1'b0;
 end
-always @(posedge clk or negedge rst_n)
-begin
+always @(posedge clk or negedge rst_n)begin
     if( !rst_n )
-        rc_first_split_flag <= 1'b0;
-    else if( clear || emi_ra_hs )
-        rc_first_split_flag <= 1'b0;
-    else if( bus_ra_hs )
-        rc_first_split_flag <= 1'b1;
+        r_rem_bytelen <= '0;
+    else if( ebus_cmd_hs )
+        r_rem_bytelen <= ebus_bytelen_modify[EBUS_LW-1:0];
+    else if( axi_cmd_hs )
+        r_rem_bytelen <= nxt_bytelen;
 end
-
-//rd fifo & emi_cmd---
-wire [TOL_AW-1:0] rd_water_level;
-wire              rd_wr_en    = rd_buf_bypass ? 1'b0 : (emi_rvalid && emi_rready);
-wire [RAM_DW-1:0] rd_wr_data  = emi_rdata;
-wire              rd_wr_full  ;
-wire              rd_rd_en    = rd_buf_bypass ? 1'b0 : (bus_rd_valid && bus_rd_ready);
-wire [RAM_DW-1:0] rd_rd_data  ;
-wire              rd_rd_empty ;
-
-wire [1:0]                 ram_cen  ;
-wire [1:0]                 ram_we   ;
-wire [1:0][RAM_ONE_AW-1:0] ram_addr ;
-wire [1:0][RAM_DW-1:0]     ram_din  ;
-wire [1:0][RAM_DW-1:0]     ram_qout ;
-com_sync_fifo_ram_1p2bank #(
-    .DW         ( RAM_DW     ), //8
-    .RAM_DEPTH  ( RAM_DEPTH  )//, //4
-)zr_com_sync_fifo_ram_1p2bank_rd
-(
-    .clk                  ( clk                  ), //i
-    .rst_n                ( rst_n                ), //i
-    .clear                ( clear                ), //i
-
-    .wr_en                ( rd_wr_en             ), //i
-    .wr_data              ( rd_wr_data           ), //i
-    .wr_full              ( rd_wr_full           ), //o
-    .rd_en                ( rd_rd_en             ), //i
-    .rd_data              ( rd_rd_data           ), //o
-    .rd_empty             ( rd_rd_empty          ), //o
-    .water_level          ( rd_water_level       ), //o
-
-    .ram_cen              ( ram_cen              ), //o
-    .ram_we               ( ram_we               ), //o
-    .ram_addr             ( ram_addr             ), //o
-    .ram_din              ( ram_din              ), //o
-    .ram_qout             ( ram_qout             )  //i
-);
-com_spram_cell #(
-    .DATA_W     ( RAM_DW        ), //32
-    .DEPTH      ( RAM_ONE_DEPTH )//, //512
-)zt_com_spram_cell[1:0]
-(
-    .clk                  ( clk                  ), //i
-    .mem_cfg              ( sys_cfg              ), //i
-
-    .cen                  ( ram_cen              ), //i
-    .we                   ( ram_we               ), //i
-    .addr                 ( ram_addr             ), //i
-    .din                  ( ram_din              ), //i
-    .qout                 ( ram_qout             )  //o
-);
-
-wire bus_rd_hs = bus_rd_valid && bus_rd_ready;
-wire emi_rd_hs = emi_rvalid && emi_rready;
-always @(posedge clk or negedge rst_n)
-begin
-    if( !rst_n )begin
-        rc_ra_cnt <= 'b0;
-        rc_rd_cnt <= 'b0;
-        rc_rd_rx_cnt <= 'b0;
-    end
-    else if( clear )begin
-        rc_ra_cnt <= 'b0;
-        rc_rd_cnt <= 'b0;
-        rc_rd_rx_cnt <= 'b0;
-    end
-    else begin
-        if( emi_ra_hs ) rc_ra_cnt <= rc_ra_cnt+req_once_wordlen;
-        if( bus_rd_hs ) rc_rd_cnt <= rc_rd_cnt+1'b1;
-        if( emi_rd_hs ) rc_rd_rx_cnt <= rc_rd_rx_cnt+1'b1;
-    end
-end
-wire [16:0] ra_minus_rd_t1 = rc_ra_cnt - rc_rd_cnt; //spyglass disable W164b
-wire [16:0] ra_minus_rd_t2 = (17'h10000+rc_ra_cnt) - rc_rd_cnt;
-wire [15:0] ra_minus_rd = ra_minus_rd_t1[16] ? ra_minus_rd_t2 : ra_minus_rd_t1;
-wire [15:0] rdbuf_rem_num = rd_water_level + 0; //spyglass disable W164b
-wire [15:0] otf_cnt = ra_minus_rd; //on the fly counter
-wire [16:0] rdbuf_avl_num = rdbuf_rem_num - otf_cnt; //spyglass disable W164b
-wire b_emi_ra_cmd_avl_t = rd_buf_bypass ? 1'b1 : rdbuf_avl_num[15:0]>=16'(req_once_wordlen) && !rdbuf_avl_num[16];
-wire b_emi_ra_cmd_avl;
-
-reg  [31:0] rc_len_cnt; //debug only
-wire [AW-1:0] addr_nxt = rc_addr + max_burst_bytelen;
-always @(posedge clk or negedge rst_n)
-begin
+always @(posedge clk or negedge rst_n)begin
     if( !rst_n )
-        rc_addr <= 'b0;
-    else if( bus_ra_hs )
-        rc_addr <= bus_ra_addr;
-    else if( emi_ra_hs && !b_last_split_flag )
-        rc_addr <= addr_nxt;
+        r_addr <= '0;
+    else if( ebus_cmd_hs )
+        r_addr <= ebus_ra_addr;
+    else if( axi_cmd_hs && !b_lst_split_flag )
+        r_addr <= fnl_addr_nxt;
 end
-always @(posedge clk or negedge rst_n)
-begin
-    if( !rst_n )
-        rc_len_cnt <= 'b0;
-    else if( bus_ra_hs )
-        rc_len_cnt <= 'b0;
-    else if( emi_ra_hs )
-        rc_len_cnt <= rc_len_cnt+1;
+always @(posedge clk)begin
+    if( ebus_cmd_hs )
+        r_user <= ebus_ra_user;
 end
-assign emi_arlen = req_once_wordlen_m1;
-assign emi_araddr = rc_addr;
-assign emi_arvalid = rc_busy && b_emi_ra_cmd_avl;
 
-//rd last
-wire [$clog2(MAX_OSD+1)-1:0] ra_water_level ;
-wire         ra_wr_en    = emi_ra_hs;
-wire [8-0:0] ra_wr_data  = {emi_arlen,b_last_split_flag};
-wire         ra_wr_full  ;
-wire         ra_rd_en    = emi_rd_hs && emi_rlast;
-wire [8-0:0] ra_rd_data  ;
-wire         ra_rd_empty ;
+//2. rdbuf osd ctrl--
+wire [AXI_LW-0:0] tmp_axi_arlen = axi_cmd_hs ? (AXI_LW+1)'(fnl_wordlen) : '0;
+wire [BUF_CW-1:0] otf_cnt_nxt   = r_otf_cnt + tmp_axi_arlen - axi_rd_hs;
+wire [BUF_CW-1:0] rdbuf_avl_num = u_rdfifo_water_level - r_otf_cnt;
+assign b_rdbuf_avl = tie_rdbuf_bypass_flag ? 1'b1 : (rdbuf_avl_num>BUF_CW'(axi_arlen));
+always @(posedge clk or negedge rst_n)begin
+    if( !rst_n )
+        r_otf_cnt <= '0;
+    else if( clear )
+        r_otf_cnt <= '0;
+    else if( axi_cmd_hs || axi_rd_hs )
+        r_otf_cnt <= otf_cnt_nxt;
+end
+generate
+if( BUF_DEPTH>0 )begin:gen_rdbuf
+    assign u_rdfifo_wr_en    = axi_rd_hs;
+    assign u_rdfifo_wr_data  = {(axi_rlast && u_rainfo_rd_data==1'b1), axi_rdata};
+    assign u_rdfifo_rd_en    = ebus_rd_hs;
+    com_sync_fifo_ram_1p2bank #(
+        .RAM_RD_DELAY ( 1              ), //ram read cmd req->read data ack delay cycles, range=[1:8];  normally=1, if ecc_sram=2 maybe;
+        .DW           ( RAM_DW         ), //8
+        .OUT_DEPTH    ( REG_FIFO_DEPTH ),
+        .RAM_DEPTH    ( RAM_FIFO_DEPTH )//, //4
+    )zr_com_sync_fifo_ram_1p2bank_rdfifo
+    (
+        .clk                  ( clk                        ), //i
+        .rst_n                ( rst_n                      ), //i
+        .clear                ( clear                      ), //i
+
+        .wr_en                ( u_rdfifo_wr_en             ), //i
+        .wr_data              ( u_rdfifo_wr_data           ), //i
+        .wr_full              ( u_rdfifo_wr_full           ), //o
+        .rd_en                ( u_rdfifo_rd_en             ), //i
+        .rd_data              ( u_rdfifo_rd_data           ), //o
+        .rd_empty             ( u_rdfifo_rd_empty          ), //o
+        .water_level          ( u_rdfifo_water_level       ), //o
+        .ram_cen              ( u_rdfifo_ram_cen           ), //o
+        .ram_we               ( u_rdfifo_ram_we            ), //o
+        .ram_addr             ( u_rdfifo_ram_addr          ), //o
+        .ram_din              ( u_rdfifo_ram_din           ), //o
+        .ram_qout             ( u_rdfifo_ram_qout          )  //i
+    );
+    com_spram_cell #(
+        .DATA_W     ( RAM_DW        ), //32
+        .DEPTH      ( RAM_ONE_DEPTH )//, //512
+    )zt_com_spram_cell[1:0]
+    (
+        .clk                  ( clk                  ), //i
+        .mem_cfg              ( sys_cfg              ), //i
+
+        .cen                  ( u_rdfifo_ram_cen     ), //i
+        .we                   ( u_rdfifo_ram_we      ), //i
+        .addr                 ( u_rdfifo_ram_addr    ), //i
+        .din                  ( u_rdfifo_ram_din     ), //i
+        .qout                 ( u_rdfifo_ram_qout    )  //o
+    );
+end:gen_rdbuf
+else begin:gen_no_rdbuf
+    assign u_rdfifo_water_level = '0;
+    assign u_rdfifo_wr_en    = '0;
+    assign u_rdfifo_wr_data  = '0;
+    assign u_rdfifo_wr_full  = '0;
+    assign u_rdfifo_rd_en    = '0;
+    assign u_rdfifo_rd_data  = '0;
+    assign u_rdfifo_rd_empty = '0;
+    assign u_rdfifo_ram_cen  = '0;
+    assign u_rdfifo_ram_we   = '0;
+    assign u_rdfifo_ram_addr = '0;
+    assign u_rdfifo_ram_din  = '0;
+    assign u_rdfifo_ram_qout = '0;
+end:gen_no_rdbuf
+endgenerate
+
+//3. rdata resp(axi_rlast->ebus_rlast)--
+wire [RA_INFO_CW-1:0] rdcmd_otf_cnt = RA_INFO_DEPTH[RA_INFO_CW-1:0] - u_rainfo_water_level;
+assign b_rdosd_avl = !u_rainfo_wr_full && ((16'(rdcmd_otf_cnt)<i_cfg_max_rdcmd_osd) || (i_cfg_max_rdcmd_osd=='0));
+assign u_rainfo_wr_en   = axi_cmd_hs;
+assign u_rainfo_wr_data = b_lst_split_flag;
+assign u_rainfo_rd_en   = axi_rd_hs && axi_rlast;
 com_sync_fifo_reg #(
-    .DW         ( 8+1      ), //8
-    .DEPTH      ( MAX_OSD  )  //4
-)zr_com_sync_fifo_reg_ra
+    .DW         ( 1             ), //8
+    .DEPTH      ( RA_INFO_DEPTH )  //4
+)zr_com_sync_fifo_reg_rainfo
 (
     .clk                  ( clk                  ), //i
     .rst_n                ( rst_n                ), //i
     .clear                ( clear                ), //i
 
-    .wr_en                ( ra_wr_en             ), //i
-    .wr_data              ( ra_wr_data           ), //i
-    .wr_full              ( ra_wr_full           ), //o
-    .rd_en                ( ra_rd_en             ), //i
-    .rd_data              ( ra_rd_data           ), //o
-    .rd_empty             ( ra_rd_empty          ), //o
-    .water_level          ( ra_water_level       )  //o
+    .wr_en                ( u_rainfo_wr_en       ), //i
+    .wr_data              ( u_rainfo_wr_data     ), //i
+    .wr_full              ( u_rainfo_wr_full     ), //o
+    .rd_en                ( u_rainfo_rd_en       ), //i
+    .rd_data              ( u_rainfo_rd_data     ), //o
+    .rd_empty             ( u_rainfo_rd_empty    ), //o
+    .water_level          ( u_rainfo_water_level )  //o
 );
-wire b_rd_last_split_flag = !ra_rd_empty ? ra_rd_data[0] : 1'b0;
-wire [7:0] rd_split_wordlen = ra_rd_data[1+:8];
-assign b_emi_ra_cmd_avl = b_emi_ra_cmd_avl_t && !ra_wr_full;
 
-reg  [7:0] rc_rd_wordlen_cnt;
-wire bus_rlast;
-always @(posedge clk or negedge rst_n)
-begin
-    if( !rst_n )
-        rc_rd_wordlen_cnt <= 'b0;
-    else if( clear || (bus_rd_hs && bus_rlast) )
-        rc_rd_wordlen_cnt <= 'b0;
-    else if( bus_rd_hs )
-        rc_rd_wordlen_cnt <= rc_rd_wordlen_cnt+1'b1;
-end
-assign bus_rlast = bus_rd_valid && rc_rd_wordlen_cnt==rd_split_wordlen;
-assign bus_rd_valid = rd_buf_bypass ? emi_rvalid : !rd_rd_empty;
-assign bus_rd_data = rd_buf_bypass ? emi_rdata : rd_rd_data;
-assign bus_ra_ready = !rc_busy;
-assign bus_rd_done  = b_rd_last_split_flag && bus_rd_hs && rc_rd_wordlen_cnt==rd_split_wordlen;;
+//assert----------------------------------
+`COM_SIGNAL_ASSERT( a0, clk,rst_n,ebus_cmd_hs,(cfg_max_blen<=tie_axi_wordlen || tie_bound_wordlen<=tie_axi_wordlen) , "AXI_LW range can't split to (i_cfg_max_blen_m1, BOUND_BYTES)"  );
+`COM_SIGNAL_ASSERT( a1, clk,rst_n,ebus_cmd_hs,(ebus_bytelen_modify[EBUS_LW]==1'b0) , "EBUS_LW range not enough, change to original_value+1" );
+`COM_SIGNAL_ASSERT( a2, clk,rst_n,axi_rvalid,(tie_rdbuf_bypass_flag || axi_rready==1'b1) , "when BUF_DEPTH>0, axi_rready===1" );
 
-//debug-----------------------------
-reg  [31:0] dbg_bus_ra_req_cnt;
-reg  [31:0] dbg_bus_rd_done_cnt;
-always @(posedge clk or negedge rst_n)
-begin
+//debug----------------------------------
+`ifdef COM_AXI_DEBUG
+reg  [31:0] r_cmd_burst_cnt;
+reg  [31:0] r_dat_burst_cnt;
+reg  [31:0] r_cmd_beat_cnt ;
+reg  [31:0] r_dat_beat_cnt ;
+always @(posedge clk or negedge rst_n) begin
     if( !rst_n )begin
-        dbg_bus_ra_req_cnt <= 'b0;
-        dbg_bus_rd_done_cnt<= 'b0;
-    end
-    else if( clear )begin
-        dbg_bus_ra_req_cnt <= 'b0;
-        dbg_bus_rd_done_cnt<= 'b0;
+        r_cmd_burst_cnt <= '0;
+        r_dat_burst_cnt <= '0;
+        r_cmd_beat_cnt  <= '0;
+        r_dat_beat_cnt  <= '0;
     end
     else begin
-        if( bus_ra_hs   ) dbg_bus_ra_req_cnt  <= dbg_bus_ra_req_cnt+1;
-        if( bus_rd_done ) dbg_bus_rd_done_cnt <= dbg_bus_rd_done_cnt+1;
+        if( axi_cmd_hs             ) r_cmd_burst_cnt <= r_cmd_burst_cnt + 1'b1;
+        if( axi_rd_hs&&axi_rlast   ) r_dat_burst_cnt <= r_dat_burst_cnt + 1'b1;
+        if( axi_cmd_hs             ) r_cmd_beat_cnt  <= r_cmd_beat_cnt  + axi_arlen+1'b1;
+        if( axi_rd_hs              ) r_dat_beat_cnt  <= r_dat_beat_cnt  + 1'b1;
     end
 end
+`endif
 
 endmodule //end of com_emi_extd_rd
-`endif //end of com_emi_extd_rd_v
 
+//test point---------------------------------------------------
+/*
+1. b_bound_only=1, so (i_cfg_max_blen_m1*DW/8)>BOUND_BYTES;
+2. u_rainfo_wr_full;
+3. i_cfg_max_rdcmd_osd>0, or i_cfg_max_rdcmd_osd=0;
+*/

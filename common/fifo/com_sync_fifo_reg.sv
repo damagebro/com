@@ -13,8 +13,6 @@
 *
 ******************************************************************************/
 
-`ifndef com_sync_fifo_reg_v
-`define com_sync_fifo_reg_v
 module com_sync_fifo_reg #( parameter
     DW    = 8,
     DEPTH = 4,
@@ -119,4 +117,3 @@ end
 `COM_SIGNAL_ASSERT_LITE( a1, rd_en,!rd_empty, "fifo read when empty"  );
 
 endmodule //end of com_sync_fifo_reg
-`endif //end of com_sync_fifo_reg_v

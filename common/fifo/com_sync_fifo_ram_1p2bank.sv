@@ -19,10 +19,8 @@
 *
 ******************************************************************************/
 
-`ifndef com_sync_fifo_ram_1p2bank_v
-`define com_sync_fifo_ram_1p2bank_v
 module com_sync_fifo_ram_1p2bank #( parameter
-    RAM_RD_DELAY = 1, //ram read cmd req->read data ack delay cycles, range=[1:8]
+    RAM_RD_DELAY = 1, // range=[1:8], ram read cmd req->read data ack delay cycles;  normally=1, if ecc_sram=2 maybe;
     DW        = 8,
     RAM_DEPTH = 4, //fifo_ram depth    , range=[0::2]
     OUT_DEPTH = 3, //out fifo_reg depth, range=[2+RAM_RD_DELAY::]
@@ -59,7 +57,6 @@ localparam RAM_RD_DELAY_L2 = $clog2(RAM_RD_DELAY+1);
 
 `COM_PARAM_ASSERT( OUT_DEPTH>=3, "fifo_1p2bank out_depth must larger than 3" );
 //reg  declare---------------------------------------------------------------
-reg  [RAM_RD_DELAY_L2-1:0] r_otf_cnt;  //read ram cmd otf cnt, rd_en+1, rd_ack-1;
 //wire declare---------------------------------------------------------------
 wire out_wr_full;
 wire out_rd_empty;
@@ -69,7 +66,7 @@ wire ram_wr_full  ;
 wire ram_rd_empty ;
 wire ram_rd_en    ;
 wire ram_rd_ack   ;
-wire ram_rd_empty_do = ram_rd_empty && !(|r_otf_cnt);
+wire ram_rd_empty_do;
 wire [DW-1:0] ram_rd_data;
 //statement------------------------------------------------------------------
 
@@ -99,30 +96,78 @@ com_sync_fifo_reg #(
 );
 assign rd_data = out_rd_data;
 assign rd_empty= out_rd_empty;
-assign wr_full = ram_wr_full;
 
 //ram fifo---
 generate
 if( RAM_DEPTH>0 )begin:gen_ram_fifo
-    wire [RAM_AW-1:0] ram_wr_addr;
-    wire [RAM_AW-1:0] ram_rd_addr;
-    wire [RAM_CW-1:0] ram_water_level_t;
-    com_sync_fifo_ctrl #(
-        .DEPTH      ( RAM_DEPTH      )  //4
-    )u_com_sync_fifo_ctrl_ram
-    (
-        .clk                  ( clk                  ), //i
-        .rst_n                ( rst_n                ), //i
-        .clear                ( clear                ), //i
-
-        .wr_en                ( ram_wr_en            ), //i
-        .wr_addr              ( ram_wr_addr          ), //o
-        .wr_full              ( ram_wr_full          ), //o
-        .rd_en                ( ram_rd_en            ), //i
-        .rd_addr              ( ram_rd_addr          ), //o
-        .rd_empty             ( ram_rd_empty         ), //o
-        .water_level          ( ram_water_level_t    )  //o
-    );
+    reg  [RAM_RD_DELAY_L2-1:0] r_otf_cnt;  //read ram cmd otf cnt, rd_en+1, rd_ack-1;
+//the same as com_sync_fifo_reg begin---------------------
+    localparam AW = RAM_AW;
+    localparam DEPTH = RAM_DEPTH;
+    localparam CW = $clog2(DEPTH+1);
+    reg  [AW-0:0] r_wrcnt;
+    reg  [AW-0:0] r_rdcnt;
+    reg           r_wr_full;
+    reg           r_rd_empty;
+    reg  [CW-1:0] r_water_level;
+    //wrcnt
+    wire [AW-0:0] wrcnt_p1  = r_wrcnt[AW-1:0] + 1'b1;
+    wire [AW-0:0] wrcnt_nxt = wrcnt_p1==DEPTH[AW-0:0] ? { !r_wrcnt[AW],{AW{1'b0}} } : {r_wrcnt[AW],wrcnt_p1[AW-1:0]};
+    wire [AW-0:0] wrcnt_tmp = wr_en ? wrcnt_nxt : r_wrcnt;
+    always @(posedge clk or negedge rst_n)
+    begin
+        if( !rst_n )
+            r_wrcnt <= '0;
+        else if( clear )
+            r_wrcnt <= '0;
+        else if( wr_en && !r_wr_full )
+            r_wrcnt <= wrcnt_nxt;
+    end
+    //rdcnt
+    wire [AW-0:0] rdcnt_p1  = r_rdcnt[AW-1:0] + 1'b1;
+    wire [AW-0:0] rdcnt_nxt = rdcnt_p1==DEPTH[AW-0:0] ? { !r_rdcnt[AW],{AW{1'b0}} } : {r_rdcnt[AW],rdcnt_p1[AW-1:0]};
+    wire [AW-0:0] rdcnt_tmp = rd_en ? rdcnt_nxt : r_rdcnt;
+    always @(posedge clk or negedge rst_n)
+    begin
+        if( !rst_n )
+            r_rdcnt <= '0;
+        else if( clear )
+            r_rdcnt <= '0;
+        else if( rd_en && !r_rd_empty )
+            r_rdcnt <= rdcnt_nxt;
+    end
+    //full&empty
+    wire tmp_full = (wrcnt_tmp[AW-1:0]==rdcnt_tmp[AW-1:0]) && (wrcnt_tmp[AW]==!rdcnt_tmp[AW]);
+    wire tmp_empty= (wrcnt_tmp[AW-0:0]==rdcnt_tmp[AW-0:0]);
+    wire [AW-0:0] depth_max = DEPTH[AW:0];
+    wire [AW-0:0] equ_wl = depth_max + {1'b0,rdcnt_tmp[AW-1:0]} - {1'b0,wrcnt_tmp[AW-1:0]};
+    wire [AW-0:0] neq_wl = {1'b0,rdcnt_tmp[AW-1:0]} - {1'b0,wrcnt_tmp[AW-1:0]};
+    wire [AW-0:0] tmp_wl = (wrcnt_tmp[AW]==rdcnt_tmp[AW]) ? equ_wl : neq_wl;
+    always @(posedge clk or negedge rst_n)
+    begin
+        if( !rst_n )begin
+            r_wr_full <= 1'b0;
+            r_rd_empty<= 1'b1;
+            r_water_level <= DEPTH[CW-1:0];
+        end
+        else if( clear )begin
+            r_wr_full <= 1'b0;
+            r_rd_empty<= 1'b1;
+            r_water_level <= DEPTH[CW-1:0];
+        end
+        else if( rd_en || wr_en )begin
+            r_wr_full <= tmp_full;
+            r_rd_empty<= tmp_empty;
+            r_water_level <= CW'(tmp_wl);
+        end
+    end
+//the same as com_sync_fifo_reg end  ---------------------
+    assign ram_wr_full   = r_wr_full;
+    assign ram_rd_empty  = r_rd_empty;
+    assign wr_full = ram_wr_full;
+    wire [RAM_AW-1:0] ram_wr_addr = r_wrcnt[AW-1:0];
+    wire [RAM_AW-1:0] ram_rd_addr = r_rdcnt[AW-1:0];
+    wire [RAM_CW-1:0] ram_water_level_t = r_water_level;
     wire [RAM_CW-1:0] ram_water_level = {ram_water_level_t} - r_otf_cnt;
 
     //in buf---
@@ -172,6 +217,8 @@ if( RAM_DEPTH>0 )begin:gen_ram_fifo
     wire rd_banksel_flag = ram_rd_en && ram_rd_addr[0];
     reg  [RAM_RD_DELAY-1:0] rc_ram_rd_ack;
     reg  [RAM_RD_DELAY-1:0] rc_rd_banksel_flag;
+    assign ram_rd_ack = rc_ram_rd_ack[RAM_RD_DELAY-1];
+    assign ram_rd_empty_do = ram_rd_empty && !(|r_otf_cnt);
     always @(posedge clk or negedge rst_n)
     begin
         if( !rst_n ) begin
@@ -191,8 +238,6 @@ if( RAM_DEPTH>0 )begin:gen_ram_fifo
             end
         end
     end
-    assign ram_rd_ack = rc_ram_rd_ack[RAM_RD_DELAY-1];
-
     always @(posedge clk or negedge rst_n)
     begin
         if( !rst_n )
@@ -225,23 +270,21 @@ else begin:gen_no_ram_fifo
     assign ram_wr_full  = 1'b0;
     assign ram_rd_empty = 1'b1;
     assign ram_rd_ack   = 1'b0;
+    assign ram_rd_empty_do = ram_rd_empty;
 
     assign ram_wr_en   = 1'b0;
     assign ram_rd_en   = 1'b0;
-    assign water_level = out_water_level; //spyglass disable W164b
+    assign water_level = TOL_CW'(out_water_level);
+    assign wr_full = out_wr_full;
 
-    assign ram_cen [0] = 1'b0;
-    assign ram_we  [0] = 1'b0;
-    assign ram_addr[0] = '0;
-    assign ram_din [0] = '0;
-    assign ram_cen [1] = 1'b0;
-    assign ram_we  [1] = 1'b0;
-    assign ram_addr[1] = '0;
-    assign ram_din [1] = '0;
+    assign ram_cen     = '0;
+    assign ram_we      = '0;
+    assign ram_addr    = '0;
+    assign ram_din     = '0;
     assign ram_rd_data = '0;
 end//end of else(RAM_DEPTH)
 endgenerate
 
 endmodule //end of com_sync_fifo_ram_1p2bank
-`endif //end of com_sync_fifo_ram_1p2bank_v
+
 

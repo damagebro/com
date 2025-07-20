@@ -10,7 +10,7 @@
 `endif
 
 // `define COM_DFT_IF input wire [`COM_DFT_W-1:0]
-// `define COM_SYS_IF input wire [`COM_DFT_W-1:0]
+`define COM_SYS_IF input wire [`COM_SYS_W-1:0]
 
 //--------------------------------------------------------------------------------
 //FUNCTION DEFINE

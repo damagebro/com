@@ -5,7 +5,7 @@
 *     Date:   2025/07/05-21:55:05
 *
 *  Description:
-*   valid-only pipeline with data;
+*   valid-only mutl-stage pipeline with data;
 *
 *  Modify:
 *  -
