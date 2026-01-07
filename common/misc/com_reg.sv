@@ -29,12 +29,11 @@ output wire [DW-1:0]            q                   //,
 //reg  declare---------------------------------------------------------------
 //wire declare---------------------------------------------------------------
 //statement------------------------------------------------------------------
-wire [DW-1:0] const_init = DW'(INIT);
 reg  [DW-1:0] rc_q;
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
-        rc_q <= const_init;
+        rc_q <= INIT[DW-1:0];
     else
         rc_q <= d;
 end

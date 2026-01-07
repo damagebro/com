@@ -57,9 +57,9 @@ always @(posedge clk or negedge rst_n) begin
     else if( gnt_hs )
         r_avl_bitmap <= nxt_bitmap;
 end
-com_find_tail1 #(
+com_find_lsb_first_one #(
     .N          ( REQ_N         )  //8
-)u_com_find_tail1
+)u_com_find_lsb_first_one
 (
     .i_req_val            ( select_req           ), //i
     .o_res_onehot         ( o_gnt_onehot         ), //o
