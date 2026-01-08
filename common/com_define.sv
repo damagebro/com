@@ -5,8 +5,8 @@
     `define COM_SYNC_STAGE 3
 `endif
 
-`ifndef COM_SYS_W
-    `define COM_SYS_W 4
+`ifndef SRAM_CFG_W
+    `define SRAM_CFG_W 4
 `endif
 
 // `define COM_DFT_IF input wire [`COM_DFT_W-1:0]

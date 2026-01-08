@@ -25,21 +25,21 @@ input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
 
-input  wire                     ivld                ,
-output wire                     irdy                ,
-input  wire [DW-1:0]            idata               ,
-output wire                     ovld                ,
-input  wire                     ordy                ,
-output wire [DW-1:0]            odata               //,
+input  wire [DW-1:0]            i_rx_data           ,
+input  wire                     i_rx_vld            ,
+output wire                     o_rx_rdy            ,
+output wire [DW-1:0]            o_tx_data           ,
+output wire                     o_tx_vld            ,
+input  wire                     i_tx_rdy            //,
 );
 //localparam-----------------------------------------------------------------
 //reg  declare---------------------------------------------------------------
 //wire declare---------------------------------------------------------------
 //statement------------------------------------------------------------------
 
-wire          wr_en   = ivld && irdy;
-wire [DW-1:0] wr_data = idata;
-wire          rd_en   = ovld && ordy;
+wire          wr_en   = i_rx_vld && o_rx_rdy;
+wire [DW-1:0] wr_data = i_rx_data;
+wire          rd_en   = o_tx_vld && i_tx_rdy;
 wire [DW-1:0] rd_data ;
 wire          wr_full ;
 wire          rd_empty;
@@ -61,9 +61,9 @@ com_sync_fifo_reg #(
     .rd_empty             ( rd_empty             ), //o
     .water_level          (                      )  //spyglass disable PartConnPort-ML,W287b //o,
 );
-assign irdy = !wr_full;
-assign ovld = !rd_empty;
-assign odata = rd_data;
+assign o_rx_rdy = !wr_full;
+assign o_tx_vld = !rd_empty;
+assign o_tx_data = rd_data;
 
 endmodule //end of com_dp_buffer
 `endif //end of com_dp_buffer_v

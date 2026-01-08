@@ -20,18 +20,19 @@
 module com_dp_ram #( parameter
     AW   = 8,
     DW   = 8,
-    DEPTH= 2
+    DEPTH= 2,
+    RX_RDY_REG_OUT = 0//,  if RX_RDY_REG_OUT=1, o_rx_rdy is reg_out, and DEPTH need more 1;
 )(
 input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
 
-input  wire                     ivld                ,
-output wire                     irdy                ,
-input  wire [AW-1:0]            iaddr               ,
-output wire                     ovld                ,
-input  wire                     ordy                ,
-output wire [DW-1:0]            odata               ,
+input  wire [AW-1:0]            i_rx_addr           ,
+input  wire                     i_rx_vld            ,
+output wire                     o_rx_rdy            ,  //if RX_RDY_REG_OUT=0, timing effecy by i_tx_rdy;
+output wire [DW-1:0]            o_tx_data           ,
+output wire                     o_tx_vld            ,
+input  wire                     i_tx_rdy            ,
 
 output wire                     ram_rd_vld          ,
 input  wire                     ram_rd_rdy          ,
@@ -41,8 +42,8 @@ input  wire [DW-1:0]            ram_rd_data         //,
 );
 //localparam-----------------------------------------------------------------
 localparam CW = $clog2(DEPTH+1);
-//reg  declare---------------------------------------------------------------
-//wire declare---------------------------------------------------------------
+//signal declare-------------------------------------------------------------
+wire b_tie_rx_rdy_reg_out = RX_RDY_REG_OUT[0];
 //statement------------------------------------------------------------------
 
 wire          wr_en    = ram_rd_ack;
@@ -71,8 +72,9 @@ com_sync_fifo_reg #(
 );
 
 reg  [CW-1:0] rc_otf_cnt;
-wire [CW-0:0] otf_cnt_nxt = rc_otf_cnt + (ram_rd_vld&&ram_rd_rdy) - ram_rd_ack;  //spyglass disable W164b
-wire upen = (ram_rd_vld&&ram_rd_rdy) || ram_rd_ack;
+wire ram_rd_hs = ram_rd_vld&&ram_rd_rdy;
+wire [CW-1:0] otf_cnt_nxt = rc_otf_cnt + ram_rd_hs - ram_rd_ack; 
+wire upen = ram_rd_hs || ram_rd_ack;
 always @(posedge clk or negedge rst_n)
 begin
     if( !rst_n )
@@ -83,17 +85,17 @@ begin
         rc_otf_cnt <= otf_cnt_nxt;
 end
 
-wire [CW-0:0] wl_t = wl+rd_en;  //spyglass disable W164b
-wire b_rd_avl_flag = {1'b0,rc_otf_cnt}<wl_t;
+wire [CW-0:0] wl_t = wl+rd_en;
+wire b_rd_avl_flag = b_tie_rx_rdy_reg_out ? wl<rc_otf_cnt : {1'b0,rc_otf_cnt}<wl_t;
 
 //out--
-assign ram_rd_vld = ivld && b_rd_avl_flag;
-assign ram_rd_addr= iaddr;
-assign irdy = ram_rd_rdy && b_rd_avl_flag;
+assign ram_rd_vld = i_rx_vld && b_rd_avl_flag;
+assign ram_rd_addr= i_rx_addr;
+assign o_rx_rdy = ram_rd_rdy && b_rd_avl_flag;
 
-assign ovld = !rd_empty;
-assign odata= rd_data;
-assign rd_en= ovld&&ordy;
+assign o_tx_vld = !rd_empty;
+assign o_tx_data= rd_data;
+assign rd_en= o_tx_vld&&i_tx_rdy;
 
 endmodule //end of com_dp_ram
 `endif //end of com_dp_ram_v
