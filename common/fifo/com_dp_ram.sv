@@ -73,7 +73,7 @@ com_sync_fifo_reg #(
 
 reg  [CW-1:0] rc_otf_cnt;
 wire ram_rd_hs = ram_rd_vld&&ram_rd_rdy;
-wire [CW-1:0] otf_cnt_nxt = rc_otf_cnt + ram_rd_hs - ram_rd_ack; 
+wire [CW-1:0] otf_cnt_nxt = rc_otf_cnt + ram_rd_hs - ram_rd_ack;
 wire upen = ram_rd_hs || ram_rd_ack;
 always @(posedge clk or negedge rst_n)
 begin
