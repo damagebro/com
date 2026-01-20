@@ -5,21 +5,21 @@
 //--------------------------------------
 //define
 //--------------------------------------
-$COM_PATH/common/com_define.sv
-$IMPL_PATH/impl_define_sim.sv
+$COM_PATH/com_define.sv
+$IMPL_PATH/define/impl_define_sim.sv
 
 //--------------------------------------
 //impl
 //--------------------------------------
--f $IMPL_PATH/impl_template/com_impl.f
+-f $IMPL_PATH/impl.f
 
 //--------------------------------------
 //com
 //--------------------------------------
--f $COM_PATH/common/com_common.f
-//-f $COM_PATH/csr/com_csr.f
-//-f $COM_PATH/emi/com_emi.f
-//-f $COM_PATH/img/com_img.f
+-f $COM_PATH/filelist/com_common.f
+-f $COM_PATH/filelist/com_axi.f
+// -f $COM_PATH/filelist/com_csr.f
+// -f $COM_PATH/filelist/com_img.f
 
 //--------------------------------------
 //project

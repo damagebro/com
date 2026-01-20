@@ -5,12 +5,9 @@
     `define COM_SYNC_STAGE 3
 `endif
 
-`ifndef SRAM_CFG_W
-    `define SRAM_CFG_W 4
+`ifndef COM_SRAM_W    //if sram config signal bit_width;
+    `define COM_SRAM_W 4
 `endif
-
-// `define COM_DFT_IF input wire [`COM_DFT_W-1:0]
-// `define COM_SYS_IF input wire [`COM_DFT_W-1:0]
 
 //--------------------------------------------------------------------------------
 //FUNCTION DEFINE

@@ -30,8 +30,7 @@ module com_axi_dma #( parameter
 input  wire                         clk                  ,
 input  wire                         rst_n                ,
 input  wire                         clear                ,
-input  wire [`COM_SYS_W-1:0]        mem_cfg              ,
-// input  wire [`COM_SRAM_W-1:0]       i_cfg_sram_ctrl      ,
+input  wire [`COM_SRAM_W-1:0]       mem_cfg              ,  //i_cfg_sram_ctrl
 //cfg&status---
 input  wire [7:0]                   i_cfg_max_blen_m1       , //range=[0:MAX_LEN-1];
 input  wire [RCH-1:0][15:0]         i_cfg_rch_max_rdcmd_osd , //if(i_cfg_max_rdcmd_osd==0), axi_osd=MAX_OSD; else if(i_cfg_max_rdcmd_osd>0), axi_osd=min(MAX_OSD,i_cfg_max_rdcmd_osd,func(BUF_DEPTH,i_cfg_max_blen_m1))

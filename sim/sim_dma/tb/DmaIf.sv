@@ -4,8 +4,6 @@ interface DmaIf(
     import DmaPkg::*;
 
     //cfg&status---
-    logic [WCH-1:0][7:0]      wdma_burst_len     ;
-    logic [RCH-1:0][7:0]      rdma_burst_len     ;
     logic [7:0]               axi_burst_len      ;
     logic                     clr_ongoing        ;
     //bus
@@ -24,17 +22,17 @@ interface DmaIf(
     logic [RCH-1:0]             bus_rd_valid     ;
     logic [RCH-1:0]             bus_rd_ready     ;
     logic [RCH-1:0][BUS_DW-1:0] bus_rd_data      ;
-    logic [RCH-1:0]             bus_rd_done      ;
+    logic [RCH-1:0]             bus_rd_last      ;
 
     clocking cb @ (posedge clk);
-        output wdma_burst_len,rdma_burst_len,axi_burst_len;
+        output axi_burst_len;
         input  clr_ongoing;
 
         output bus_wa_addr,bus_wa_bytelen,bus_wa_valid,  bus_wd_data,bus_wd_valid;
         input  bus_wa_ready,  bus_wd_ready,  bus_wb_resp;
 
         output bus_ra_addr,bus_ra_bytelen,bus_ra_valid,  bus_rd_ready;
-        input  bus_ra_ready,  bus_rd_data,bus_rd_valid,  bus_rd_done;
+        input  bus_ra_ready,  bus_rd_data,bus_rd_valid,  bus_rd_last;
     endclocking
     // modport tx(clocking cb);
 endinterface //DmaIf

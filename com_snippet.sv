@@ -86,6 +86,15 @@ assign csr_ifs.CSRValid  = csr_valid;
 assign csr_ready = csr_ifs.CSRReady ;
 assign csr_rdata = csr_ifs.CSRRdData;
 
+input  wire [AW-1:0]            ebus_wa_addr         ,
+input  wire [LW-1:0]            ebus_wa_bytelen      ,
+input  wire                     ebus_wa_valid        ,
+output wire                     ebus_wa_ready        ,
+input  wire [DW-1:0]            ebus_wd_data         ,
+input  wire                     ebus_wd_valid        ,
+output wire                     ebus_wd_ready        ,
+output wire                     ebus_wb_resp         ,
+
 //bus wr interface---
 output wire [EMI_AW-1:0]        bus_wa_addr         ,
 output wire [EMI_LW-1:0]        bus_wa_bytelen      ,
