@@ -16,18 +16,14 @@
 *
 ******************************************************************************/
 
-//`include "com_sync_fifo_reg.v"
-
-`ifndef com_sync_fifo_ram_2p1ck_v
-`define com_sync_fifo_ram_2p1ck_v
 module com_sync_fifo_ram_2p1ck #( parameter
     DW  = 8,
     RAM_DEPTH = 4, //ram_depth
     IN_DEPTH  = 0,
     OUT_DEPTH = 3,
-    TOL_DEPTH = RAM_DEPTH+IN_DEPTH+OUT_DEPTH,
-    TOL_AW    = $clog2(TOL_DEPTH+1),
-    RAM_AW    = $clog2(RAM_DEPTH)//,
+    localparam TOL_DEPTH = RAM_DEPTH+IN_DEPTH+OUT_DEPTH,
+    localparam TOL_AW    = $clog2(TOL_DEPTH+1),
+    localparam RAM_AW    = $clog2(RAM_DEPTH)//,
 )
 (
 input  wire                     clk                 ,
@@ -218,5 +214,4 @@ end//end of else(RAM_DEPTH)
 endgenerate
 
 endmodule //end of com_sync_fifo_ram_2p1ck
-`endif //end of com_sync_fifo_ram_2p1ck_v
 

@@ -19,18 +19,15 @@
 *
 ******************************************************************************/
 
-`ifndef com_sync_fifo_ram_1p2bank_v
-`define com_sync_fifo_ram_1p2bank_v
 module com_sync_fifo_ram_1p2bank #( parameter
     RAM_RD_DELAY = 1, //ram read cmd req->read data ack delay cycles, range=[1:8]
     DW        = 8,
     RAM_DEPTH = 4, //fifo_ram depth    , range=[0::2]
     OUT_DEPTH = 3, //out fifo_reg depth, range=[2+RAM_RD_DELAY::]
-    //localparam in param_list feature support after verilog2009, need verdi "-2009" option; to prevant localparam ambiguous in eda software, still use parameter bellow:
-    parameter RAM_ONE_DEPTH = RAM_DEPTH/2,
-    parameter TOL_DEPTH     = RAM_DEPTH+OUT_DEPTH,
-    parameter TOL_CW        = $clog2(TOL_DEPTH+1),
-    parameter RAM_ONE_AW    = $clog2(RAM_ONE_DEPTH>2?RAM_ONE_DEPTH:2)//,
+    localparam RAM_ONE_DEPTH = RAM_DEPTH/2,
+    localparam TOL_DEPTH     = RAM_DEPTH+OUT_DEPTH,
+    localparam TOL_CW        = $clog2(TOL_DEPTH+1),
+    localparam RAM_ONE_AW    = $clog2(RAM_ONE_DEPTH>2?RAM_ONE_DEPTH:2)//,
 )
 (
 input  wire                       clk               ,
@@ -243,5 +240,4 @@ end//end of else(RAM_DEPTH)
 endgenerate
 
 endmodule //end of com_sync_fifo_ram_1p2bank
-`endif //end of com_sync_fifo_ram_1p2bank_v
 

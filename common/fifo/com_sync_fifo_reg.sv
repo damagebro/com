@@ -8,18 +8,15 @@
 *  -
 *
 *  Modify:
-*  -2020/09/21, modify by ty:
-*   when rd_empty, rd_data=0; to prevent x_state propagate
+*
+*
 *
 ******************************************************************************/
 
-`ifndef com_sync_fifo_reg_v
-`define com_sync_fifo_reg_v
 module com_sync_fifo_reg #( parameter
     DW    = 8,
     DEPTH = 4,
-    //localparam in param_list feature support after verilog2009, need verdi "-2009" option; to prevant localparam ambiguous in eda software, still use parameter bellow:
-    parameter CW = $clog2(DEPTH+1)
+    localparam CW = $clog2(DEPTH+1)
 )
 (
 input  wire                     clk                 ,
@@ -119,4 +116,3 @@ end
 `COM_SIGNAL_ASSERT_LITE( a1, rd_en,!rd_empty, "fifo read when empty"  );
 
 endmodule //end of com_sync_fifo_reg
-`endif //end of com_sync_fifo_reg_v

@@ -73,9 +73,9 @@ if( RDY_PIPE_EN )begin:gen_rdy_pipe
     );
 end:gen_rdy_pipe
 else begin:gen_no_rdy_pipe
-    u_rdy_o_tx_dat = u_rdy_i_rx_dat;
-    u_rdy_o_tx_vld = u_rdy_i_rx_vld;
-    u_rdy_o_rx_rdy = u_rdy_i_tx_rdy;
+    assign u_rdy_o_tx_dat = u_rdy_i_rx_dat;
+    assign u_rdy_o_tx_vld = u_rdy_i_rx_vld;
+    assign u_rdy_o_rx_rdy = u_rdy_i_tx_rdy;
 end:gen_no_rdy_pipe
 if( VLD_PIPE_EN )begin:gen_vld_pipe
     reg  [DW-1:0] r_vld_rx_dat;
