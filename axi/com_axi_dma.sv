@@ -19,6 +19,7 @@ module com_axi_dma #( parameter
     AW          = 32  , //range=[8:64]
     DW          = 128 , //range=[8::2^n]
     EBUS_LW     = 32  , //range=[8:AW] ebus max_burst_bytelen.bit_width;
+    IW          = 4   , //range=[$clog2(max(WCH,RCH)):16],  axi_id bit_width;
     LW          = 8   , //range=[1:8], axi  max_burst_wordlen.bit_width;
     UW          = 1   , //range=[1:],  ebus_axusr and axi_axusr, axuser go-though this module;
     BOUND_BYTES = 4096, //range=[DW/8:4096:2^n], addr boundary split bytesize;
@@ -247,7 +248,7 @@ for( genvar gi=0; gi<RCH; gi++ )begin:gen_rch
     localparam RAM_FIFO_DEPTH = BUF_DEPTH>RCH_MAX_REG_FIFO_DEPTH ? BUF_DEPTH-RCH_MAX_REG_FIFO_DEPTH  : 0;
     localparam RAM_ONE_DEPTH  = RAM_FIFO_DEPTH/2;
     localparam RAM_ONE_AW     = $clog2(RAM_ONE_DEPTH>2?RAM_ONE_DEPTH:2);
-    localparam RAM_DW         = DW + 1 //, //{rlast,rdata}
+    localparam RAM_DW         = DW + 1; //{rlast,rdata}
     wire [1:0]                 u_extd_rd_o_rdfifo_ram_cen     ;
     wire [1:0]                 u_extd_rd_o_rdfifo_ram_we      ;
     wire [1:0][RAM_ONE_AW-1:0] u_extd_rd_o_rdfifo_ram_addr    ;

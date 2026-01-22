@@ -1,0 +1,113 @@
+Magic 271485
+Revision Verdi3_L-2016.06-1
+
+; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
+viewPort 0 28 3840 841 563 171
+
+; File list:
+; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
+openDirFile -d / "" "/home/damage/proj/dmg/git/demo/rtl/com/sim/sim_ebus/bin/run.fsdb"
+
+; file time scale:
+; fileTimeScale ### s|ms|us|ns|ps
+
+; signal spacing:
+signalSpacing 5
+
+; windowTimeUnit is used for zoom, cursor & marker
+windowTimeUnit 1ns
+
+; waveform viewport range
+zoom 0.000000 20246.460000 1n
+cursor 50.000000
+marker 46.000000
+
+; user define markers
+; userMarker time_pos marker_name color linestyle
+; visible top row signal index
+top 0
+; marker line index
+markerPos 56
+
+; event list
+; addEvent event_name event_expression
+; curEvent event_name
+
+
+
+COMPLEX_EVENT_BEGIN
+
+
+COMPLEX_EVENT_END
+
+
+
+; toolbar current search type
+; curSTATUS search_type
+curSTATUS ByChange
+
+
+addGroup "G1"
+activeDirFile "" "/home/damage/proj/dmg/git/demo/rtl/com/sim/sim_ebus/bin/run.fsdb"
+addSignal -h 15 /top/u_com_emi_extd_wr/ebus_wa_user[0:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope ebus_wa_addr[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope ebus_wa_bytelen[31:0]
+addSignal -h 15 -holdScope ebus_wa_valid
+addSignal -h 15 -holdScope ebus_wa_ready
+addSignal -h 15 -UNSIGNED -HEX -holdScope ebus_wd_data[127:0]
+addSignal -h 15 -holdScope ebus_wd_valid
+addSignal -h 15 -holdScope ebus_wd_ready
+addSignal -h 15 -holdScope ebus_wb_valid
+addSignal -h 15 /BLANK
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_emi_extd_wr/axi_awaddr[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope axi_awlen[7:0]
+addSignal -h 15 -holdScope axi_awuser[0:0]
+addSignal -h 15 -holdScope axi_awvalid
+addSignal -h 15 -holdScope axi_awready
+addSignal -h 15 /BLANK
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_emi_extd_wr/axi_wdata[127:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope axi_wstrb[15:0]
+addSignal -h 15 -holdScope axi_wlast
+addSignal -h 15 -holdScope axi_wvalid
+addSignal -h 15 -holdScope axi_wready
+addSignal -h 15 -holdScope axi_bvalid
+addSignal -h 15 -holdScope axi_bready
+addSignal -h 15 /BLANK
+addSignal -h 15 -holdScope BLANK
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_emi_extd_wr/r_cmd_burst_cnt[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope r_dat_burst_cnt[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope r_rsp_burst_cnt[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope r_cmd_beat_cnt[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope r_dat_beat_cnt[31:0]
+addGroup "G2"
+addSignal -h 15 /top/u_com_emi_extd_rd/ebus_ra_user[0:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope ebus_ra_addr[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope ebus_ra_bytelen[31:0]
+addSignal -h 15 -holdScope ebus_ra_valid
+addSignal -h 15 -holdScope ebus_ra_ready
+addSignal -h 15 -UNSIGNED -HEX -holdScope ebus_rd_data[127:0]
+addSignal -h 15 -holdScope ebus_rd_last
+addSignal -h 15 -holdScope ebus_rd_valid
+addSignal -h 15 -holdScope ebus_rd_ready
+addSignal -h 15 /BLANK
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_emi_extd_rd/axi_araddr[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope axi_arlen[7:0]
+addSignal -h 15 -holdScope axi_aruser[0:0]
+addSignal -h 15 -holdScope axi_arvalid
+addSignal -h 15 -holdScope axi_arready
+addSignal -h 15 /BLANK
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_emi_extd_rd/axi_rdata[127:0]
+addSignal -h 15 -holdScope axi_rlast
+addSignal -h 15 -holdScope axi_rvalid
+addSignal -h 15 -holdScope axi_rready
+addSignal -h 15 /BLANK
+addSignal -h 15 -UNSIGNED -HEX /top/u_com_emi_extd_rd/r_cmd_burst_cnt[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope r_dat_burst_cnt[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope r_cmd_beat_cnt[31:0]
+addSignal -h 15 -UNSIGNED -HEX -holdScope r_dat_beat_cnt[31:0]
+addSignal -h 15 /BLANK
+addGroup "G3"
+
+; getSignalForm Scope Hierarchy Status
+; active file of getSignalForm
+

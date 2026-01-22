@@ -114,7 +114,7 @@ com_arbiter_rr #(
 //wd channel----
 assign u_wa2wd_i_wr_en   = o_tx_axi_awvalid && i_tx_axi_awready;
 assign u_wa2wd_i_wr_data = u_arb_o_gnt_idx;
-assign u_wa2wd_i_rd_en   = o_tx_axi_wvalid && i_tx_axi_wready && tx_wlast;
+assign u_wa2wd_i_rd_en   = o_tx_axi_wvalid && i_tx_axi_wready && o_tx_axi_wlast;
 com_sync_fifo_reg #(
     .DW         ( WCH_L2         ), //8
     .DEPTH      ( WA2WD_DEPTH    )  //4

@@ -28,12 +28,14 @@ input  wire                     rst_n               ,
 input  wire                     i_ps_axi_terminate  , //pulse signal
 output wire                     o_sta_clr_ongoing   , //level signal
 //axi
+output wire [IW-1:0]            i_rx_axi_arid       ,
 input  wire [AW-1:0]            i_rx_axi_araddr     ,
 input  wire [LW-1:0]            i_rx_axi_arlen      ,
 input  wire [UW-1:0]            i_rx_axi_aruser     ,
 input  wire                     i_rx_axi_arvalid    ,
 output wire                     o_rx_axi_arready    ,
 output wire [1:0]               o_rx_axi_rresp      ,
+output wire [IW-1:0]            o_rx_axi_rid        ,
 output wire [DW-1:0]            o_rx_axi_rdata      ,
 output wire                     o_rx_axi_rlast      ,
 output wire                     o_rx_axi_rvalid     ,

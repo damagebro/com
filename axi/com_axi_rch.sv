@@ -84,6 +84,7 @@ wire [UW-1:0]            u_clr_i_rx_axi_aruser     ;
 wire                     u_clr_i_rx_axi_arvalid    ;
 wire                     u_clr_o_rx_axi_arready    ;
 wire [1:0]               u_clr_o_rx_axi_rresp      ;
+wire [IW-1:0]            u_clr_o_rx_axi_rid        ;
 wire [DW-1:0]            u_clr_o_rx_axi_rdata      ;
 wire                     u_clr_o_rx_axi_rlast      ;
 wire                     u_clr_o_rx_axi_rvalid     ;
@@ -107,6 +108,7 @@ wire [UW-1:0]            u_regslice_i_rx_axi_aruser   ;
 wire                     u_regslice_i_rx_axi_arvalid  ;
 wire                     u_regslice_o_rx_axi_arready  ;
 wire [1:0]               u_regslice_o_rx_axi_rresp    ;
+wire [IW-1:0]            u_regslice_o_rx_axi_rid      ;
 wire [DW-1:0]            u_regslice_o_rx_axi_rdata    ;
 wire                     u_regslice_o_rx_axi_rlast    ;
 wire                     u_regslice_o_rx_axi_rvalid   ;
@@ -184,6 +186,7 @@ com_axi_rch_arb #(
     .o_tx_axi_rready     ( u_arb_o_tx_axi_rready  )  //o
 );
 
+assign u_clr_i_rx_axi_arid     = u_arb_o_tx_axi_arid         ;
 assign u_clr_i_rx_axi_araddr   = u_arb_o_tx_axi_araddr       ;
 assign u_clr_i_rx_axi_arlen    = u_arb_o_tx_axi_arlen        ;
 assign u_clr_i_rx_axi_aruser   = u_arb_o_tx_axi_aruser       ;
@@ -208,12 +211,14 @@ com_axi_rch_clr #(
     .rst_n               ( rst_n                  ), //i
     .i_ps_axi_terminate  ( clear                  ), //i
     .o_sta_clr_ongoing   ( o_sta_clr_ongoing      ), //o
+    .i_rx_axi_arid       ( u_clr_i_rx_axi_arid    ), //i
     .i_rx_axi_araddr     ( u_clr_i_rx_axi_araddr  ), //i
     .i_rx_axi_arlen      ( u_clr_i_rx_axi_arlen   ), //i
     .i_rx_axi_aruser     ( u_clr_i_rx_axi_aruser  ), //i
     .i_rx_axi_arvalid    ( u_clr_i_rx_axi_arvalid ), //i
     .o_rx_axi_arready    ( u_clr_o_rx_axi_arready ), //o
     .o_rx_axi_rresp      ( u_clr_o_rx_axi_rresp   ), //o
+    .o_rx_axi_rid        ( u_clr_o_rx_axi_rid     ), //o
     .o_rx_axi_rdata      ( u_clr_o_rx_axi_rdata   ), //o
     .o_rx_axi_rlast      ( u_clr_o_rx_axi_rlast   ), //o
     .o_rx_axi_rvalid     ( u_clr_o_rx_axi_rvalid  ), //o
@@ -262,6 +267,7 @@ com_axi_rch_regslice #(
     .i_rx_axi_arvalid    ( u_regslice_i_rx_axi_arvalid     ), //i
     .o_rx_axi_arready    ( u_regslice_o_rx_axi_arready     ), //o
     .o_rx_axi_rresp      ( u_regslice_o_rx_axi_rresp       ), //o
+    .o_rx_axi_rid        ( u_regslice_o_rx_axi_rid         ), //o
     .o_rx_axi_rdata      ( u_regslice_o_rx_axi_rdata       ), //o
     .o_rx_axi_rlast      ( u_regslice_o_rx_axi_rlast       ), //o
     .o_rx_axi_rvalid     ( u_regslice_o_rx_axi_rvalid      ), //o

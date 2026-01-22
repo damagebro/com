@@ -155,7 +155,7 @@ assign u_wb_i_tx_rdy = i_rx_axi_bready;
 com_dp_buffer #(
     .DW         ( WB_FIFO_DW  ), //8
     .DEPTH      ( 2           )  //2
-)zr_com_dp_buffer_wa
+)zr_com_dp_buffer_wb
 (
     .clk                  ( clk                  ), //i
     .rst_n                ( rst_n                ), //i
@@ -174,6 +174,7 @@ if( WA_BEFORE_WD_EN>0 )begin
     reg  [LW-1:0] r_wcnt;
     wire [LW-0:0] wcnt_p1 = r_wcnt+1'b1;
     wire b_wcnt_end = wcnt_p1>={1'b0, u_wa_before_wd_o_rd_data};
+    wire tx_whs = o_tx_axi_wvalid && i_tx_axi_wready;
     always @(posedge clk or negedge rst_n) begin
         if( !rst_n )
             r_wcnt <= '0;
@@ -193,7 +194,7 @@ if( WA_BEFORE_WD_EN>0 )begin
     assign b_wa_before_wd_tx_wlast = u_wa_before_wd_o_rd_data=='0 ? 1'b1 : r_wa_before_wd_tx_wlast;  //take some timing_path, maybe update later by user com_sync_fifo_reg_v2(prefetch);
     assign u_wa_before_wd_i_wr_en   = i_rx_axi_awvalid && o_rx_axi_wready;
     assign u_wa_before_wd_i_wr_data = i_rx_axi_awlen;
-    assign u_wa_before_wd_i_rd_en   = o_tx_axi_wvalid&&i_tx_axi_wready&&o_tx_axi_wlast;
+    assign u_wa_before_wd_i_rd_en   = tx_whs&&o_tx_axi_wlast;
     com_sync_fifo_reg #(
         .DW         ( 1                  ), //8
         .DEPTH      ( WA_BEFORE_WD_DEPTH )  //4

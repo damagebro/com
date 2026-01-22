@@ -70,12 +70,12 @@ wire [RCH-1:0] rid_onehot = RCH'('b1)<<tmp_rid;
 assign o_rx_axi_rresp  = {RCH{i_tx_axi_rresp}};
 assign o_rx_axi_rdata  = {RCH{i_tx_axi_rdata}};
 assign o_rx_axi_rvalid = {RCH{i_tx_axi_rvalid}} & rid_onehot[tmp_rid];
-assign o_tx_axi_rready = i_rx_axi_bready[tmp_rid];
+assign o_tx_axi_rready = i_rx_axi_rready[tmp_rid];
 
 //ra channel---
 assign u_arb_i_req_vld = i_rx_axi_arvalid;
 com_arbiter_rr #(
-    .REQ_N    ( WCH )  //2
+    .REQ_N    ( RCH )  //2
 )zr_com_arbiter_rr(
     .clk                 ( clk                  ), //i
     .rst_n               ( rst_n                ), //i

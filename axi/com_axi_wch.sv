@@ -142,6 +142,7 @@ wire                     u_regslice_o_tx_axi_awvalid  ;
 wire                     u_regslice_i_tx_axi_awready  ;
 wire [DW-1:0]            u_regslice_o_tx_axi_wdata    ;
 wire [DW/8-1:0]          u_regslice_o_tx_axi_wstrb    ;
+wire                     u_regslice_o_tx_axi_wlast    ;
 wire                     u_regslice_o_tx_axi_wvalid   ;
 wire                     u_regslice_i_tx_axi_wready   ;
 wire [1:0]               u_regslice_i_tx_axi_bresp    ;

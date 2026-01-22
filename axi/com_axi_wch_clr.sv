@@ -20,7 +20,7 @@ module com_axi_wch_clr #( parameter
     LW      = 8         ,  //range=[1:8]
     UW      = 1         ,
     MAX_LEN = 4         ,   //range=[1:256], max burst_len, not minus 1;
-    MAX_OSD = 16        //, //max burst(cmd) outstandint;
+    MAX_OSD = 16        , //max burst(cmd) outstandint;
     localparam SW = DW/8//,
 )
 (

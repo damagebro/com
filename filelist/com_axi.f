@@ -1,0 +1,11 @@
+$COM_PATH/axi/com_axi_dma.sv
+$COM_PATH/axi/com_axi_extd_rd.sv
+$COM_PATH/axi/com_axi_extd_wr.sv
+$COM_PATH/axi/com_axi_rch_arb.sv
+$COM_PATH/axi/com_axi_rch_clr.sv
+$COM_PATH/axi/com_axi_rch_regslice.sv
+$COM_PATH/axi/com_axi_rch.sv
+$COM_PATH/axi/com_axi_wch_arb.sv
+$COM_PATH/axi/com_axi_wch_clr.sv
+$COM_PATH/axi/com_axi_wch_regslice.sv
+$COM_PATH/axi/com_axi_wch.sv
