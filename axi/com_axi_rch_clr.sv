@@ -78,6 +78,7 @@ assign o_rx_axi_arready  = r_clr_flag ? 1'b0 : i_tx_axi_arready ;
 assign o_rx_axi_rid     = i_tx_axi_rid   ;
 assign o_rx_axi_rresp   = i_tx_axi_rresp ;
 assign o_rx_axi_rdata   = i_tx_axi_rdata ;
+assign o_rx_axi_rlast   = i_tx_axi_rlast ;
 assign o_rx_axi_rvalid  = r_clr_flag ? 1'b0 : i_tx_axi_rvalid;
 assign o_tx_axi_rready  = r_clr_flag ? 1'b0 : i_rx_axi_rready;
 

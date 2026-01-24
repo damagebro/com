@@ -36,7 +36,7 @@ input  wire [7:0]               i_cfg_max_blen_m1    , //max burst_len
 input  wire [15:0]              i_cfg_max_rdcmd_osd  , //if(i_cfg_max_rdcmd_osd==0), axi_osd=MAX_OSD; else if(i_cfg_max_rdcmd_osd>0), axi_osd=min(MAX_OSD,i_cfg_max_rdcmd_osd,func(BUF_DEPTH,i_cfg_max_blen_m1))
 output wire [15:0]              o_sta_rdbuf_wl       , //the status of rdbuf water_level signal, wl is remain space of rd_buf;
 //sram--
-output wire [1:0]                 o_rdfifo_ram_cen     ,
+output wire [1:0]                 o_rdfifo_ram_ce_n    ,
 output wire [1:0]                 o_rdfifo_ram_we      ,
 output wire [1:0][RAM_ONE_AW-1:0] o_rdfifo_ram_addr    ,
 output wire [1:0][RAM_DW-1:0]     o_rdfifo_ram_wr_data ,
@@ -229,7 +229,7 @@ if( BUF_DEPTH>0 )begin:gen_rdbuf
         .rd_data              ( u_rdfifo_rd_data           ), //o
         .rd_empty             ( u_rdfifo_rd_empty          ), //o
         .water_level          ( u_rdfifo_water_level       ), //o
-        .ram_cen              ( o_rdfifo_ram_cen           ), //o
+        .ram_cen              ( o_rdfifo_ram_ce_n          ), //o
         .ram_we               ( o_rdfifo_ram_we            ), //o
         .ram_addr             ( o_rdfifo_ram_addr          ), //o
         .ram_din              ( o_rdfifo_ram_wr_data       ), //o
@@ -244,7 +244,7 @@ else begin:gen_no_rdbuf
     assign u_rdfifo_rd_en    = '0;
     assign u_rdfifo_rd_data  = '0;
     assign u_rdfifo_rd_empty = '0;
-    assign o_rdfifo_ram_cen     = '0;
+    assign o_rdfifo_ram_ce_n    = '0;
     assign o_rdfifo_ram_we      = '0;
     assign o_rdfifo_ram_addr    = '0;
     assign o_rdfifo_ram_wr_data = '0;

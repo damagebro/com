@@ -97,6 +97,7 @@ assign o_tx_axi_bready = i_rx_axi_bready[tmp_bid];
 
 //wa channel---
 assign u_arb_i_req_vld = i_rx_axi_awvalid;
+assign u_arb_i_gnt_rdy = i_tx_axi_awready;
 com_arbiter_rr #(
     .REQ_N    ( WCH )  //2
 )zr_com_arbiter_rr(

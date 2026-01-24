@@ -180,6 +180,7 @@ assign u_arb_i_rx_axi_bready   = i_rx_axi_bready ;
 assign u_arb_i_tx_axi_awready = u_clr_o_rx_axi_awready ;
 assign u_arb_i_tx_axi_wready  = u_clr_o_rx_axi_wready  ;
 assign u_arb_i_tx_axi_bresp   = u_clr_o_rx_axi_bresp   ;
+assign u_arb_i_tx_axi_bid     = u_clr_o_rx_axi_bid     ;
 assign u_arb_i_tx_axi_bvalid  = u_clr_o_rx_axi_bvalid  ;
 com_axi_wch_arb #(
     .AW                             ( AW                            ), //32
@@ -234,6 +235,7 @@ assign u_clr_i_rx_axi_bready   = u_arb_o_tx_axi_bready ;
 assign u_clr_i_tx_axi_awready = u_regslice_o_rx_axi_awready ;
 assign u_clr_i_tx_axi_wready  = u_regslice_o_rx_axi_wready  ;
 assign u_clr_i_tx_axi_bresp   = u_regslice_o_rx_axi_bresp   ;
+assign u_clr_i_tx_axi_bid     = u_regslice_o_rx_axi_bid     ;
 assign u_clr_i_tx_axi_bvalid  = u_regslice_o_rx_axi_bvalid  ;
 com_axi_wch_clr #(
     .AW                             ( AW                            ), //32
@@ -290,6 +292,7 @@ assign u_regslice_i_rx_axi_bready   = u_clr_o_tx_axi_bready ;
 assign u_regslice_i_tx_axi_awready = i_tx_axi_awready ;
 assign u_regslice_i_tx_axi_wready  = i_tx_axi_wready  ;
 assign u_regslice_i_tx_axi_bresp   = i_tx_axi_bresp   ;
+assign u_regslice_i_tx_axi_bid     = i_tx_axi_bid     ;
 assign u_regslice_i_tx_axi_bvalid  = i_tx_axi_bvalid  ;
 com_axi_wch_regslice #(
     .AW                             ( AW                            ), //32

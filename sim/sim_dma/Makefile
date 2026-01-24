@@ -52,7 +52,7 @@ run:
 all: clean com run
 
 verdi:
-	cd ./bin/; verdi -top top -f $(RTL_F) -f $(ENV_F) -ssf run.fsdb -sswr ${SIM_DIR}/wave/signal.rc -sverilog -full64 &
+	cd ./bin/; verdi -top top -f $(RTL_F) -f $(ENV_F) -ssf run.fsdb -sswr ${SIM_DIR}/wave/signal.rc -sverilog -full64 -2009 &
 
 #cdns####################################################################################
 CDNS_DEF = +define+ADD_REPORT

@@ -292,8 +292,6 @@ function DmaDrv::gen_rch_pattern();
 endfunction:gen_rch_pattern
 task DmaDrv::dma_config();
     @(m_dma_vif.cb );
-    m_dma_vif.cb.wdma_burst_len <= 8'd7;
-    m_dma_vif.cb.rdma_burst_len <= 8'd7;
     m_dma_vif.cb.axi_burst_len  <= 8'd7;
 endtask:dma_config
 task DmaDrv::dma_stim_wa( StuCmd cmd );

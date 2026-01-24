@@ -192,11 +192,11 @@ if( WA_BEFORE_WD_EN>0 )begin
             r_wa_before_wd_tx_wlast <= 1'b1;
     end
     assign b_wa_before_wd_tx_wlast = u_wa_before_wd_o_rd_data=='0 ? 1'b1 : r_wa_before_wd_tx_wlast;  //take some timing_path, maybe update later by user com_sync_fifo_reg_v2(prefetch);
-    assign u_wa_before_wd_i_wr_en   = i_rx_axi_awvalid && o_rx_axi_wready;
+    assign u_wa_before_wd_i_wr_en   = i_rx_axi_awvalid && o_rx_axi_awready;
     assign u_wa_before_wd_i_wr_data = i_rx_axi_awlen;
     assign u_wa_before_wd_i_rd_en   = tx_whs&&o_tx_axi_wlast;
     com_sync_fifo_reg #(
-        .DW         ( 1                  ), //8
+        .DW         ( LW                 ), //8
         .DEPTH      ( WA_BEFORE_WD_DEPTH )  //4
     )zr_com_sync_fifo_reg_wa_before_wd
     (

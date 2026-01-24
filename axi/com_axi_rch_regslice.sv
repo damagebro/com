@@ -27,7 +27,7 @@ input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
 //axi
-output wire [IW-1:0]            i_rx_axi_arid       ,
+input  wire [IW-1:0]            i_rx_axi_arid       ,
 input  wire [AW-1:0]            i_rx_axi_araddr     ,
 input  wire [LW-1:0]            i_rx_axi_arlen      ,
 input  wire [UW-1:0]            i_rx_axi_aruser     ,

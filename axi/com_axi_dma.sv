@@ -19,8 +19,8 @@ module com_axi_dma #( parameter
     AW          = 32  , //range=[8:64]
     DW          = 128 , //range=[8::2^n]
     EBUS_LW     = 32  , //range=[8:AW] ebus max_burst_bytelen.bit_width;
-    IW          = 4   , //range=[$clog2(max(WCH,RCH)):16],  axi_id bit_width;
     LW          = 8   , //range=[1:8], axi  max_burst_wordlen.bit_width;
+    IW          = 4   , //range=[$clog2(max(WCH,RCH)):16],  axi_id bit_width;
     UW          = 1   , //range=[1:],  ebus_axusr and axi_axusr, axuser go-though this module;
     BOUND_BYTES = 4096, //range=[DW/8:4096:2^n], addr boundary split bytesize;
     MAX_OSD     = 128 , //range=[1:1024], max axi_cmd outstanding num
@@ -249,7 +249,7 @@ for( genvar gi=0; gi<RCH; gi++ )begin:gen_rch
     localparam RAM_ONE_DEPTH  = RAM_FIFO_DEPTH/2;
     localparam RAM_ONE_AW     = $clog2(RAM_ONE_DEPTH>2?RAM_ONE_DEPTH:2);
     localparam RAM_DW         = DW + 1; //{rlast,rdata}
-    wire [1:0]                 u_extd_rd_o_rdfifo_ram_cen     ;
+    wire [1:0]                 u_extd_rd_o_rdfifo_ram_ce_n    ;
     wire [1:0]                 u_extd_rd_o_rdfifo_ram_we      ;
     wire [1:0][RAM_ONE_AW-1:0] u_extd_rd_o_rdfifo_ram_addr    ;
     wire [1:0][RAM_DW-1:0]     u_extd_rd_o_rdfifo_ram_wr_data ;
@@ -271,11 +271,11 @@ for( genvar gi=0; gi<RCH; gi++ )begin:gen_rch
         .i_cfg_max_blen_m1   ( i_cfg_max_blen_m1       ), //i
         .i_cfg_max_rdcmd_osd ( i_cfg_rch_max_rdcmd_osd [gi] ), //i
         .o_sta_rdbuf_wl      ( o_sta_rch_rdbuf_wl      [gi] ), //o
-        .o_rdfifo_ram_cen    ( o_rdfifo_ram_cen             ), //o
-        .o_rdfifo_ram_we     ( o_rdfifo_ram_we              ), //o
-        .o_rdfifo_ram_addr   ( o_rdfifo_ram_addr            ), //o
-        .o_rdfifo_ram_wr_data( o_rdfifo_ram_wr_data         ), //o
-        .i_rdfifo_ram_rd_data( i_rdfifo_ram_rd_data         ), //i
+        .o_rdfifo_ram_ce_n   ( u_extd_rd_o_rdfifo_ram_ce_n    ), //o
+        .o_rdfifo_ram_we     ( u_extd_rd_o_rdfifo_ram_we      ), //o
+        .o_rdfifo_ram_addr   ( u_extd_rd_o_rdfifo_ram_addr    ), //o
+        .o_rdfifo_ram_wr_data( u_extd_rd_o_rdfifo_ram_wr_data ), //o
+        .i_rdfifo_ram_rd_data( u_extd_rd_i_rdfifo_ram_rd_data ), //i
         .ebus_ra_user        ( i_rx_ebus_ra_user         [gi] ), //i
         .ebus_ra_addr        ( i_rx_ebus_ra_addr         [gi] ), //i
         .ebus_ra_bytelen     ( i_rx_ebus_ra_bytelen      [gi] ), //i
@@ -295,19 +295,24 @@ for( genvar gi=0; gi<RCH; gi++ )begin:gen_rch
         .axi_rvalid          ( u_extd_rd_i_tx_axi_rvalid [gi] ), //i
         .axi_rready          ( u_extd_rd_o_tx_axi_rready [gi] )  //o
     );
-    com_spram_cell #(
+    if( RAM_ONE_DEPTH>0 )begin:gen_rch_sram
+    com_spram_shell #(
         .DATA_W     ( RAM_DW        ), //32
         .DEPTH      ( RAM_ONE_DEPTH )//, //512
-    )zt_com_spram_cell[1:0]
+    )zt_com_spram_shell[1:0]
     (
         .clk                  ( clk                  ), //i
         .mem_cfg              ( mem_cfg              ), //i
-        .cen                  ( u_extd_rd_o_rdfifo_ram_cen     ), //i
+        .ce_n                 ( u_extd_rd_o_rdfifo_ram_ce_n    ), //i
         .we                   ( u_extd_rd_o_rdfifo_ram_we      ), //i
         .addr                 ( u_extd_rd_o_rdfifo_ram_addr    ), //i
-        .din                  ( u_extd_rd_o_rdfifo_ram_wr_data ), //i
-        .qout                 ( u_extd_rd_i_rdfifo_ram_rd_data )  //o
+        .wr_data              ( u_extd_rd_o_rdfifo_ram_wr_data ), //i
+        .rd_data              ( u_extd_rd_i_rdfifo_ram_rd_data )  //o
     );
+    end:gen_rch_sram
+    else begin
+        assign u_extd_rd_i_rdfifo_ram_rd_data = '0;
+    end
 end:gen_rch
 endgenerate
 

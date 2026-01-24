@@ -78,6 +78,7 @@ wire                     u_arb_i_tx_axi_rlast      ;
 wire                     u_arb_i_tx_axi_rvalid     ;
 wire                     u_arb_o_tx_axi_rready     ;
 
+wire [IW-1:0]            u_clr_i_rx_axi_arid       ;
 wire [AW-1:0]            u_clr_i_rx_axi_araddr     ;
 wire [LW-1:0]            u_clr_i_rx_axi_arlen      ;
 wire [UW-1:0]            u_clr_i_rx_axi_aruser     ;
@@ -102,6 +103,7 @@ wire                     u_clr_i_tx_axi_rlast      ;
 wire                     u_clr_i_tx_axi_rvalid     ;
 wire                     u_clr_o_tx_axi_rready     ;
 
+wire [IW-1:0]            u_regslice_i_rx_axi_arid     ;
 wire [AW-1:0]            u_regslice_i_rx_axi_araddr   ;
 wire [LW-1:0]            u_regslice_i_rx_axi_arlen    ;
 wire [UW-1:0]            u_regslice_i_rx_axi_aruser   ;
@@ -237,6 +239,7 @@ com_axi_rch_clr #(
     .o_tx_axi_rready     ( u_clr_o_tx_axi_rready  )  //o
 );
 
+assign u_regslice_i_rx_axi_arid     = u_clr_o_tx_axi_arid         ;
 assign u_regslice_i_rx_axi_araddr   = u_clr_o_tx_axi_araddr       ;
 assign u_regslice_i_rx_axi_arlen    = u_clr_o_tx_axi_arlen        ;
 assign u_regslice_i_rx_axi_aruser   = u_clr_o_tx_axi_aruser       ;
@@ -261,6 +264,7 @@ com_axi_rch_regslice #(
     .clk                 ( clk                  ), //i
     .rst_n               ( rst_n                ), //i
     .clear               ( 1'b0                 ), //i
+    .i_rx_axi_arid       ( u_regslice_i_rx_axi_arid        ), //i
     .i_rx_axi_araddr     ( u_regslice_i_rx_axi_araddr      ), //i
     .i_rx_axi_arlen      ( u_regslice_i_rx_axi_arlen       ), //i
     .i_rx_axi_aruser     ( u_regslice_i_rx_axi_aruser      ), //i
