@@ -1,8 +1,8 @@
 $COM_PATH/common/cdc/com_cdc_rstn.sv
 $COM_PATH/common/cdc/com_cdc_pulse.sv
 $COM_PATH/common/fifo/com_sync_fifo_reg.sv
-$COM_PATH/common/fifo/com_sync_fifo_ram_2p1ck.sv
-$COM_PATH/common/fifo/com_sync_fifo_ram_1p2bank.sv
+//$COM_PATH/common/fifo/com_sync_fifo_ram_2p1ck.sv
+//$COM_PATH/common/fifo/com_sync_fifo_ram_1p2bank.sv
 $COM_PATH/common/fifo/com_async_fifo_ctrl.sv    //not use afifo_ctrl separately, only used in afifo_reg, afifo_ram*;
 $COM_PATH/common/fifo/com_async_fifo_reg.sv
 $COM_PATH/common/fifo/com_dp_buffer.sv

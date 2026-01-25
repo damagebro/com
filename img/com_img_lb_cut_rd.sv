@@ -12,10 +12,6 @@
 *
 ******************************************************************************/
 
-//`include "com_dp_ram.sv"
-//`include "com_img_lb_rd.sv"
-`ifndef com_img_lb_cut_rd_v
-`define com_img_lb_cut_rd_v
 module com_img_lb_cut_rd #( parameter
     XW       = 12  ,
     PW       = 8   ,//{1:16:}
@@ -212,5 +208,4 @@ com_counter #( .DW(XW), .STEP(RD_PXL_N) ) dbg_com_counter_out_xcnt[LINE_N-1:0] (
 //debug only end  ------------------------------------------
 
 endmodule //end of com_img_lb_cut_rd
-`endif //end of com_img_lb_cut_rd_v
 

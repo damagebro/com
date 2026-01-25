@@ -19,7 +19,7 @@
 -f $COM_PATH/filelist/com_common.f
 -f $COM_PATH/filelist/com_axi.f
 // -f $COM_PATH/filelist/com_csr.f
-// -f $COM_PATH/filelist/com_img.f
+-f $COM_PATH/filelist/com_img.f
 
 //--------------------------------------
 //project

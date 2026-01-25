@@ -14,8 +14,6 @@
 *
 ******************************************************************************/
 
-`ifndef com_img_lb_wr_v
-`define com_img_lb_wr_v
 module com_img_lb_wr #( parameter
     XW       = 12  ,
     PW       = 8   ,
@@ -165,5 +163,4 @@ end:gen_abnrm
 endgenerate
 
 endmodule //end of com_img_lb_wr
-`endif //end of com_img_lb_wr_v
 

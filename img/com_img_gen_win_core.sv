@@ -15,8 +15,6 @@
 *
 ******************************************************************************/
 
-`ifndef com_img_gen_win_core_v
-`define com_img_gen_win_core_v
 module com_img_gen_win_core #( parameter
     XW       = 12  ,
     YW       = 12  ,
@@ -255,19 +253,16 @@ wire [0:0]       rd_req_arr_ivld = rc_rd_req_line_flag;
 wire [0:0]       rd_req_arr_irdy ;
 wire [WIN_H-2:0] rd_req_arr_ovld ;
 wire [WIN_H-2:0] rd_req_arr_ordy ;
-com_mimo #(
-    .ICH        ( 1        ), //1
-    .OCH        ( WIN_H-1  )  //2
-)r_com_mimo_rd_req
-(
-    .clk                  ( clk                  ), //i
-    .rst_n                ( rst_n                ), //i
-    .clear                ( clear                ), //i
-
-    .arr_ivld             ( rd_req_arr_ivld      ), //i
-    .arr_irdy             ( rd_req_arr_irdy      ), //o
-    .arr_ovld             ( rd_req_arr_ovld      ), //o
-    .arr_ordy             ( rd_req_arr_ordy      )  //i
+com_simo_no_delay #(
+    .OCH                            ( WIN_H-1                           )  //1
+)u_com_simo_no_delay(
+    .clk                 ( clk                  ), //i
+    .rst_n               ( rst_n                ), //i
+    .clear               ( clear                ), //i
+    .ivld                ( rd_req_arr_ivld      ), //i
+    .irdy                ( rd_req_arr_irdy      ), //o
+    .ovld                ( rd_req_arr_ovld      ), //o
+    .ordy                ( rd_req_arr_ordy      )  //i
 );
 
 wire [WIN_H-2:0]          arr_rd_req_lb_vld    ;
@@ -440,12 +435,12 @@ com_dp_buffer #(
     .rst_n                ( rst_n                ), //i
     .clear                ( clear                ), //i
 
-    .ivld                 ( in_dp_ivld           ), //i
-    .irdy                 ( in_dp_irdy           ), //o
-    .idata                ( in_dp_idata          ), //i
-    .ovld                 ( in_dp_ovld           ), //o
-    .ordy                 ( in_dp_ordy           ), //i
-    .odata                ( in_dp_odata          )  //o
+    .i_rx_vld             ( in_dp_ivld           ), //i
+    .o_rx_rdy             ( in_dp_irdy           ), //o
+    .i_rx_data            ( in_dp_idata          ), //i
+    .o_tx_vld             ( in_dp_ovld           ), //o
+    .i_tx_rdy             ( in_dp_ordy           ), //i
+    .o_tx_data            ( in_dp_odata          )  //o
 );
 assign in_dp_ready = b_in_dp_avl_flag ? in_dp_irdy : 1'b1;
 
@@ -571,7 +566,18 @@ wire obuf_irdy     ;
 wire obuf_ovld     ;
 wire obuf_ordy     = win_ready;
 wire obuf_in_upen  ;
-com_pipe_ctrl #( .NUM_PIPE(1) ) r_com_pipe_ctrl_obuf( clk, rst_n, clear, obuf_ivld, obuf_irdy, obuf_ovld, obuf_ordy, obuf_in_upen );
+com_pipe_vld #(
+    .PIPE_NUM                       ( 1                      )  //2
+)u_com_pipe_vld(
+    .clk                 ( clk                  ), //i
+    .rst_n               ( rst_n                ), //i
+    .clear               ( clear                ), //i
+    .i_rx_vld            ( obuf_ivld            ), //i
+    .o_rx_rdy            ( obuf_irdy            ), //o
+    .o_tx_vld            ( obuf_ovld            ), //o
+    .i_tx_rdy            ( obuf_ordy            ), //i
+    .o_rx_pipe_upen      ( obuf_in_upen         )  //o
+);
 assign obuf_ivld = rc_shift_cnt==shift_cnt_tol_num_m1 && (rc_genw_xpend_flag ? rc_outline_flag : genw_vld);
 assign shift_ready = (b_shift_cnt_end||rc_genw_xpend_flag) ? obuf_irdy : rc_outline_flag;
 
@@ -780,7 +786,6 @@ assign lb_rd_eol = rd_dat_eol;
 assign lb_rd_ypos= rc_genw_ycnt;
 
 endmodule //end of com_img_gen_win_core
-`endif //end of com_img_gen_win_core_v
 
 
 /*
