@@ -5,17 +5,15 @@
 *     Date:   2021/07/05-17:08:18
 *
 *  Description:
-*   counter [0,cnt_max]
+*   counter [0,cnt_max)
 *
 *  Modify:
 *  -
 *
 ******************************************************************************/
 
-`ifndef com_counter_v
-`define com_counter_v
 module com_counter #( parameter
-    DW   = 8,
+    CW   = 8,
     STEP = 1,
     INIT = 0//,
 )
@@ -24,31 +22,48 @@ input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
 
-input  wire [DW-1:0]            i_cnt_max_m1        , //minus 1
-input  wire                     i_cnt_en            ,
-output wire [DW-1:0]            o_cnt               ,
+input  wire [CW-1:0]            i_cnt_max_m1        , //minus 1
+input  wire                     i_cnt_start         ,
+output wire [CW-1:0]            o_cnt               ,
+output wire                     o_cnt_en            ,
 output wire                     o_cnt_last          //,
 );
 //localparam-----------------------------------------------------------------
-//reg/wire  declare----------------------------------------------------------
-reg  [DW-1:0] r_cnt;
-wire [DW-0:0] cnt_nxt;
+//signal declare-------------------------------------------------------------
+reg           r_cnt_en;
+reg  [CW-1:0] r_cnt;
+reg  [CW-1:0] r_cnt_max_m1;
+wire [CW-0:0] cnt_nxt;
 //statement------------------------------------------------------------------
-assign cnt = r_cnt;
-assign o_cnt_last = cnt_nxt>{1'b0,i_cnt_max_m1};
+//output assign---
+assign o_cnt = r_cnt;
+assign o_cnt_en = r_cnt_en;
+assign o_cnt_last = r_cnt_en && (cnt_nxt>{1'b0,r_cnt_max_m1});
 
-wire cnt_done = i_cnt_en && o_cnt_last;
-assign cnt_nxt = r_cnt + STEP[DW-1:0];
-always @(posedge clk or negedge rst_n)
-begin
+//body---
+assign cnt_nxt = r_cnt + STEP[CW-1:0];
+wire cnt_done = o_cnt_last;
+always @(posedge clk) begin
+    if( i_cnt_start )
+        r_cnt_max_m1 <= i_cnt_max_m1;
+end
+always @(posedge clk or negedge rst_n) begin
     if( !rst_n )
-        r_cnt <= INIT[DW-1:0];
-    else if( clear || cnt_done )
-        r_cnt <= INIT[DW-1:0];
-    else if( i_cnt_en )
+        r_cnt_en <= 1'b0;
+    else if( clear )
+        r_cnt_en <= 1'b0;
+    else if( i_cnt_start )
+        r_cnt_en <= 1'b1;
+    else if( cnt_done )
+        r_cnt_en <= 1'b0;
+end
+always @(posedge clk or negedge rst_n) begin
+    if( !rst_n )
+        r_cnt <= INIT[CW-1:0];
+    else if( clear || i_cnt_start )
+        r_cnt <= INIT[CW-1:0];
+    else if( o_cnt_en )
         r_cnt <= cnt_nxt;
 end
 
 endmodule //end of com_counter
-`endif //end of com_counter_v
-

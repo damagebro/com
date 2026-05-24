@@ -30,41 +30,49 @@ input  wire                     i_tx_rdy            //,
 );
 //localparam-----------------------------------------------------------------
 //signal declare-------------------------------------------------------------
-wire [PIPE_NUM-0:0][DW-1:0]  u_pip_i_rx_dat;
-wire [PIPE_NUM-0:0]          u_pip_i_rx_vld;
-wire [PIPE_NUM-0:0]          u_pip_o_rx_rdy;
-wire [PIPE_NUM-0:0][DW-1:0]  u_pip_o_tx_dat;
-wire [PIPE_NUM-0:0]          u_pip_o_tx_vld;
-wire [PIPE_NUM-0:0]          u_pip_i_tx_rdy;
+//instance signal--
+wire [PIPE_NUM-1:0][DW-1:0] u_pip_i_rx_dat;
+wire [PIPE_NUM-1:0]         u_pip_i_rx_vld;
+wire [PIPE_NUM-1:0]         u_pip_o_rx_rdy;
+wire [PIPE_NUM-1:0][DW-1:0] u_pip_o_tx_dat;
+wire [PIPE_NUM-1:0]         u_pip_o_tx_vld;
+wire [PIPE_NUM-1:0]         u_pip_i_tx_rdy;
 //statement------------------------------------------------------------------
+//output assign---
 assign o_rx_rdy = u_pip_o_rx_rdy[0];
-assign o_tx_vld = u_pip_o_tx_vld[PIPE_NUM];
-assign o_tx_dat = u_pip_o_tx_dat[PIPE_NUM];
+assign o_tx_vld = u_pip_o_tx_vld[PIPE_NUM-1];
+assign o_tx_dat = u_pip_o_tx_dat[PIPE_NUM-1];
 
+//instance----
 assign u_pip_i_rx_dat[0] = i_rx_dat;
 assign u_pip_i_rx_vld[0] = i_rx_vld;
-assign u_pip_i_tx_rdy[PIPE_NUM] = i_tx_rdy;
+assign u_pip_i_tx_rdy[PIPE_NUM-1] = i_tx_rdy;
 generate
-for( genvar gi=0; gi<PIPE_NUM; gi++ )begin:gen_pipe_regslice
-    com_pipe_vld_rdy #(
-        .VLD_PIPE_EN( 1          ), //1
-        .RDY_PIPE_EN( 1          ), //1
-        .DW         ( DW         )  //8
-    )u_com_pipe_vld_rdy
-    (
-        .clk                  ( clk                  ), //i
-        .rst_n                ( rst_n                ), //i
-        .clear                ( clear                ), //i
+    if( PIPE_NUM > 1 ) begin:gen_pipe_chain
+        assign u_pip_i_rx_dat[PIPE_NUM-1:1] = u_pip_o_tx_dat[PIPE_NUM-2:0];
+        assign u_pip_i_rx_vld[PIPE_NUM-1:1] = u_pip_o_tx_vld[PIPE_NUM-2:0];
+        assign u_pip_i_tx_rdy[PIPE_NUM-2:0] = u_pip_o_rx_rdy[PIPE_NUM-1:1];
+    end
 
-        .i_rx_dat             ( u_pip_i_rx_dat[gi+0] ), //i
-        .i_rx_vld             ( u_pip_i_rx_vld[gi+0] ), //i
-        .o_rx_rdy             ( u_pip_o_rx_rdy[gi+0] ), //o
-        .o_tx_dat             ( u_pip_o_tx_dat[gi+1] ), //o
-        .o_tx_vld             ( u_pip_o_tx_vld[gi+1] ), //o
-        .i_tx_rdy             ( u_pip_i_tx_rdy[gi+1] )  //i
-    );
-end:gen_pipe_regslice
+    for( genvar gi=0; gi<PIPE_NUM; gi++ ) begin:gen_pipe_regslice
+        com_pipe_vld_rdy #(
+            .VLD_PIPE_EN          ( 1                   ), //1
+            .RDY_PIPE_EN          ( 1                   ), //1
+            .DW                   ( DW                  )  //8
+        )u_com_pipe_vld_rdy_pip
+        (
+            .clk                  ( clk                 ), //i
+            .rst_n                ( rst_n               ), //i
+            .clear                ( clear               ), //i
+
+            .i_rx_dat             ( u_pip_i_rx_dat[gi]  ), //i
+            .i_rx_vld             ( u_pip_i_rx_vld[gi]  ), //i
+            .o_rx_rdy             ( u_pip_o_rx_rdy[gi]  ), //o
+            .o_tx_dat             ( u_pip_o_tx_dat[gi]  ), //o
+            .o_tx_vld             ( u_pip_o_tx_vld[gi]  ), //o
+            .i_tx_rdy             ( u_pip_i_tx_rdy[gi]  )  //i
+        );
+    end:gen_pipe_regslice
 endgenerate
 
 endmodule //end of com_pipe_regslice
-

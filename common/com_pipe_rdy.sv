@@ -32,11 +32,12 @@ input  wire                     i_tx_rdy            //,
 reg           r_rdy_flag;
 reg  [DW-1:0] r_rdy_buf;
 //statement------------------------------------------------------------------
-
+//output assign---
 assign o_tx_dat = !r_rdy_flag ? r_rdy_buf : i_rx_dat;
 assign o_tx_vld = !r_rdy_flag || i_rx_vld;
 assign o_rx_rdy = r_rdy_flag;
 
+//body---
 always @(posedge clk or negedge rst_n) begin
     if( !rst_n )
         r_rdy_flag <= 1'b1;
@@ -47,10 +48,9 @@ always @(posedge clk or negedge rst_n) begin
     else if( !r_rdy_flag && i_tx_rdy )
         r_rdy_flag <= 1'b1;
 end
-always @(posedge clk)begin
+always @(posedge clk) begin
     if( r_rdy_flag && i_rx_vld && !i_tx_rdy )
         r_rdy_buf <= i_rx_dat;
 end
 
 endmodule //end of com_pipe_rdy
-

@@ -5,7 +5,7 @@
 *     Date:   2025/07/05-21:55:11
 *
 *  Description:
-*   valid/ready bi_ward single-stage pipeline with data;
+*   valid/ready two-way single-stage pipeline with data;
 *
 *  Modify:
 *  -
@@ -44,32 +44,33 @@ wire           u_vld_o_rx_rdy;
 wire           u_vld_o_tx_vld;
 wire           u_vld_i_tx_rdy;
 //statement------------------------------------------------------------------
-//out signae----
+//output assign---
 assign o_rx_rdy = u_rdy_o_rx_rdy;
 assign o_tx_vld = u_vld_o_tx_vld;
 assign o_tx_dat = w_vld_tx_dat;
 
-
+//instance----
 assign u_rdy_i_rx_dat = i_rx_dat;
 assign u_rdy_i_rx_vld = i_rx_vld;
 assign u_vld_i_rx_vld = u_rdy_o_tx_vld;
 assign u_rdy_i_tx_rdy = u_vld_o_rx_rdy;
+assign u_vld_i_tx_rdy = i_tx_rdy;
 generate
-if( RDY_PIPE_EN )begin:gen_rdy_pipe
+if( RDY_PIPE_EN ) begin:gen_rdy_pipe
     com_pipe_rdy #(
-        .DW         ( DW         )  //8
-    )u_com_pipe_rdy
+        .DW                   ( DW                  )  //8
+    )u_com_pipe_rdy_rdy
     (
-        .clk                  ( clk                  ), //i
-        .rst_n                ( rst_n                ), //i
-        .clear                ( clear                ), //i
+        .clk                  ( clk                 ), //i
+        .rst_n                ( rst_n               ), //i
+        .clear                ( clear               ), //i
 
-        .i_rx_dat             ( u_rdy_i_rx_dat       ), //i
-        .i_rx_vld             ( u_rdy_i_rx_vld       ), //i
-        .o_rx_rdy             ( u_rdy_o_rx_rdy       ), //o
-        .o_tx_dat             ( u_rdy_o_tx_dat       ), //o
-        .o_tx_vld             ( u_rdy_o_tx_vld       ), //o
-        .i_tx_rdy             ( u_rdy_i_tx_rdy       )  //i
+        .i_rx_dat             ( u_rdy_i_rx_dat      ), //i
+        .i_rx_vld             ( u_rdy_i_rx_vld      ), //i
+        .o_rx_rdy             ( u_rdy_o_rx_rdy      ), //o
+        .o_tx_dat             ( u_rdy_o_tx_dat      ), //o
+        .o_tx_vld             ( u_rdy_o_tx_vld      ), //o
+        .i_tx_rdy             ( u_rdy_i_tx_rdy      )  //i
     );
 end:gen_rdy_pipe
 else begin:gen_no_rdy_pipe
@@ -77,26 +78,27 @@ else begin:gen_no_rdy_pipe
     assign u_rdy_o_tx_vld = u_rdy_i_rx_vld;
     assign u_rdy_o_rx_rdy = u_rdy_i_tx_rdy;
 end:gen_no_rdy_pipe
-if( VLD_PIPE_EN )begin:gen_vld_pipe
+if( VLD_PIPE_EN ) begin:gen_vld_pipe
     reg  [DW-1:0] r_vld_rx_dat;
+
     assign w_vld_tx_dat = r_vld_rx_dat;
-    always@( posedge clk )begin
-        if(u_vld_i_rx_vld&&u_vld_o_rx_rdy)
+    always @(posedge clk) begin
+        if( u_vld_i_rx_vld && u_vld_o_rx_rdy )
             r_vld_rx_dat <= u_rdy_o_tx_dat;
     end
     com_pipe_vld #(
-        .PIPE_NUM (1)
-    )u_com_pipe_vld
+        .PIPE_NUM             ( 1                   )  //1
+    )u_com_pipe_vld_vld
     (
-        .clk                  ( clk                  ), //i
-        .rst_n                ( rst_n                ), //i
-        .clear                ( clear                ), //i
+        .clk                  ( clk                 ), //i
+        .rst_n                ( rst_n               ), //i
+        .clear                ( clear               ), //i
 
-        .i_rx_vld             ( u_vld_i_rx_vld       ), //i
-        .o_rx_rdy             ( u_vld_o_rx_rdy       ), //o
-        .o_tx_vld             ( u_vld_o_tx_vld       ), //o
-        .i_tx_rdy             ( u_vld_i_tx_rdy       ), //i
-        .o_pipe_upen          (                      )  //o
+        .i_rx_vld             ( u_vld_i_rx_vld      ), //i
+        .o_rx_rdy             ( u_vld_o_rx_rdy      ), //o
+        .o_tx_vld             ( u_vld_o_tx_vld      ), //o
+        .i_tx_rdy             ( u_vld_i_tx_rdy      ), //i
+        .o_rx_pipe_upen       (                     )  //o
     );
 end:gen_vld_pipe
 else begin:gen_no_vld_pipe
@@ -107,4 +109,3 @@ end:gen_no_vld_pipe
 endgenerate
 
 endmodule //end of com_pipe_vld_rdy
-

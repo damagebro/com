@@ -5,7 +5,7 @@
 *     Date:   2025/07/05-21:50:45
 *
 *  Description:
-*   single-stage pipeline, only valid_ward ctrl flow, signal 'pipe_upen' to used by data_update_en;
+*   single-stage valid pipeline, signal 'pipe_upen' is used by data update enable;
 *
 *  Modify:
 *  -
@@ -28,12 +28,14 @@ output wire                     o_rx_pipe_upen      //, // o_rx_pipe_upen = i_rx
 //signal declare-------------------------------------------------------------
 reg  r_vld_flag;
 //statement------------------------------------------------------------------
+//output assign---
 assign o_tx_vld = r_vld_flag;
 assign o_rx_rdy = i_tx_rdy || !r_vld_flag;
 assign o_rx_pipe_upen = i_rx_vld && o_rx_rdy;
 
+//body---
 wire rx_hs = o_rx_pipe_upen;
-wire tx_hs = i_tx_rdy && i_tx_rdy;
+wire tx_hs = o_tx_vld && i_tx_rdy;
 always @(posedge clk or negedge rst_n) begin
     if( !rst_n )
         r_vld_flag <= 1'b0;
@@ -46,4 +48,3 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 endmodule //end of com_pipe_vld_single
-

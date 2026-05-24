@@ -5,53 +5,50 @@
 *     Date:   2022/03/31-17:17:29
 *
 *  Description:
-*   single input channel, muti output channel, ivld->ovld no delay
+*   single input channel, multiple output channel, input valid to output valid has no delay
 *
 *  Modify:
 *  -
 *
 ******************************************************************************/
 
-`ifndef com_simo_no_delay_v
-`define com_simo_no_delay_v
 module com_simo_no_delay #( parameter
-    OCH = 1
+    CH_NUM = 1
 )
 (
 input  wire                     clk                 ,
 input  wire                     rst_n               ,
 input  wire                     clear               ,
 
-input  wire                     ivld                ,
-output wire                     irdy                ,
-output wire [OCH-1:0]           ovld                ,
-input  wire [OCH-1:0]           ordy                //,
+input  wire                     i_rx_vld            ,
+output wire                     o_rx_rdy            ,
+output wire [CH_NUM-1:0]        o_tx_vld            ,
+input  wire [CH_NUM-1:0]        i_tx_rdy            //,
 );
 //localparam-----------------------------------------------------------------
-//reg  declare---------------------------------------------------------------
-reg  [OCH-1:0] arc_outed_flag;
-//wire declare---------------------------------------------------------------
+//signal declare-------------------------------------------------------------
+reg  [CH_NUM-1:0] r_outed_flag;
+wire [CH_NUM-1:0] out_all_hs;
 //statement------------------------------------------------------------------
+//output assign---
+assign o_tx_vld = {CH_NUM{i_rx_vld}} & ~r_outed_flag;
+assign o_rx_rdy = &out_all_hs;
 
-wire ihs = ivld && irdy;
-wire [OCH-1:0] arr_ohs = ovld & ordy;
-always @(posedge clk or negedge rst_n)
-begin
+//body---
+assign out_all_hs = r_outed_flag | ({CH_NUM{i_rx_vld}}&i_tx_rdy);
+wire rx_hs = i_rx_vld && o_rx_rdy;
+wire [CH_NUM-1:0] a1_tx_hs = o_tx_vld & i_tx_rdy;
+always @(posedge clk or negedge rst_n) begin
     if( !rst_n )
-        arc_outed_flag <= 'b0;
-    else if( clear || ihs  )
-        arc_outed_flag <= 'b0;
+        r_outed_flag <= '0;
+    else if( clear || rx_hs  )
+        r_outed_flag <= '0;
     else begin
-        for( int i=0; i<OCH; i++ )
-            if( arr_ohs[i] )
-                arc_outed_flag[i] <= 1'b1;
+        for( int i=0; i<CH_NUM; i++ ) begin
+            if( a1_tx_hs[i] )
+                r_outed_flag[i] <= 1'b1;
+        end
     end
 end
-assign ovld = {OCH{ivld}} & ~arc_outed_flag;
-
-wire [OCH-1:0] out_all_hs = arc_outed_flag | {OCH{ivld}}&ordy;
-assign irdy = &out_all_hs;
 
 endmodule //end of com_simo_no_delay
-`endif //end of com_simo_no_delay_v
-

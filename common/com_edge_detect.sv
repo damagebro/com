@@ -12,8 +12,6 @@
 *
 ******************************************************************************/
 
-`ifndef com_edge_detect_v
-`define com_edge_detect_v
 module com_edge_detect #( parameter
     MODE = "pos" // "pos"|"posedge", "neg"|"negedge", "dual"|"dualedge"
 )
@@ -26,32 +24,30 @@ output wire                     o_pulse             //,
 );
 //localparam-----------------------------------------------------------------
 `COM_PARAM_ASSERT( MODE=="pos"||MODE=="posedge" || MODE=="neg"||MODE=="negedge" || MODE=="dual"||MODE=="dualedge", "illegal MODE" ); //spyglass disable W193
-//reg  declare---------------------------------------------------------------
-//wire declare---------------------------------------------------------------
+//signal declare-------------------------------------------------------------
+reg  r_level;
 //statement------------------------------------------------------------------
-wire d = i_level;
-reg  rc_d;
-always @(posedge clk or negedge rst_n)
-begin
+//body---
+always @(posedge clk or negedge rst_n) begin
     if( !rst_n )
-        rc_d <= 1'b0;
+        r_level <= 1'b0;
     else
-        rc_d <= d;
+        r_level <= i_level;
 end
 
-wire ps_posedge = d && !rc_d;
-wire ps_negedge =!d &&  rc_d;
-wire ps_dualedge= d ^ rc_d;
+wire pls_posedge = i_level && !r_level;
+wire pls_negedge = !i_level && r_level;
+wire pls_dualedge= i_level ^ r_level;
 
 generate
-    if( MODE=="pos" || MODE=="posedge" )begin:gen_pos
-        assign o_pulse = ps_posedge;
+    if( MODE=="pos" || MODE=="posedge" ) begin:gen_pos
+        assign o_pulse = pls_posedge;
     end
-    else if( MODE=="neg" || MODE=="negedge" )begin:gen_neg
-        assign o_pulse = ps_negedge;
+    else if( MODE=="neg" || MODE=="negedge" ) begin:gen_neg
+        assign o_pulse = pls_negedge;
     end
-    else if( MODE=="dual" || MODE=="dualedge" )begin:gen_dual
-        assign o_pulse = ps_dualedge;
+    else if( MODE=="dual" || MODE=="dualedge" ) begin:gen_dual
+        assign o_pulse = pls_dualedge;
     end
     else begin:gen_err
         assign o_pulse = 1'b0;
@@ -59,5 +55,3 @@ generate
 endgenerate
 
 endmodule //end of com_edge_detect
-`endif //end of com_edge_detect_v
-

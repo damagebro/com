@@ -12,8 +12,6 @@
 *
 ******************************************************************************/
 
-`ifndef com_reg_e_v
-`define com_reg_e_v
 module com_reg_e #( parameter
     DW   = 1,
     INIT = 0//,
@@ -22,24 +20,23 @@ module com_reg_e #( parameter
 input  wire                     clk                 ,
 input  wire                     rst_n               ,
 
-input  wire                     e                   ,
-input  wire [DW-1:0]            d                   ,
-output wire [DW-1:0]            q                   //,
+input  wire                     i_e                 ,
+input  wire [DW-1:0]            i_d                 ,
+output wire [DW-1:0]            o_q                 //,
 );
 //localparam-----------------------------------------------------------------
-//reg  declare---------------------------------------------------------------
-//wire declare---------------------------------------------------------------
+//signal declare-------------------------------------------------------------
+reg  [DW-1:0] r_q;
 //statement------------------------------------------------------------------
-reg  [DW-1:0] rc_q;
-always @(posedge clk or negedge rst_n)
-begin
+//output assign---
+assign o_q = r_q;
+
+//body---
+always @(posedge clk or negedge rst_n) begin
     if( !rst_n )
-        rc_q <= INIT[DW-1:0];
-    else if( e )
-        rc_q <= d;
+        r_q <= INIT[DW-1:0];
+    else if( i_e )
+        r_q <= i_d;
 end
-assign q = rc_q;
 
 endmodule //end of com_reg_e
-`endif //end of com_reg_e_v
-
