@@ -7,6 +7,12 @@
 5. 给com_img统一代码风格+写文档;  //TBD
 
 
+# 工作约定
+
+- Git默认只进行本地提交；仅在明确要求时执行`git push`。
+- `ai_answer.md`时间线尽量精简但不限制固定字数，保留可复现的重要规则和结果。
+
+
 # 文档模板
 
 * 参数
@@ -45,3 +51,10 @@
 - 检查修改:
   - com_sync_fifo_reg, rd_addr要在前面声明;
   - 强调signal_decalre区域的信号: (1) 全部dff, (2) 重要的wire类型或用来赋值输出信号的变量, 只声明不赋值, 后续用assign赋值; (3) 所有instance_signal;  (4) 原有代码body区域, wire声明并赋值的局部变量, 看情况一般不用调整.
+
+
+2026/5/26 doc:
+- 每个模块文档， 总共有"功能/接口时序/参数/接口/实现说明"几个章节, 一般只有""功能/接口时序"章节已足够， 明确要求的模块， 增加"参数/接口/实现说明"章节;
+- com_find_lsb_first_one删除"参数/接口/实现说明"， 精简篇幅， 仅在明确要求的时候才产生"参数/接口/实现说明"章节。
+- 用wavedrom画时序图， 本地PC的vscode有wavedrom插件， 可以直接wavedrom.json->png, 不用联网。
+- wavedrom插件， gpt做json->png耗时太长， 生成一个python脚本来完成json->png的事情;
