@@ -1,0 +1,40 @@
+{
+  "head": {
+    "text": "com_find_lsb_first_one interface timing example (N=8)",
+    "tick": 0
+  },
+  "signal": [
+    [
+      "input",
+      {
+        "name": "i_req_val[7:0]",
+        "wave": "=234=",
+        "data": ["00000000", "01011000", "01010000", "10000001", "00000000"]
+      }
+    ],
+    {},
+    [
+      "output",
+      {
+        "name": "o_res_none_flag",
+        "wave": "10..1"
+      },
+      {
+        "name": "o_res_onehot[7:0]",
+        "wave": "=234=",
+        "data": ["00000000", "00001000", "00010000", "00000001", "00000000"]
+      },
+      {
+        "name": "o_res_idx[2:0]",
+        "wave": "x=23x",
+        "data": ["3", "4", "0"]
+      }
+    ]
+  ],
+  "foot": {
+    "text": "o_res_idx is valid only when o_res_none_flag is low."
+  },
+  "config": {
+    "hscale": 3
+  }
+}

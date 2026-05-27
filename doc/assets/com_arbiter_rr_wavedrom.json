@@ -1,0 +1,75 @@
+{
+  "head": {
+    "text": "com_arbiter_rr timing example (REQ_N=4)",
+    "tick": 0
+  },
+  "signal": [
+    {
+      "name": "clk",
+      "wave": "p......."
+    },
+    {
+      "name": "rst_n",
+      "wave": "01......"
+    },
+    {
+      "name": "clear",
+      "wave": "0......."
+    },
+    {},
+    [
+      "request",
+      {
+        "name": "i_req_vld[3:0]",
+        "wave": "=2..3456",
+        "data": ["0000", "0101", "0100", "1010", "0010", "0000"]
+      },
+      {
+        "name": "i_gnt_rdy",
+        "wave": "0..1...0"
+      }
+    ],
+    {},
+    [
+      "grant",
+      {
+        "name": "o_gnt_vld",
+        "wave": "01.....0"
+      },
+      {
+        "name": "o_gnt_onehot[3:0]",
+        "wave": "=2..3456",
+        "data": ["0000", "0001", "0100", "1000", "0010", "0000"]
+      },
+      {
+        "name": "o_gnt_idx[1:0]",
+        "wave": "x=..234x",
+        "data": ["0", "2", "3", "1"]
+      },
+      {
+        "name": "o_req_rdy[3:0]",
+        "wave": "=..2345=",
+        "data": ["0000", "0001", "0100", "1000", "0010", "0000"]
+      }
+    ],
+    {},
+    [
+      "internal",
+      {
+        "name": "gnt_hs",
+        "wave": "0..1...0"
+      },
+      {
+        "name": "r_avl_bitmap[3:0]",
+        "wave": "=...2345",
+        "data": ["1111", "1110", "1000", "1111", "1100"]
+      }
+    ]
+  ],
+  "foot": {
+    "text": "When i_gnt_rdy is low, the selected grant is visible but o_req_rdy remains zero."
+  },
+  "config": {
+    "hscale": 2
+  }
+}
