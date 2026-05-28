@@ -1,0 +1,46 @@
+{
+  "head": {
+    "text": "com_pipe_regslice interface timing example (PIPE_NUM=2, DW=8)",
+    "tick": 0
+  },
+  "signal": [
+    { "name": "clk", "wave": "p.........." },
+    {},
+    [
+      "rx",
+      { "name": "i_rx_vld", "wave": "01......0.." },
+      {
+        "name": "i_rx_dat[7:0]",
+        "wave": "x=234..5x..",
+        "data": ["A1", "B2", "C3", "D4", "E5"]
+      },
+      { "name": "o_rx_rdy", "wave": "1.....0.1.." }
+    ],
+    {},
+    [
+      "tx",
+      { "name": "o_tx_vld", "wave": "0..1.....0." },
+      {
+        "name": "o_tx_dat[7:0]",
+        "wave": "x..23..45x.",
+        "data": ["A1", "B2", "C3", "D4"]
+      },
+      { "name": "i_tx_rdy", "wave": "1...0.1...." }
+    ],
+    {},
+    [
+      "internal",
+      {
+        "name": "u_pip_o_tx_vld[1:0]",
+        "wave": "=.23.....4.",
+        "data": ["00", "01", "11", "00"]
+      }
+    ]
+  ],
+  "foot": {
+    "text": "With PIPE_NUM=2 and no backpressure, data appears after two registered stages."
+  },
+  "config": {
+    "hscale": 2
+  }
+}

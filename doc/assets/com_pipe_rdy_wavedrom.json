@@ -1,0 +1,36 @@
+{
+  "head": {
+    "text": "com_pipe_rdy interface timing example (DW=8)",
+    "tick": 0
+  },
+  "signal": [
+    { "name": "clk", "wave": "p........" },
+    {},
+    [
+      "rx",
+      { "name": "i_rx_vld", "wave": "01.....0." },
+      { "name": "i_rx_dat[7:0]", "wave": "x=23..4x.", "data": ["A1", "B2", "C3", "D4"] },
+      { "name": "o_rx_rdy", "wave": "1..0.1.01" },
+      { "name": "rx_hs", "wave": "01.0.1.0." }
+    ],
+    {},
+    [
+      "tx",
+      { "name": "o_tx_vld", "wave": "01......0" },
+      { "name": "o_tx_dat[7:0]", "wave": "x=2..34.x", "data": ["A1", "B2", "C3", "D4"] },
+      { "name": "i_tx_rdy", "wave": "010.1.0.1" },
+      { "name": "tx_hs", "wave": "010.1.0.." }
+    ],
+    {},
+    [
+      "internal",
+      { "name": "r_rdy_flag", "wave": "1..0.1.01" }
+    ]
+  ],
+  "foot": {
+    "text": "B2 and D4 enter the skid buffer on backpressure, then leave when i_tx_rdy returns high."
+  },
+  "config": {
+    "hscale": 3
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "head": {
+    "text": "com_counter interface timing example (CW=4, STEP=1, INIT=0)",
+    "tick": 0
+  },
+  "signal": [
+    { "name": "clk", "wave": "p........." },
+    {},
+    [
+      "control",
+      { "name": "i_cnt_start", "wave": "010..10..." },
+      {
+        "name": "i_cnt_max_m1[3:0]",
+        "wave": "x=x..=x...",
+        "data": ["3", "2"]
+      }
+    ],
+    {},
+    [
+      "output",
+      { "name": "o_cnt_en", "wave": "0.1......0" },
+      {
+        "name": "o_cnt[3:0]",
+        "wave": "=..2345678",
+        "data": ["0", "1", "2", "3", "0", "1", "2", "3"]
+      },
+      { "name": "o_cnt_last", "wave": "0....10.10" }
+    ],
+    {},
+    [
+      "internal",
+      {
+        "name": "r_cnt_max_m1[3:0]",
+        "wave": "x.=...2...",
+        "data": ["3", "2"]
+      }
+    ]
+  ],
+  "foot": {
+    "text": "A start pulse reloads the limit and restarts counting; start has priority over last."
+  },
+  "config": {
+    "hscale": 2
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "head": {
+    "text": "com_pipe_vld interface timing example (PIPE_NUM=2)",
+    "tick": 0
+  },
+  "signal": [
+    { "name": "clk", "wave": "p........" },
+    {},
+    [
+      "rx",
+      { "name": "i_rx_vld", "wave": "01....0.." },
+      { "name": "o_rx_rdy", "wave": "1..0.1..." },
+      {
+        "name": "o_rx_pipe_upen[1:0]",
+        "wave": "=234.56=.",
+        "data": ["00", "01", "11", "00", "11", "10", "00"]
+      }
+    ],
+    {},
+    [
+      "tx",
+      { "name": "o_tx_vld", "wave": "0..1....0" },
+      { "name": "i_tx_rdy", "wave": "1..0.1..." }
+    ],
+    {},
+    [
+      "internal",
+      {
+        "name": "stage_vld[1:0]",
+        "wave": "=.23...45",
+        "data": ["00", "01", "11", "10", "00"]
+      }
+    ]
+  ],
+  "foot": {
+    "text": "Each o_rx_pipe_upen bit updates the payload register belonging to the same pipeline stage."
+  },
+  "config": {
+    "hscale": 3
+  }
+}

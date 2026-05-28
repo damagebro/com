@@ -1,0 +1,49 @@
+{
+  "head": {
+    "text": "com_simo_no_delay interface timing example (CH_NUM=3)",
+    "tick": 0
+  },
+  "signal": [
+    { "name": "clk", "wave": "p....." },
+    {},
+    [
+      "rx",
+      { "name": "i_rx_vld", "wave": "01...0" },
+      { "name": "o_rx_rdy", "wave": "0..1.0" }
+    ],
+    {},
+    [
+      "tx",
+      {
+        "name": "i_tx_rdy[2:0]",
+        "wave": "=2345=",
+        "data": ["000", "001", "010", "100", "111", "000"]
+      },
+      {
+        "name": "o_tx_vld[2:0]",
+        "wave": "=2345=",
+        "data": ["000", "111", "110", "100", "111", "000"]
+      },
+      {
+        "name": "tx_hs[2:0]",
+        "wave": "=2345=",
+        "data": ["000", "001", "010", "100", "111", "000"]
+      }
+    ],
+    {},
+    [
+      "internal",
+      {
+        "name": "r_outed_flag[2:0]",
+        "wave": "=.234.",
+        "data": ["000", "001", "011", "000"]
+      }
+    ]
+  ],
+  "foot": {
+    "text": "Input is accepted only after every output channel has accepted the current item."
+  },
+  "config": {
+    "hscale": 3
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "head": {
+    "text": "com_pipe_vld_single interface timing example",
+    "tick": 0
+  },
+  "signal": [
+    { "name": "clk", "wave": "p......." },
+    {},
+    [
+      "rx",
+      { "name": "i_rx_vld", "wave": "01..0..." },
+      { "name": "o_rx_rdy", "wave": "1.010.1." },
+      { "name": "o_rx_pipe_upen", "wave": "01010..." }
+    ],
+    {},
+    [
+      "tx",
+      { "name": "o_tx_vld", "wave": "0.1...0." },
+      { "name": "i_tx_rdy", "wave": "0..10.1." }
+    ],
+    {},
+    [
+      "event",
+      { "name": "rx_hs", "wave": "01010..." },
+      { "name": "tx_hs", "wave": "0..10.1." }
+    ]
+  ],
+  "foot": {
+    "text": "When rx_hs and tx_hs occur together, the valid slot is replaced without becoming empty."
+  },
+  "config": {
+    "hscale": 3
+  }
+}

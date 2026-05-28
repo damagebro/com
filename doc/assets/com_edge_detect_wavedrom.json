@@ -1,0 +1,24 @@
+{
+  "head": {
+    "text": "com_edge_detect interface timing example",
+    "tick": 0
+  },
+  "signal": [
+    { "name": "clk", "wave": "p....." },
+    { "name": "i_level", "wave": "01.0.1" },
+    { "name": "r_level", "wave": "0.1.0." },
+    {},
+    [
+      "mode",
+      { "name": "o_pulse(pos)", "wave": "0100.1" },
+      { "name": "o_pulse(neg)", "wave": "0..10." },
+      { "name": "o_pulse(dual)", "wave": "0101.1" }
+    ]
+  ],
+  "foot": {
+    "text": "The output pulse is combinational from i_level and the registered previous level."
+  },
+  "config": {
+    "hscale": 3
+  }
+}

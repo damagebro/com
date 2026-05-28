@@ -1,0 +1,43 @@
+{
+  "head": {
+    "text": "com_pipe_vld_rdy interface timing example (VLD_PIPE_EN=1, RDY_PIPE_EN=1, DW=8)",
+    "tick": 0
+  },
+  "signal": [
+    { "name": "clk", "wave": "p.........." },
+    {},
+    [
+      "rx",
+      { "name": "i_rx_vld", "wave": "01......0.." },
+      {
+        "name": "i_rx_dat[7:0]",
+        "wave": "x=234..5x..",
+        "data": ["A1", "B2", "C3", "D4", "E5"]
+      },
+      { "name": "o_rx_rdy", "wave": "1....0.1..." }
+    ],
+    {},
+    [
+      "tx",
+      { "name": "o_tx_vld", "wave": "0.1......0." },
+      {
+        "name": "o_tx_dat[7:0]",
+        "wave": "x.234..56x.",
+        "data": ["A1", "B2", "C3", "D4", "E5"]
+      },
+      { "name": "i_tx_rdy", "wave": "1...0.1...." }
+    ],
+    {},
+    [
+      "internal",
+      { "name": "rdy_buf_vld", "wave": "0....1.0..." },
+      { "name": "vld_stage_vld", "wave": "0.1......0." }
+    ]
+  ],
+  "foot": {
+    "text": "Default configuration adds one output valid/data register and one ready-side skid buffer."
+  },
+  "config": {
+    "hscale": 2
+  }
+}
