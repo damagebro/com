@@ -1,0 +1,25 @@
+{
+  "head": {"text": "com_dp_buffer valid/ready timing example (DEPTH=2)", "tick": 0},
+  "signal": [
+    { "name": "clk", "wave": "p........" },
+    {},
+    ["rx",
+      { "name": "i_rx_vld", "wave": "01.....0." },
+      { "name": "i_rx_data", "wave": "x===...xx", "data": ["A0", "B1", "C2"] },
+      { "name": "o_rx_rdy", "wave": "1..0..1.." }
+    ],
+    {},
+    ["tx",
+      { "name": "o_tx_vld", "wave": "0.1.....0" },
+      { "name": "o_tx_data", "wave": "x.=...==x", "data": ["A0", "B1", "C2"] },
+      { "name": "i_tx_rdy", "wave": "1.0..1..." }
+    ],
+    {},
+    ["fifo",
+      { "name": "wr_hs", "wave": "01.0..10." },
+      { "name": "rd_hs", "wave": "0....1..0" }
+    ]
+  ],
+  "foot": {"text": "Backpressure is reflected by o_rx_rdy when the internal FIFO is full."},
+  "config": {"hscale": 3}
+}

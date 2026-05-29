@@ -1,0 +1,36 @@
+{
+  "head": {"text": "com_dp_ram read request and return timing example", "tick": 0},
+  "signal": [
+    { "name": "clk", "wave": "p......." },
+    {},
+    ["rx",
+      { "name": "i_rx_vld", "wave": "01.0...." },
+      { "name": "i_rx_addr", "wave": "x==xxxxx", "data": ["A0", "A1"] },
+      { "name": "o_rx_rdy", "wave": "1......." }
+    ],
+    {},
+    ["ram read",
+      { "name": "o_ram_rd_vld", "wave": "01.0...." },
+      { "name": "i_ram_rd_rdy", "wave": "1......." },
+      { "name": "o_ram_rd_addr", "wave": "x==xxxxx", "data": ["A0", "A1"] }
+    ],
+    {},
+    ["ram return",
+      { "name": "i_ram_rd_ack", "wave": "0..1.0.." },
+      { "name": "i_ram_rd_data", "wave": "xxx==xxx", "data": ["D0", "D1"] }
+    ],
+    {},
+    ["tx",
+      { "name": "o_tx_vld", "wave": "0...1..0" },
+      { "name": "o_tx_data", "wave": "xxxx=.2x", "data": ["D0", "D1"] },
+      { "name": "i_tx_rdy", "wave": "1...01.." }
+    ],
+    {},
+    ["internal",
+      { "name": "r_otf_cnt", "wave": "=2345...", "data": ["0", "1", "2", "1", "0"] },
+      { "name": "b_rd_avl_flag", "wave": "1......." }
+    ]
+  ],
+  "foot": {"text": "Outstanding reads plus return FIFO space decide whether new RAM reads can be issued."},
+  "config": {"hscale": 3}
+}

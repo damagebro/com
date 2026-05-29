@@ -15,6 +15,9 @@
 | `com_simo_no_delay`      | 单输入多输出无延迟广播握手                              |
 | `com_edge_detect`        | 输入电平边沿检测并输出单周期脉冲                        |
 | `com_counter`            | 可启动、自动停止的参数化计数器                          |
+| `com_sync_fifo_reg`      | 基于寄存器阵列的同步 FIFO                               |
+| `com_dp_buffer`          | valid/ready 数据通路 FIFO buffer                        |
+| `com_dp_ram`             | RAM 读请求与返回数据的 valid/ready 桥接 buffer          |
 
 # common_ip
 
@@ -353,7 +356,132 @@
   4. `r_cnt` 在复位、`clear` 或 `i_cnt_start` 时回到 `INIT`；计数使能期间按 `STEP` 递增。
   5. `o_cnt_last = r_cnt_en && (cnt_nxt > {1'b0, r_cnt_max_m1})`，用下一拍候选值判断当前项是否为末项。
 
-## com_sync_fifo
+## com_fifo
+
+### com_sync_fifo_reg
+
+* 功能
+
+  `com_sync_fifo_reg` 是单时钟、寄存器阵列实现的同步 FIFO，适合深度较小或不希望推 RAM 的缓存场景。写侧使用 `i_wr_en/o_wr_full`，读侧使用 `i_rd_en/o_rd_empty`，读数据 `o_rd_data` 直接由当前读指针索引寄存器阵列输出。`o_wr_full`、`o_rd_empty` 和 `o_water_level` 都是寄存输出；`o_water_level` 表示 FIFO 剩余可写条目数量，而不是已占用条目数量。
+
+* 接口时序
+
+  下图以 `DEPTH=2` 展示 FIFO 写满、读出、状态寄存更新以及剩余可写条目变化。`o_wr_full/o_rd_empty/o_water_level` 都是寄存输出：当 `o_wr_full=1` 且本拍发生 `i_rd_en` 时，本拍仍不能写入，下一拍 `o_wr_full` 拉低后才允许 `i_wr_en`。
+
+  ![com_sync_fifo_reg 接口时序](assets/com_sync_fifo_reg_wavedrom.png)
+
+* 参数
+
+  | param_name | range     | default_value     | description          |
+  | ---------- | --------- | ----------------- | -------------------- |
+  | `DW`       | `[1::]`   | `8`               | FIFO 数据位宽        |
+  | `DEPTH`    | `[1:256]` | `4`               | FIFO 深度            |
+  | `CW`       | derived   | `$clog2(DEPTH+1)` | 可写条目计数位宽     |
+
+* 接口
+
+  | signal_name     | bit_width | I/O | description                                      |
+  | --------------- | --------- | --- | ------------------------------------------------ |
+  | `i_wr_en`       | `1`       | I   | 写使能；仅允许在 `o_wr_full=0` 时拉高            |
+  | `i_wr_data`     | `DW`      | I   | 写入 FIFO 的数据                                 |
+  | `o_wr_full`     | `1`       | O   | FIFO 满指示，寄存输出                            |
+  | `i_rd_en`       | `1`       | I   | 读使能；仅允许在 `o_rd_empty=0` 时拉高           |
+  | `o_rd_data`     | `DW`      | O   | 当前读指针指向的数据，`o_rd_empty=0` 时有效      |
+  | `o_rd_empty`    | `1`       | O   | FIFO 空指示，寄存输出                            |
+  | `o_water_level` | `CW`      | O   | FIFO 剩余可写条目数量，寄存输出                  |
+
+* 实现说明
+
+  1. `r_wrcnt` 和 `r_rdcnt` 使用低位作为 FIFO 地址，并用最高位作为回绕标记。
+  2. 写指针在 `i_wr_en && !r_wr_full` 时推进，读指针在 `i_rd_en && !r_rd_empty` 时推进。
+  3. 写指针和读指针完全相等表示空；低位相等且回绕位相反表示满。
+  4. `wrcnt_tmp/rdcnt_tmp` 先组合计算本拍操作后的指针，再在时钟沿更新 `r_wr_full/r_rd_empty/r_water_level`；状态输出到下一拍才反映本拍读写结果。
+  5. `r_mem` 是寄存器阵列，写入在时钟沿完成，`o_rd_data` 组合读取当前 `rd_addr`。
+  6. 模块带有参数和非法访问断言：写满、读空都属于调用侧协议错误。
+
+### com_dp_buffer
+
+* 功能
+
+  `com_dp_buffer` 是基于 `com_sync_fifo_reg` 的 valid/ready 数据通路 buffer。上游通过 `i_rx_vld/o_rx_rdy` 写入数据，下游通过 `o_tx_vld/i_tx_rdy` 读出数据。FIFO 未满时上游可继续送入，FIFO 非空时下游可继续取出，从而解耦上下游的短期反压。
+
+* 接口时序
+
+  下图以 `DEPTH=2` 展示输入数据进入 FIFO、下游反压导致 `o_rx_rdy` 拉低，以及反压解除后继续输出的过程。上游在 `o_rx_rdy=0` 期间保持 `i_rx_vld` 和当前 payload，直到重新握手。
+
+  ![com_dp_buffer 接口时序](assets/com_dp_buffer_wavedrom.png)
+
+* 参数
+
+  | param_name | range   | default_value | description  |
+  | ---------- | ------- | ------------- | ------------ |
+  | `DW`       | `[1::]` | `8`           | payload 位宽 |
+  | `DEPTH`    | `[1::]` | `4`           | FIFO 深度    |
+
+* 接口
+
+  | signal_name | bit_width | I/O | description                          |
+  | ----------- | --------- | --- | ------------------------------------ |
+  | `i_rx_data` | `DW`      | I   | 上游输入 payload                     |
+  | `i_rx_vld`  | `1`       | I   | 上游输入有效指示                     |
+  | `o_rx_rdy`  | `1`       | O   | 上游输入接收就绪，FIFO 未满时为 `1` |
+  | `o_tx_data` | `DW`      | O   | 下游输出 payload                     |
+  | `o_tx_vld`  | `1`       | O   | 下游输出有效指示，FIFO 非空时为 `1` |
+  | `i_tx_rdy`  | `1`       | I   | 下游接收就绪指示                     |
+
+* 实现说明
+
+  1. `o_rx_rdy = !u_fifo_o_wr_full`，因此内部 FIFO 满时直接向上游反压。
+  2. `o_tx_vld = !u_fifo_o_rd_empty`，FIFO 非空时当前头部数据在 `o_tx_data` 上有效。
+  3. `u_fifo_i_wr_en = i_rx_vld && o_rx_rdy`，输入握手成功即写入 FIFO。
+  4. `u_fifo_i_rd_en = o_tx_vld && i_tx_rdy`，输出握手成功即从 FIFO 弹出一项。
+  5. 模块本身不增加额外数据寄存器，数据存储和状态维护都由内部 `com_sync_fifo_reg` 完成。
+
+### com_dp_ram
+
+* 功能
+
+  `com_dp_ram` 用于把读地址请求、RAM 返回数据和下游 valid/ready 数据流连接起来。输入侧接收 `i_rx_addr`，向外部 RAM 发起 `o_ram_rd_vld/o_ram_rd_addr` 读请求；RAM 通过 `i_ram_rd_ack/i_ram_rd_data` 返回数据后，模块写入内部 FIFO，并以 `o_tx_vld/o_tx_data` 形式输出给下游。模块用 outstanding 计数保证已发出但未返回的 RAM 读请求不会超过返回 FIFO 的可用空间。
+
+* 接口时序
+
+  下图展示连续发出两个 RAM 读请求，RAM 延迟返回数据，并通过内部 FIFO 对下游反压做保持的过程。
+
+  ![com_dp_ram 接口时序](assets/com_dp_ram_wavedrom.png)
+
+* 参数
+
+  | param_name        | range   | default_value | description                                                     |
+  | ----------------- | ------- | ------------- | --------------------------------------------------------------- |
+  | `AW`              | `[1::]` | `8`           | RAM 读地址位宽                                                  |
+  | `DW`              | `[1::]` | `8`           | RAM 返回数据位宽                                                |
+  | `DEPTH`           | `[1::]` | `2`           | 返回数据 FIFO 深度                                              |
+  | `RX_RDY_REG_OUT`  | `0/1`   | `0`           | 是否只使用寄存后的 FIFO 空间判断读请求可发，打开后建议加深 FIFO |
+
+* 接口
+
+  | signal_name     | bit_width | I/O | description                                  |
+  | --------------- | --------- | --- | -------------------------------------------- |
+  | `i_rx_addr`     | `AW`      | I   | 上游输入的 RAM 读地址                        |
+  | `i_rx_vld`      | `1`       | I   | 上游读地址有效指示                           |
+  | `o_rx_rdy`      | `1`       | O   | 上游读地址接收就绪                           |
+  | `o_tx_data`     | `DW`      | O   | 下游输出的 RAM 返回数据                      |
+  | `o_tx_vld`      | `1`       | O   | 下游输出有效指示                             |
+  | `i_tx_rdy`      | `1`       | I   | 下游接收就绪指示                             |
+  | `o_ram_rd_vld`  | `1`       | O   | 发送给外部 RAM 的读请求有效指示              |
+  | `i_ram_rd_rdy`  | `1`       | I   | 外部 RAM 读请求接收就绪                      |
+  | `o_ram_rd_addr` | `AW`      | O   | 发送给外部 RAM 的读地址                      |
+  | `i_ram_rd_ack`  | `1`       | I   | 外部 RAM 返回数据有效指示                    |
+  | `i_ram_rd_data` | `DW`      | I   | 外部 RAM 返回数据                            |
+
+* 实现说明
+
+  1. `o_ram_rd_vld = i_rx_vld && b_rd_avl_flag`，`o_rx_rdy = i_ram_rd_rdy && b_rd_avl_flag`；读地址被直接透传到 `o_ram_rd_addr`。
+  2. `r_otf_cnt` 统计已发出但尚未收到 `i_ram_rd_ack` 的 RAM 读请求数量，读请求握手时加一，返回 ack 时减一。
+  3. `i_ram_rd_ack` 作为内部 FIFO 写使能，`i_ram_rd_data` 写入 FIFO；下游握手成功时从 FIFO 读出一项。
+  4. `b_rd_avl_flag` 用 `r_otf_cnt` 和 FIFO 剩余可写条目比较，确保后续 RAM 返回不会溢出内部 FIFO。
+  5. `RX_RDY_REG_OUT=0` 时，可把本拍下游读出释放的 FIFO 空间计入 `b_rd_avl_flag`，吞吐更激进，但 `o_rx_rdy` 会受到 `i_tx_rdy` 影响。
+  6. `RX_RDY_REG_OUT=1` 时，只使用寄存后的 FIFO 空间做判断，减少 ready 路径的组合依赖；这种模式通常需要把 `DEPTH` 额外加深一项。
 
 # com_axi
 

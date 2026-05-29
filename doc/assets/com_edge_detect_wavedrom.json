@@ -12,7 +12,7 @@
       "mode",
       { "name": "o_pulse(pos)", "wave": "0100.1" },
       { "name": "o_pulse(neg)", "wave": "0..10." },
-      { "name": "o_pulse(dual)", "wave": "0101.1" }
+      { "name": "o_pulse(dual)", "wave": "010101" }
     ]
   ],
   "foot": {
