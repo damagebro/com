@@ -1,0 +1,24 @@
+{
+  "head": {"text": "com_sync_fifo_reg_pfetch interface timing example", "tick": 0},
+  "signal": [
+    { "name": "clk", "wave": "p........." },
+    {},
+    ["write",
+      { "name": "i_wr_en", "wave": "01010....." },
+      { "name": "i_wr_data", "wave": "x=x=x.....", "data": ["A0", "B1"] },
+      { "name": "o_wr_full", "wave": "0........." }
+    ],
+    {},
+    ["read",
+      { "name": "i_rd_en", "wave": "0..10.10.." },
+      { "name": "o_rd_empty", "wave": "1.0..10.1." },
+      { "name": "o_rd_data", "wave": "x.=...=...", "data": ["A0", "B1"] }
+    ],
+    {},
+    ["status",
+      { "name": "o_water_level", "wave": "=.=.=.=.=.", "data": ["4", "3", "2", "3", "2", "3", "4"] }
+    ]
+  ],
+  "foot": {"text": "Read data is a registered output. Writes can load the output register directly; reads pop the current output entry in the same cycle."},
+  "config": {"hscale": 3}
+}

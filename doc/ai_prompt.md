@@ -47,7 +47,7 @@
   - (1) 只保留com_async_fifo_reg, 不需要com_async_fifo_ctrl, ckwr_xx, ckrd_xx区分读写侧各自的时钟信号;  (2) com_sync_fifo_ram_2p1ck + com_sync_fifo_ram_1p1bank(位宽翻倍, 深度减半)
   - com_sync_fifo_reg_2w1r, 为了 com_sync_fifo_ram_*;
   - com_sync_fifo_reg_pfetch, 读数据也reg_out输出, 但数据搬运了两次, 功耗表现不好;
-  - com_sync_fifo_reg_rwfull; 运行fifo full但有读的时候，也可以写入数据; 这样fifo深度可以减少1个, 节省面积; 但导致读写两侧时序路径有耦合, 时序不干净; 取决于使用场景;
+  - com_sync_fifo_reg_fullbyp; 当fifo full但有读的时候，也可以写入数据; 这样fifo深度可以减少1个, 节省面积; 但导致读写两侧时序路径有耦合, 时序不干净; 取决于使用场景;
 - 检查修改:
   - com_sync_fifo_reg, rd_addr要在前面声明;
   - 强调signal_decalre区域的信号: (1) 全部dff, (2) 重要的wire类型或用来赋值输出信号的变量, 只声明不赋值, 后续用assign赋值; (3) 所有instance_signal;  (4) 原有代码body区域, wire声明并赋值的局部变量, 看情况一般不用调整.
@@ -58,3 +58,27 @@
 - com_find_lsb_first_one删除"参数/接口/实现说明"， 精简篇幅， 仅在明确要求的时候才产生"参数/接口/实现说明"章节。
 - 用wavedrom画时序图， 本地PC的vscode有wavedrom插件， 可以直接wavedrom.json->png, 不用联网。
 - wavedrom插件， gpt做json->png耗时太长， 生成一个python脚本来完成json->png的事情;
+- 完善文档:
+    1. 后续完善com_pipe*所有模块，
+    2. 再简单说明com_reg*
+    3. 完整说明com_simo_no_delay,  com_edge_detect, com_counter;
+    4. 完整说明 com_sync_fifo_reg,  概述都在最前面， 细节放到 ## com_fifo 标题中
+    5. 以后编写 com_sync_fifo_reg_pfetch + com_sync_fifo_reg_fullbyp + com_sync_fifo_reg_2w1r的rtl+文档, 比较和 com_sync_fifo_reg 的差异
+    6. 完整说明 com_dp_buffer + com_dp_ram
+    7. 时序不对: com_edge_detect在dual_edge的时候,  com_sync_fifo_reg在rd_en下一拍才empty,   com_dp_buffer输入的vld/rdy不对
+
+
+2026/5/30 增量开发rtl:
+1. com_sync_fifo_reg_v2 + com_sync_fifo_reg_pfetch + com_sync_fifo_reg_fullbyp + com_sync_fifo_reg_2w1r 的rtl+文档, 比较和 com_sync_fifo_reg 的差异
+2. cdc  pulse/async_fifo开发;
+3. com_arbiter_wrr, com_ram_arbiter
+
+2026/? 修改axi/dma模块:
+
+2026/? 配套testbench:
+
+
+2026/? csr_tool开发:
+
+
+2026/? rtl集成脚本开发 + module_load/vscode_plugin发布方式:

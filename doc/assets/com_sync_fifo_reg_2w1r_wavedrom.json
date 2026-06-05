@@ -1,0 +1,27 @@
+{
+  "head": {"text": "com_sync_fifo_reg_2w1r interface timing example", "tick": 0},
+  "signal": [
+    { "name": "clk", "wave": "p..........." },
+    {},
+    ["fast write",
+      { "name": "i_wr_fast_en", "wave": "01111......" },
+      { "name": "i_wr_fast_data_vld", "wave": "0..11......" },
+      { "name": "i_wr_fast_data", "wave": "x..==......", "data": ["H2", "H3"] },
+      { "name": "o_wr_full", "wave": "0.........."}
+    ],
+    {},
+    ["slow write",
+      { "name": "o_wr_slow_avl_flag", "wave": "0.1...0...." },
+      { "name": "i_wr_slow_en", "wave": "0..11......" },
+      { "name": "i_wr_slow_data", "wave": "x..==......", "data": ["M0", "M1"] }
+    ],
+    {},
+    ["read",
+      { "name": "i_rd_en", "wave": "0.....1110." },
+      { "name": "o_rd_empty", "wave": "1...0....1." },
+      { "name": "o_rd_data", "wave": "x....====x.", "data": ["M0", "M1", "H2", "H3"] }
+    ]
+  ],
+  "foot": {"text": "Fast miss reserves entries. Slow write fills reserved entries. After the first fast hit, fast miss is not allowed until slow pending is cleared."},
+  "config": {"hscale": 3}
+}
