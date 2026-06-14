@@ -92,9 +92,8 @@ assign rd_addr_p1 = {1'b0,r_rd_addr} + 1'b1;
 assign wr_fast_addr_nxt = wr_fast_addr_p1==DEPTH[AW:0] ? '0 : wr_fast_addr_p1[AW-1:0];
 assign slow_ptr_nxt = slow_ptr_p1==DEPTH[AW:0] ? '0 : slow_ptr_p1[AW-1:0];
 assign rd_addr_nxt = rd_addr_p1==DEPTH[AW:0] ? '0 : rd_addr_p1[AW-1:0];
-assign wr_fast_miss_ilgl = wr_fast_miss_hs && (r_wr_fast_hit_flag || wr_slow_hs);
-assign slow_ptr_do_nxt = wr_fast_miss_hs ? r_slow_ptr :
-                          !slow_avl_flag_nxt ? (wr_fast_hs ? wr_fast_addr_nxt : r_wr_fast_addr) :
+assign wr_fast_miss_ilgl = wr_fast_miss_hs && r_wr_fast_hit_flag;
+assign slow_ptr_do_nxt = !slow_avl_flag_nxt ? (wr_fast_hs ? wr_fast_addr_nxt : r_wr_fast_addr) :
                                                (wr_slow_hs ? slow_ptr_nxt : r_slow_ptr);
 assign rd_addr_do_nxt = rd_hs ? rd_addr_nxt : r_rd_addr;
 assign water_level_nxt = r_water_level - CW'(wr_fast_hs) + CW'(rd_hs);
