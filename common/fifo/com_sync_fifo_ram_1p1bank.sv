@@ -16,9 +16,10 @@
 ******************************************************************************/
 
 module com_sync_fifo_ram_1p1bank #( parameter
-    DW        = 8,
-    RAM_DEPTH = 4, //range=[2::2], logical fifo depth in DW unit
-    OUT_DEPTH = 4, //range=[2::], output fifo depth
+    DW           = 8,
+    RAM_DEPTH    = 4, //range=[2::2], logical fifo depth in DW unit
+    OUT_DEPTH    = 4, //range=[2::], output fifo depth
+    RAM_RD_DELAY = 1, //range=[1:16:], fixed SRAM read data latency
     localparam RAM_ONE_DW    = DW*2,
     localparam RAM_ONE_DEPTH = RAM_DEPTH/2,
     localparam TOL_DEPTH     = RAM_DEPTH+OUT_DEPTH,
@@ -42,51 +43,52 @@ output wire                       o_ram_ce_n        ,
 output wire                       o_ram_we_n        ,
 output wire [RAM_ONE_AW-1:0]      o_ram_addr        ,
 output wire [RAM_ONE_DW-1:0]      o_ram_wr_data     ,
-input  wire [RAM_ONE_DW-1:0]      i_ram_rd_data     ,
-input  wire                       i_ram_rd_data_vld //,
+input  wire [RAM_ONE_DW-1:0]      i_ram_rd_data     //,
 );
 //localparam-----------------------------------------------------------------
 localparam RAM_ONE_CW = $clog2(RAM_ONE_DEPTH+1);
 localparam OUT_CW     = $clog2(OUT_DEPTH+1);
 //signal declare-------------------------------------------------------------
-reg  [RAM_ONE_AW-1:0] r_ram_wr_addr;
-reg  [RAM_ONE_AW-1:0] r_ram_rd_addr;
-reg  [RAM_ONE_CW-1:0] r_ram_used_cnt;
-reg                   r_ram_wr_full;
-reg  [OUT_CW-1:0]     r_ram_otf_cnt;
-reg                   r_rd_req_hi;
-reg                   r_pack_vld;
-reg  [DW-1:0]         r_pack_data;
-reg                   r_wr_full;
-reg  [TOL_CW-1:0]     r_tol_water_level;
-reg                   r_ram_rd_ack;
-reg  [DW-1:0]         r_ram_rd_data_hi;
+reg  [RAM_ONE_AW-1:0]    r_ram_wr_addr;
+reg  [RAM_ONE_AW-1:0]    r_ram_rd_addr;
+reg  [RAM_ONE_CW-1:0]    r_ram_used_cnt;
+reg                      r_ram_wr_full;
+reg  [OUT_CW-1:0]        r_ram_otf_cnt;
+reg                      r_rd_req_hi;
+reg                      r_pack_vld;
+reg  [DW-1:0]            r_pack_data;
+reg                      r_wr_full;
+reg  [TOL_CW-1:0]        r_tol_water_level;
+reg                      r_ram_rd_ack;
+reg  [DW-1:0]            r_ram_rd_data_hi;
+reg  [RAM_RD_DELAY-1:0]  r_ram_rd_vld_pipe;
 
-wire                  wr_hs;
-wire                  rd_hs;
-wire                  wr_full_nxt;
-wire [TOL_CW-1:0]     tol_water_level_nxt;
-wire                  direct_order_avl;
-wire                  out_direct_wr_en;
-wire                  pack_drain_en;
-wire                  pack_store_en;
-wire                  ram_wr_req;
-wire                  ram_wr_en;
-wire                  ram_rd_en;
-wire                  rd_req_hi_en;
-wire                  out_ram_lo_wr_en;
-wire                  out_ram_hi_wr_en;
-wire [RAM_ONE_AW-0:0] ram_wr_addr_p1;
-wire [RAM_ONE_AW-0:0] ram_rd_addr_p1;
-wire [RAM_ONE_AW-1:0] ram_wr_addr_nxt;
-wire [RAM_ONE_AW-1:0] ram_rd_addr_nxt;
-wire [RAM_ONE_CW-1:0] ram_used_cnt_nxt;
-wire [OUT_CW-1:0]     ram_rd_otf_add;
-wire [OUT_CW-1:0]     ram_otf_cnt_nxt;
-wire                  ram_ack_ilgl;
-wire                  ram_ack_high_ilgl;
-wire                  ram_otf_underflow_ilgl;
-wire                  wr_path_miss;
+wire                     wr_hs;
+wire                     rd_hs;
+wire                     wr_full_nxt;
+wire [TOL_CW-1:0]        tol_water_level_nxt;
+wire                     direct_order_avl;
+wire                     out_direct_wr_en;
+wire                     pack_drain_en;
+wire                     pack_store_en;
+wire                     ram_wr_req;
+wire                     ram_wr_en;
+wire                     ram_rd_en;
+wire                     rd_req_hi_en;
+wire                     out_ram_lo_wr_en;
+wire                     out_ram_hi_wr_en;
+wire [RAM_ONE_AW-0:0]    ram_wr_addr_p1;
+wire [RAM_ONE_AW-0:0]    ram_rd_addr_p1;
+wire [RAM_ONE_AW-1:0]    ram_wr_addr_nxt;
+wire [RAM_ONE_AW-1:0]    ram_rd_addr_nxt;
+wire [RAM_ONE_CW-1:0]    ram_used_cnt_nxt;
+wire [OUT_CW-1:0]        ram_rd_otf_add;
+wire [OUT_CW-1:0]        ram_otf_cnt_nxt;
+wire                     ram_rd_data_vld;
+wire                     ram_ack_ilgl;
+wire                     ram_ack_high_ilgl;
+wire                     ram_otf_underflow_ilgl;
+wire                     wr_path_miss;
 
 //instance signal--
 wire                  u_out_i_wr_fast_en;
@@ -125,8 +127,8 @@ assign pack_store_en = wr_hs && !out_direct_wr_en && (!r_pack_vld || pack_drain_
 assign ram_wr_req = wr_hs && r_pack_vld && !pack_drain_en;
 assign ram_wr_en = ram_wr_req && !r_ram_wr_full;
 
-assign out_ram_lo_wr_en = i_ram_rd_data_vld;
-assign out_ram_hi_wr_en = r_ram_rd_ack && u_out_o_wr_slow_avl_flag && !i_ram_rd_data_vld;
+assign out_ram_lo_wr_en = ram_rd_data_vld;
+assign out_ram_hi_wr_en = r_ram_rd_ack && u_out_o_wr_slow_avl_flag && !ram_rd_data_vld;
 assign ram_rd_en = !ram_wr_req && !r_rd_req_hi && (r_ram_used_cnt!='0) &&
                    !u_out_o_wr_full && (!r_ram_rd_ack || out_ram_hi_wr_en);
 assign rd_req_hi_en = r_rd_req_hi && !u_out_o_wr_full;
@@ -138,7 +140,7 @@ assign u_out_i_wr_slow_en = out_ram_hi_wr_en || out_ram_lo_wr_en;
 assign u_out_i_wr_slow_data = out_ram_hi_wr_en ? r_ram_rd_data_hi : i_ram_rd_data[DW-1:0];
 assign u_out_i_rd_en = rd_hs;
 
-assign ram_ack_ilgl = i_ram_rd_data_vld && (r_ram_rd_ack || !u_out_o_wr_slow_avl_flag);
+assign ram_ack_ilgl = ram_rd_data_vld && (r_ram_rd_ack || !u_out_o_wr_slow_avl_flag);
 assign ram_ack_high_ilgl = r_ram_rd_ack && !r_rd_req_hi && !u_out_o_wr_slow_avl_flag;
 assign ram_otf_underflow_ilgl = (out_ram_lo_wr_en || out_ram_hi_wr_en) && (r_ram_otf_cnt=='0);
 assign wr_path_miss = wr_hs && !(out_direct_wr_en || pack_store_en || ram_wr_en);
@@ -153,6 +155,7 @@ assign ram_used_cnt_nxt = r_ram_used_cnt + RAM_ONE_CW'(ram_wr_en) - RAM_ONE_CW'(
 assign ram_rd_otf_add = ram_rd_en ? OUT_CW'(2) : '0;
 assign ram_otf_cnt_nxt = r_ram_otf_cnt + ram_rd_otf_add -
                          OUT_CW'(out_ram_lo_wr_en) - OUT_CW'(out_ram_hi_wr_en);
+assign ram_rd_data_vld = r_ram_rd_vld_pipe[RAM_RD_DELAY-1];
 
 //ram_wr_addr
 always @(posedge clk or negedge rst_n) begin
@@ -212,6 +215,19 @@ always @(posedge clk or negedge rst_n) begin
         r_ram_otf_cnt <= ram_otf_cnt_nxt;
 end
 
+//ram_rd_vld_pipe
+always @(posedge clk or negedge rst_n) begin
+    if( !rst_n )
+        r_ram_rd_vld_pipe <= '0;
+    else if( clear )
+        r_ram_rd_vld_pipe <= '0;
+    else begin
+        r_ram_rd_vld_pipe[0] <= ram_rd_en;
+        for(int i=1; i<RAM_RD_DELAY; i++)
+            r_ram_rd_vld_pipe[i] <= r_ram_rd_vld_pipe[i-1];
+    end
+end
+
 //pack buffer
 always @(posedge clk or negedge rst_n) begin
     if( !rst_n )
@@ -252,14 +268,14 @@ always @(posedge clk or negedge rst_n) begin
         r_ram_rd_ack <= 1'b0;
     else if( clear )
         r_ram_rd_ack <= 1'b0;
-    else if( i_ram_rd_data_vld )
+    else if( ram_rd_data_vld )
         r_ram_rd_ack <= 1'b1;
     else if( out_ram_hi_wr_en )
         r_ram_rd_ack <= 1'b0;
 end
 
 always @(posedge clk) begin
-    if( i_ram_rd_data_vld ) begin
+    if( ram_rd_data_vld ) begin
         r_ram_rd_data_hi <= i_ram_rd_data[RAM_ONE_DW-1:DW];
     end
 end
@@ -293,6 +309,8 @@ com_sync_fifo_reg_2w1r #(
 `COM_PARAM_ASSERT( RAM_DEPTH>=2, "fifo ram depth must larger than 1" );
 `COM_PARAM_ASSERT( RAM_DEPTH%2==0, "fifo ram depth must be even" );
 `COM_PARAM_ASSERT( OUT_DEPTH>=2, "fifo out depth must larger than 1" );
+`COM_PARAM_ASSERT( RAM_RD_DELAY>=1 && RAM_RD_DELAY<=16, "ram read delay range is [1:16]" );
+`COM_PARAM_ASSERT( OUT_DEPTH>=(RAM_RD_DELAY+3), "fifo out depth must cover ram read delay and one write conflict" );
 `COM_SIGNAL_ASSERT_LITE( a0, i_wr_en,!o_wr_full, "fifo write when full" );
 `COM_SIGNAL_ASSERT_LITE( a1, i_rd_en,!o_rd_empty, "fifo read when empty" );
 `COM_SIGNAL_ASSERT_LITE( a2, ram_ack_ilgl,1'b0, "ram read ack without output slot" );

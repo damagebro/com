@@ -45,7 +45,7 @@ reg  [AW-1:0] r_slow_ptr;
 reg  [AW-1:0] r_rd_addr;
 reg  [CW-1:0] r_slow_pend_cnt;
 reg           r_slow_avl_flag;
-reg           r_wr_fast_hit_flag;
+reg           r_wr_fast_hit_again_flag;
 reg           r_wr_full;
 reg           r_rd_empty;
 reg  [CW-1:0] r_water_level;
@@ -68,7 +68,7 @@ wire [AW-1:0]    rd_addr_do_nxt;
 wire [CW-1:0]    water_level_nxt;
 wire [CW-1:0]    slow_pend_cnt_nxt;
 wire             slow_avl_flag_nxt;
-wire             wr_fast_hit_flag_nxt;
+wire             wr_fast_hit_again_flag_nxt;
 wire             real_full_nxt;
 wire             rd_empty_nxt;
 //statement------------------------------------------------------------------
@@ -92,14 +92,14 @@ assign rd_addr_p1 = {1'b0,r_rd_addr} + 1'b1;
 assign wr_fast_addr_nxt = wr_fast_addr_p1==DEPTH[AW:0] ? '0 : wr_fast_addr_p1[AW-1:0];
 assign slow_ptr_nxt = slow_ptr_p1==DEPTH[AW:0] ? '0 : slow_ptr_p1[AW-1:0];
 assign rd_addr_nxt = rd_addr_p1==DEPTH[AW:0] ? '0 : rd_addr_p1[AW-1:0];
-assign wr_fast_miss_ilgl = wr_fast_miss_hs && r_wr_fast_hit_flag;
+assign wr_fast_miss_ilgl = wr_fast_miss_hs && r_wr_fast_hit_again_flag;
 assign slow_ptr_do_nxt = !slow_avl_flag_nxt ? (wr_fast_hs ? wr_fast_addr_nxt : r_wr_fast_addr) :
                                                (wr_slow_hs ? slow_ptr_nxt : r_slow_ptr);
 assign rd_addr_do_nxt = rd_hs ? rd_addr_nxt : r_rd_addr;
 assign water_level_nxt = r_water_level - CW'(wr_fast_hs) + CW'(rd_hs);
 assign slow_pend_cnt_nxt = r_slow_pend_cnt + CW'(wr_fast_miss_hs) - CW'(wr_slow_hs);
 assign slow_avl_flag_nxt = slow_pend_cnt_nxt!='0;
-assign wr_fast_hit_flag_nxt = slow_avl_flag_nxt && (r_wr_fast_hit_flag || (wr_fast_data_hs && r_slow_avl_flag));
+assign wr_fast_hit_again_flag_nxt = slow_avl_flag_nxt && (r_wr_fast_hit_again_flag || (wr_fast_data_hs && r_slow_avl_flag));
 assign real_full_nxt = (water_level_nxt=='0) && !slow_avl_flag_nxt;
 assign rd_empty_nxt = (rd_addr_do_nxt==slow_ptr_do_nxt) && !real_full_nxt;
 
@@ -133,22 +133,22 @@ always @(posedge clk or negedge rst_n) begin
         r_rd_addr <= rd_addr_nxt;
 end
 
-//slow_pend_cnt&slow_avl_flag&wr_fast_hit_flag
+//slow_pend_cnt&slow_avl_flag&wr_fast_hit_again_flag
 always @(posedge clk or negedge rst_n) begin
     if( !rst_n ) begin
         r_slow_pend_cnt <= '0;
         r_slow_avl_flag <= 1'b0;
-        r_wr_fast_hit_flag <= 1'b0;
+        r_wr_fast_hit_again_flag <= 1'b0;
     end
     else if( clear ) begin
         r_slow_pend_cnt <= '0;
         r_slow_avl_flag <= 1'b0;
-        r_wr_fast_hit_flag <= 1'b0;
+        r_wr_fast_hit_again_flag <= 1'b0;
     end
     else if( wr_fast_hs || wr_slow_hs ) begin
         r_slow_pend_cnt <= slow_pend_cnt_nxt;
         r_slow_avl_flag <= slow_avl_flag_nxt;
-        r_wr_fast_hit_flag <= wr_fast_hit_flag_nxt;
+        r_wr_fast_hit_again_flag <= wr_fast_hit_again_flag_nxt;
     end
 end
 
