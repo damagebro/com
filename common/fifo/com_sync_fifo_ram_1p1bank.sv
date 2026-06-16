@@ -308,7 +308,6 @@ com_sync_fifo_reg_2w1r #(
 //assert--------------------------------------
 `COM_PARAM_ASSERT( RAM_DEPTH>=2, "fifo ram depth must larger than 1" );
 `COM_PARAM_ASSERT( RAM_DEPTH%2==0, "fifo ram depth must be even" );
-`COM_PARAM_ASSERT( OUT_DEPTH>=2, "fifo out depth must larger than 1" );
 `COM_PARAM_ASSERT( RAM_RD_DELAY>=1 && RAM_RD_DELAY<=16, "ram read delay range is [1:16]" );
 `COM_PARAM_ASSERT( OUT_DEPTH>=(RAM_RD_DELAY+3), "fifo out depth must cover ram read delay and one write conflict" );
 `COM_SIGNAL_ASSERT_LITE( a0, i_wr_en,!o_wr_full, "fifo write when full" );

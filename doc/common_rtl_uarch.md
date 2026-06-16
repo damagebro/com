@@ -115,6 +115,58 @@
 
        A：t1 写进 pack；t2 占 high。t5/t6 利用 2w1r 同拍 slow fill 和 pack drain，新写数据留 pack。
 
+### com_sync_fifo_ram_1p2bank
+
+![com_sync_fifo_ram_1p2bank uarch](assets/com_sync_fifo_ram_1p2bank_uarch.png)
+
+* 设计目标
+    1. 使用 2 个单口 SRAM bank 作为 FIFO 主存储体，每个 bank 数据位宽为 `DW`，逻辑地址按 ping/pong bank 交替分布。
+    2. 和 1p1bank 相比，1p2bank 不需要 `2*DW` 宽 SRAM，也没有 high half 返回路径；代价是同 bank 读写冲突时一次 SRAM read 只会返回 1 笔数据。
+    3. 新方向去掉 ibuf：冲突写数据直接写 SRAM，不再经历 `port -> ibuf -> SRAM` 的额外 data move，用更深 out_fifo 吸收 read hold。
+
+* 微架构分层
+    1. `port`：对外保持普通同步 FIFO 语义，`wr_hs/rd_hs` 只看对外 full/empty。
+    2. `out_fifo`：继续使用 `com_sync_fifo_reg_2w1r`；fast hit 给 port direct write，fast miss 给 SRAM read 返回预留 entry，slow write 填 SRAM ack 数据。
+    3. `ram queue`：`r_ram_wr_addr/r_ram_rd_addr` 按 `DW` 粒度计数，`addr[0]` 选择 ping/pong bank。
+    4. `rd_hold`：记录已经在 out_fifo 预留、但 physical SRAM read 因同 bank 写优先而延后一拍的 read request。
+    5. 外部依赖：external SRAM read latency 固定为 `RAM_RD_DELAY`，返回顺序与请求顺序一致。
+
+* 关键状态
+    1. `r_ram_wr_addr/r_ram_rd_addr`：分别表示 SRAM FIFO tail/head，按 `DW` 粒度递增。
+    2. `rd_hold_vld/rd_hold_addr`：已经完成 fast miss 预留，但还没真正发起 SRAM read 的 pending read。
+    3. `ram_otf_cnt`：已经发出 SRAM read、但还没 slow fill 完成的 entry 数量，主要用于检查 outstanding/underflow。
+    4. `direct_order_avl`：RAM FIFO 为空且没有 `rd_hold` 时，port write 才能 direct 到 out_fifo。
+    5. `u_out_o_wr_full`：out_fifo 是否还有 fast entry；port direct 和 read reserve 都需要可用 fast entry。
+
+* 核心数据流
+    1. write path：port write 优先 direct 到 out_fifo；如果 RAM FIFO 非空或 out_fifo 无 direct 条件，则写入 SRAM tail。
+    2. read reserve path：out_fifo 出现空位且 RAM FIFO 有数据时，先发 `wr_fast_mis` 预留返回位置。
+    3. read issue path：若本拍 SRAM read 与 port write 同 bank 冲突，则写优先，read 进入 `rd_hold`；下一拍优先 issue hold read。
+    4. return/fill path：`RAM_RD_DELAY` 后 SRAM ack 通过 out_fifo slow 口填入已预留 entry。
+    5. bypass path：当 RAM FIFO 为空且没有 hold read 时，port write 可通过 out_fifo fast hit 直接写出。
+
+* 关键约束
+    1. 参数约束：`RAM_DEPTH>=2` 且为偶数；`RAM_RD_DELAY` 固定且至少 1。
+    2. out_fifo 最小深度需要覆盖 SRAM latency 和同 bank write-priority read hold；当前结论是 `OUT_DEPTH >= RAM_RD_DELAY + 3`，`RAM_RD_DELAY=1` 时最小为 4。
+    3. 同 bank SRAM 读写冲突时写优先，read 最多 hold 1 拍；该 1 拍不靠 ibuf 吸收，靠 out_fifo 深度吸收。
+    4. 2w1r out_fifo 仍然必要：SRAM ack slow fill 和 port direct fast hit 可能同拍发生，不能退化为普通 1w FIFO。
+    5. 去掉 ibuf 的收益是减少 data move 和冲突矩阵；代价是 out_fifo 最小深度增加 1。
+
+* Q/A
+    1. Q：为什么去掉 ibuf？
+       A：冲突写数据直接进入 SRAM，少一次 `port -> ibuf -> SRAM` 搬运，功耗和控制复杂度更低。
+    2. Q：`OUT_DEPTH=3`、`RAM_RD_DELAY=1` 时，为什么同 bank 冲突会导致读断流？
+       假设：t0 前 out_fifo full 且有 3 笔可读数据；ping/pong SRAM 各 1 笔；t1 有一次 port write，且与当前 read 同 bank 冲突。
+
+       | cycle | port                | out_fifo                    | out_wl | sram_req                     | sram_ack       | result              |
+       | ----- | ------------------- | --------------------------- | ------ | ---------------------------- | -------------- | ------------------- |
+       | t0    | `i_rd_en`           | `i_rd_en`                   | 0->1   | `rd_en=0`, `rd_hold=0`       | `ack_vld=0`    | free slot           |
+       | t1    | `i_rd_en`,`i_wr_en` | `i_rd_en`, `wr_fast_mis`    | 1->1   | `wr_en=ping`, `rd_hold=ping` | `ack_vld=0`    | wr wins, reserve d0 |
+       | t2    | `i_rd_en`           | `i_rd_en`, `wr_fast_mis`    | 1->1   | `rd_en=ping`, `rd_hold=pong` | `ack_vld=0`    | read d0, reserve d1 |
+       | t3    | `i_rd_en`           | `rd_empty`, `i_wr_slow_en`, `wr_fast_mis` | 1->0 | `rd_en=pong`, `rd_hold=ping` | `ack_vld=ping` | rd break, fill d0   |
+
+       A：t0/t1/t2 已经读完 3 笔可读数据；t3 的 slow fill 不能给 t3 同拍 read 使用，所以 `OUT_DEPTH=3` 会断流。`OUT_DEPTH=4` 才能覆盖这 1 拍 read hold。
+
 ## 附录
 
 ### 复杂模块 uarch 文档模板

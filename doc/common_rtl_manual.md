@@ -16,6 +16,11 @@
 | `com_edge_detect`        | 输入电平边沿检测并输出单周期脉冲                        |
 | `com_counter`            | 可启动、自动停止的参数化计数器                          |
 | `com_sync_fifo_reg`      | 基于寄存器阵列的同步 FIFO                               |
+| `com_sync_fifo_reg_v2`   | `com_sync_fifo_reg` 的重写版本                           |
+| `com_sync_fifo_reg_pfetch` | 读数据预取并寄存输出的同步 FIFO                       |
+| `com_sync_fifo_reg_fullbyp` | 满且同拍读出时允许写入的同步 FIFO                    |
+| `com_sync_fifo_reg_2w1r` | 支持 fast reserve 和 slow fill 的同步 FIFO               |
+| `com_sync_fifo_ram_1p2bank` | 基于两个单口 SRAM bank 的同步 FIFO                    |
 | `com_dp_buffer`          | valid/ready 数据通路 FIFO buffer                        |
 | `com_dp_ram`             | RAM 读请求与返回数据的 valid/ready 桥接 buffer          |
 
@@ -358,6 +363,8 @@
 
 ## com_fifo
 
+* 本节 FIFO 时序统一按“读当拍读，写当拍写”描述：写握手成立时，本拍时钟沿写入当前数据；读握手成立时，本拍弹出当前头部数据。`full/empty/water_level` 等状态若为寄存输出，则在下一拍反映本拍读写结果。
+
 ### com_sync_fifo_reg
 
 * 功能
@@ -398,6 +405,131 @@
   4. `wrcnt_tmp/rdcnt_tmp` 先组合计算本拍操作后的指针，再在时钟沿更新 `r_wr_full/r_rd_empty/r_water_level`；状态输出到下一拍才反映本拍读写结果。
   5. `r_mem` 是寄存器阵列，写入在时钟沿完成，`o_rd_data` 组合读取当前 `rd_addr`。
   6. 模块带有参数和非法访问断言：写满、读空都属于调用侧协议错误。
+
+### com_sync_fifo_reg_v2
+
+* 功能
+
+  `com_sync_fifo_reg_v2` 与 `com_sync_fifo_reg` 功能一致，都是单时钟寄存器阵列 FIFO。该版本重新整理了指针、可写条目计数和状态更新逻辑，只保留 `r_water_level` 作为剩余可写条目计数，写侧和读侧接口仍为 `i_wr_en/i_wr_data/o_wr_full` 与 `i_rd_en/o_rd_data/o_rd_empty`。
+
+### com_sync_fifo_reg_pfetch
+
+* 功能
+
+  `com_sync_fifo_reg_pfetch` 是带读数据预取的同步 FIFO。模块用一个输出寄存器 `r_rd_data` 保存当前可读数据，内部 array 深度为 `DEPTH-1`。当 FIFO 为空时写入，数据直接装载到输出寄存器；读出当前输出数据时，如果 array 内还有数据，则同拍把下一项搬到输出寄存器。优点是 `o_rd_data` 为寄存输出、时序更好；代价是多数数据会先写 array、再搬到输出寄存器，数据移动次数增加。
+
+### com_sync_fifo_reg_fullbyp
+
+* 功能
+
+  `com_sync_fifo_reg_fullbyp` 是允许 full bypass 的同步 FIFO。当内部 FIFO 已满，但本拍读侧也完成读握手时，写侧可在同一拍写入新数据，从而减少使用时需要预留的深度。该结构让写允许信号依赖读侧握手，读写两侧时序路径存在耦合，适合确认该耦合可接受的场景。
+
+* 接口时序
+
+  普通读写仍为读当拍读、写当拍写。与基础 FIFO 的差异是：内部满状态下，如果本拍 `i_rd_en && !o_rd_empty` 成立，组合输出 `o_wr_full` 会在本拍拉低，因此同一拍可以读出旧数据并写入新数据。
+
+  ![com_sync_fifo_reg_fullbyp 接口时序](assets/com_sync_fifo_reg_fullbyp_wavedrom.png)
+
+* 实现说明
+
+  1. `rd_hs = i_rd_en && !r_rd_empty`。
+  2. `o_wr_full = r_wr_full && !rd_hs`，因此 full 状态下同拍读出会释放写侧。
+  3. `wr_hs = i_wr_en && !o_wr_full`，写指针和读指针可在同一拍同时推进。
+
+### com_sync_fifo_reg_2w1r
+
+* 功能
+
+  `com_sync_fifo_reg_2w1r` 支持 fast reserve 和 slow fill 两条写路径。`i_wr_fast_en` 用于快速预留 FIFO 位置，并推进 full/water_level 判断；当 `i_wr_fast_data_vld=1` 时，fast 路同时写入数据。当 `i_wr_fast_data_vld=0` 时，只预留位置，后续由 slow 路通过 `i_wr_slow_en/i_wr_slow_data` 按顺序填入。读侧只能读到已经真实写入的数据，因此 `o_rd_empty` 由 `r_rd_addr` 和表示真实数据尾部的 `r_slow_ptr` 判断。
+
+* 接口时序
+
+  fast miss 本拍预留条目，下一拍 `o_wr_slow_avl_flag` 表示存在可 slow fill 的位置；slow 写握手本拍把数据填入当前 `r_slow_ptr` 指向的位置。预留但尚未 slow fill 的条目不会让读侧变为非空，只有真实数据尾部推进后，读侧才能读出对应数据。先出现 fast miss 后，可以继续 fast miss 扩展连续预留区间；一旦出现 fast hit，在 slow pending 清空之前不允许再次 fast miss。
+
+  ![com_sync_fifo_reg_2w1r 接口时序](assets/com_sync_fifo_reg_2w1r_wavedrom.png)
+
+* 参数
+
+  | param_name | range     | default_value     | description      |
+  | ---------- | --------- | ----------------- | ---------------- |
+  | `DW`       | `[1::]`   | `8`               | FIFO 数据位宽    |
+  | `DEPTH`    | `[1:256]` | `4`               | FIFO 深度        |
+  | `CW`       | derived   | `$clog2(DEPTH+1)` | 可写条目计数位宽 |
+
+* 接口
+
+  | signal_name           | bit_width | I/O | description                                      |
+  | --------------------- | --------- | --- | ------------------------------------------------ |
+  | `i_wr_fast_en`        | `1`       | I   | fast 写使能；用于预留 FIFO 条目                  |
+  | `i_wr_fast_data_vld`  | `1`       | I   | fast 写数据是否同拍有效                          |
+  | `i_wr_fast_data`      | `DW`      | I   | fast 路写入数据                                  |
+  | `o_wr_full`           | `1`       | O   | FIFO 满指示                                      |
+  | `i_wr_slow_en`        | `1`       | I   | slow 填数写使能                                  |
+  | `i_wr_slow_data`      | `DW`      | I   | slow 路填入数据                                  |
+  | `o_wr_slow_avl_flag`  | `1`       | O   | 存在 slow pending 条目，可接受 slow 写入          |
+  | `i_rd_en`             | `1`       | I   | 读使能                                           |
+  | `o_rd_data`           | `DW`      | O   | 当前可读头部数据                                 |
+  | `o_rd_empty`          | `1`       | O   | 无真实可读数据指示                               |
+  | `o_water_level`       | `CW`      | O   | 剩余可写条目数量                                 |
+
+* 实现说明
+
+  1. `r_wr_fast_addr` 是预留尾指针，fast 握手后推进。
+  2. `r_slow_ptr` 是真实数据尾指针；没有 slow pending 时与 fast 指针同步，存在 slow pending 时只随 slow 写推进。
+  3. `r_slow_pend_cnt` 统计已预留但尚未填入数据的条目数，`r_slow_avl_flag` 表示该计数非零。
+  4. `r_wr_fast_hit_flag` 表示已经从 miss 阶段进入 hit 阶段；该阶段禁止再次 fast miss，直到 slow pending 清空。
+  5. `o_rd_empty` 使用读指针是否追上 `r_slow_ptr` 判断，只要 FIFO 中存在真实写入的数据就不为空。
+
+### com_sync_fifo_ram_1p2bank
+
+* 功能
+
+  `com_sync_fifo_ram_1p2bank` 使用两个单口 SRAM bank 作为主存储，并用一个浅层输出 FIFO 缓冲读出的数据。输入侧写入时，如果 RAM 队列为空且输出 FIFO 有空间，数据可直接进入输出 FIFO；否则进入 SRAM 队列。SRAM 读请求会先在输出 FIFO 中通过 fast reserve 预留位置，等 SRAM 返回 `i_ram_rd_data_vld` 后，再通过 slow fill 把数据补入输出 FIFO。
+
+* 接口时序
+
+  用户侧 FIFO 仍按读当拍读、写当拍写处理。SRAM 侧读请求和返回数据之间允许存在延迟：读请求本拍发出并在输出 FIFO 预留位置，返回数据有效时本拍填入预留位置。两个单口 bank 同拍读写同 bank 冲突时，写数据会先进入一项 `ibuf`，后续再写回对应 SRAM bank。
+
+  ![com_sync_fifo_ram_1p2bank 接口时序](assets/com_sync_fifo_ram_1p2bank_wavedrom.png)
+
+* 参数
+
+  | param_name      | range   | default_value        | description                 |
+  | --------------- | ------- | -------------------- | --------------------------- |
+  | `DW`            | `[1::]` | `8`                  | FIFO 数据位宽               |
+  | `RAM_DEPTH`     | `[2::2]` | `4`                 | 两个单口 SRAM bank 总深度   |
+  | `OUT_DEPTH`     | `[2::]` | `3`                  | 输出 FIFO 深度              |
+  | `RAM_ONE_DEPTH` | derived | `RAM_DEPTH/2`        | 单个 SRAM bank 深度         |
+  | `TOL_DEPTH`     | derived | `RAM_DEPTH+OUT_DEPTH` | 总缓存深度                 |
+  | `TOL_CW`        | derived | `$clog2(TOL_DEPTH+1)` | 总可写条目计数位宽         |
+  | `RAM_ONE_AW`    | derived | `$clog2(...)`        | 单个 SRAM bank 地址位宽     |
+
+* 接口
+
+  | signal_name         | bit_width    | I/O | description                         |
+  | ------------------- | ------------ | --- | ----------------------------------- |
+  | `i_wr_en`           | `1`          | I   | 用户侧写使能                        |
+  | `i_wr_data`         | `DW`         | I   | 用户侧写入数据                      |
+  | `o_wr_full`         | `1`          | O   | 用户侧 FIFO 满指示                  |
+  | `i_rd_en`           | `1`          | I   | 用户侧读使能                        |
+  | `o_rd_data`         | `DW`         | O   | 用户侧读出数据                      |
+  | `o_rd_empty`        | `1`          | O   | 用户侧 FIFO 空指示                  |
+  | `o_water_level`     | `TOL_CW`     | O   | 总剩余可写条目数量                  |
+  | `o_ram_ce_n`        | `2`          | O   | 两个 SRAM bank 的低有效片选         |
+  | `o_ram_we_n`        | `2`          | O   | 两个 SRAM bank 的低有效写使能       |
+  | `o_ram_addr`        | `2*RAM_ONE_AW` | O | 两个 SRAM bank 的访问地址           |
+  | `o_ram_wr_data`     | `2*DW`       | O   | 两个 SRAM bank 的写数据             |
+  | `i_ram_rd_data`     | `2*DW`       | I   | 两个 SRAM bank 的读返回数据         |
+  | `i_ram_rd_data_vld` | `2`          | I   | 两个 SRAM bank 的读返回有效指示     |
+
+* 实现说明
+
+  1. 全局 RAM FIFO 地址最低位选择 bank，高位作为 bank 内地址。
+  2. `r_ram_water_level` 统计 SRAM 队列剩余空间，`r_ram_otf_cnt` 统计已发出但尚未返回的 SRAM 读请求。
+  3. `out_direct_wr_en` 用于 RAM 队列为空时直接写输出 FIFO，减少不必要的 SRAM 访问。
+  4. `ram_rd_en` 从 SRAM 队列读出，并在输出 FIFO 中通过 `com_sync_fifo_reg_2w1r` fast reserve 预留返回位置。
+  5. `ram_rd_ack` 选择有效 bank 的返回数据，并通过 slow fill 写入输出 FIFO。
+  6. `ibuf` 处理单口 SRAM 同 bank 读写冲突；冲突写先暂存，等对应 bank 空闲时再写入。
 
 ### com_dp_buffer
 

@@ -1,24 +1,29 @@
 {
-  "head": {"text": "com_sync_fifo_reg_fullbyp interface timing example (DEPTH=2)", "tick": 0},
+  "head": {"text": "com_sync_fifo_reg_fullbyp timing example (DEPTH=2)", "tick": 0},
   "signal": [
-    { "name": "clk", "wave": "p........." },
+    { "name": "clk", "wave": "p........" },
     {},
     ["write",
-      { "name": "i_wr_en", "wave": "011.10...." },
-      { "name": "i_wr_data", "wave": "x===xx....", "data": ["A0", "B1", "C2"] },
-      { "name": "o_wr_full", "wave": "0..10....." }
+      { "name": "i_wr_en", "wave": "01.010..." },
+      { "name": "i_wr_data", "wave": "x==x=x...", "data": ["A0", "B1", "C2"] },
+      { "name": "o_wr_full", "wave": "0..10...." }
     ],
     {},
     ["read",
-      { "name": "i_rd_en", "wave": "0...1010.." },
-      { "name": "o_rd_empty", "wave": "1.0.....1." },
-      { "name": "o_rd_data", "wave": "x..=.=.=x.", "data": ["A0", "B1", "C2"] }
+      { "name": "i_rd_en", "wave": "0...1..0." },
+      { "name": "o_rd_empty", "wave": "1.0....1." },
+      { "name": "o_rd_data", "wave": "x.=..==x.", "data": ["A0", "B1", "C2"] }
+    ],
+    {},
+    ["handshake",
+      { "name": "wr_hs", "wave": "01.010..." },
+      { "name": "rd_hs", "wave": "0...1..0." }
     ],
     {},
     ["status",
-      { "name": "o_water_level", "wave": "=.======..", "data": ["2", "1", "0", "0", "1", "2"] }
+      { "name": "o_water_level", "wave": "=.==..==.", "data": ["2", "1", "0", "1", "2"] }
     ]
   ],
-  "foot": {"text": "When internal full is high, a same-cycle read releases one slot and allows write in that cycle; this intentionally couples read and write timing."},
+  "foot": {"text": "When FIFO is full, i_rd_en makes o_wr_full low in the same cycle, so C2 can be written while A0 is read."},
   "config": {"hscale": 3}
 }
