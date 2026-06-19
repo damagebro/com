@@ -44,3 +44,19 @@
 - FIFO 增量模块：开发 `com_sync_fifo_reg_v2`、`com_sync_fifo_reg_pfetch`、`com_sync_fifo_reg_rwfull`、`com_sync_fifo_reg_2w1r` 的 RTL 和文档，并比较它们与 `com_sync_fifo_reg` 的差异。
 - CDC 相关：开发 `pulse/async_fifo`。
 - 仲裁相关：开发 `com_arbiter_wrr`、`com_ram_arbiter`。
+
+### 2026-05-30 至 2026-06-19: FIFO 增量 RTL 与微架构文档
+
+- 已完成/推进 FIFO 增量模块：`com_sync_fifo_reg_v2`、`com_sync_fifo_reg_pfetch`、`com_sync_fifo_reg_fullbyp`、`com_sync_fifo_reg_2w1r`、`com_sync_fifo_ram_1p1bank`、`com_sync_fifo_ram_1p2bank`。
+- `com_sync_fifo_reg_v2` 与基础 `com_sync_fifo_reg` 功能一致，重写指针和 water level 逻辑，只保留一个剩余可写计数语义。
+- `com_sync_fifo_reg_pfetch` 使用输出数据预取，让 `o_rd_data` 成为寄存输出；限制 `DEPTH>=2`，代价是多数数据会多一次搬运。
+- `com_sync_fifo_reg_fullbyp` 命名从 rwfull 收敛为 full bypass 语义：full 且同拍读出时允许写入，能减少使用深度，但读写时序路径存在耦合。
+- `com_sync_fifo_reg_2w1r` 支持 fast reserve / slow fill：fast miss 先占位，slow 后填真实数据；empty 使用真实数据尾指针判断。关键命名包括 `r_slow_avl_flag`、`o_wr_slow_avl_flag`、`r_wr_fast_hit_again_flag`。
+- `com_sync_fifo_ram_1p1bank` 使用 1 个 `2*DW` 单口 SRAM row 存两笔数据；读返回 low half 直接 slow fill，high half 用 1DW DFF 暂存。SRAM 读延时改为参数 `RAM_RD_DELAY`，范围 `[1:16]`，不再依赖外部 `i_ram_rd_data_vld`。
+- `com_sync_fifo_ram_1p2bank` 使用两个 `DW` 单口 bank，去掉 ibuf 思路，冲突时写优先、read hold 一拍，通过加深 out_fifo 吸收，不再做额外 data move。
+- 统一结论：`com_sync_fifo_ram_1p1bank` 与 `com_sync_fifo_ram_1p2bank` 的输出 FIFO 最小深度都使用 `OUT_DEPTH >= RAM_RD_DELAY + 3`，覆盖 SRAM 固定读延时、返回/预留节奏以及一次写优先 read hold。
+- `common_rtl_uarch.md` 只记录复杂模块，模板调整为“概述 / 模块框图 / 设计细节 / 讨论记录”。`fifo_ram` 两个模块已按新模板整理；讨论表格保留在可选“讨论记录”。
+- `common_rtl_manual.md` 已补 `com_sync_fifo_ram_1p1bank` 说明，包含功能、接口时序、参数、接口和实现说明；`1p2bank` 后续需要继续与最新 RTL/uarch 对齐。
+- 复杂框图统一放到 `doc/assets/common_ip_uarch.drawio`，按模块页面维护；已导出 `com_sync_fifo_ram_1p1bank_uarch.png`，`1p2bank` 导出时曾遇到 draw.io 页面索引不稳定，需要后续确认导出页是否正确。
+- 文档编码注意：曾因 PowerShell 默认编码读写导致 `common_rtl_uarch.md` 中文变成乱码；后续中文 Markdown 优先用 UTF-8 严格读写，并检查是否残留常见乱码字符。
+- 权限/流程注意：若删除文件、draw.io 导出或 git index lock 处理超过 1 分钟，应暂停并提示用户，不继续绕权限问题耗时。

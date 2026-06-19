@@ -1,28 +1,29 @@
 # 概述
 
-| module                   | function                                                |
-| ------------------------ | ------------------------------------------------------- |
-| `com_arbiter_rr`         | 多路请求的轮询仲裁，输出 onehot 和 index 形式的授权结果 |
-| `com_find_lsb_first_one` | 在输入位图中选择最低位的有效项                          |
-| `com_reg`                | 基础数据寄存器                                          |
-| `com_reg_e`              | 带写使能的数据寄存器                                    |
-| `com_reg_ce`             | 带同步清除和写使能的数据寄存器                          |
-| `com_pipe_vld_single`    | 单级 valid 控制管线，输出数据更新使能                   |
-| `com_pipe_vld`           | 多级 valid 控制管线，输出各级数据更新使能               |
-| `com_pipe_rdy`           | 单级 ready 管线，带一拍反压缓存                         |
-| `com_pipe_vld_rdy`       | 可配置 valid/ready 单级数据管线                         |
-| `com_pipe_regslice`      | 多级 valid/ready 数据寄存切片                           |
-| `com_simo_no_delay`      | 单输入多输出无延迟广播握手                              |
-| `com_edge_detect`        | 输入电平边沿检测并输出单周期脉冲                        |
-| `com_counter`            | 可启动、自动停止的参数化计数器                          |
-| `com_sync_fifo_reg`      | 基于寄存器阵列的同步 FIFO                               |
-| `com_sync_fifo_reg_v2`   | `com_sync_fifo_reg` 的重写版本                           |
-| `com_sync_fifo_reg_pfetch` | 读数据预取并寄存输出的同步 FIFO                       |
-| `com_sync_fifo_reg_fullbyp` | 满且同拍读出时允许写入的同步 FIFO                    |
-| `com_sync_fifo_reg_2w1r` | 支持 fast reserve 和 slow fill 的同步 FIFO               |
-| `com_sync_fifo_ram_1p2bank` | 基于两个单口 SRAM bank 的同步 FIFO                    |
-| `com_dp_buffer`          | valid/ready 数据通路 FIFO buffer                        |
-| `com_dp_ram`             | RAM 读请求与返回数据的 valid/ready 桥接 buffer          |
+| module                      | function                                                |
+| --------------------------- | ------------------------------------------------------- |
+| `com_arbiter_rr`            | 多路请求的轮询仲裁，输出 onehot 和 index 形式的授权结果 |
+| `com_find_lsb_first_one`    | 在输入位图中选择最低位的有效项                          |
+| `com_reg`                   | 基础数据寄存器                                          |
+| `com_reg_e`                 | 带写使能的数据寄存器                                    |
+| `com_reg_ce`                | 带同步清除和写使能的数据寄存器                          |
+| `com_pipe_vld_single`       | 单级 valid 控制管线，输出数据更新使能                   |
+| `com_pipe_vld`              | 多级 valid 控制管线，输出各级数据更新使能               |
+| `com_pipe_rdy`              | 单级 ready 管线，带一拍反压缓存                         |
+| `com_pipe_vld_rdy`          | 可配置 valid/ready 单级数据管线                         |
+| `com_pipe_regslice`         | 多级 valid/ready 数据寄存切片                           |
+| `com_simo_no_delay`         | 单输入多输出无延迟广播握手                              |
+| `com_edge_detect`           | 输入电平边沿检测并输出单周期脉冲                        |
+| `com_counter`               | 可启动、自动停止的参数化计数器                          |
+| `com_sync_fifo_reg`         | 基于寄存器阵列的同步 FIFO                               |
+| `com_sync_fifo_reg_v2`      | `com_sync_fifo_reg` 的重写版本                          |
+| `com_sync_fifo_reg_pfetch`  | 读数据预取并寄存输出的同步 FIFO                         |
+| `com_sync_fifo_reg_fullbyp` | 满且同拍读出时允许写入的同步 FIFO                       |
+| `com_sync_fifo_reg_2w1r`    | 支持 fast reserve 和 slow fill 的同步 FIFO              |
+| `com_sync_fifo_ram_1p1bank` | 基于一个单口 SRAM 的同步 FIFO                           |
+| `com_sync_fifo_ram_1p2bank` | 基于两个单口 SRAM bank 的同步 FIFO                      |
+| `com_dp_buffer`             | valid/ready 数据通路 FIFO buffer                        |
+| `com_dp_ram`                | RAM 读请求与返回数据的 valid/ready 桥接 buffer          |
 
 # common_ip
 
@@ -40,9 +41,9 @@
 
 * 参数
 
-  | param_name | range   | default_value                  | description                     |
-  | ---------- | ------- | ------------------------------ | ------------------------------- |
-  | `REQ_N`    | `[1::]` | `2`                            | 请求通道数量                    |
+  | param_name | range   | default_value                 | description                     |
+  | ---------- | ------- | ----------------------------- | ------------------------------- |
+  | `REQ_N`    | `[1::]` | `2`                           | 请求通道数量                    |
   | `REQ_N_L2` | derived | `$clog2(REQ_N>2 ? REQ_N : 2)` | 授权索引位宽，派生 `localparam` |
 
 * 接口
@@ -93,13 +94,13 @@
 
 * 接口
 
-  | signal_name       | bit_width | I/O | description                                                   |
-  | ----------------- | --------- | --- | ------------------------------------------------------------- |
-  | `i_rx_vld`        | `1`       | I   | 上游输入有效指示                                              |
-  | `o_rx_rdy`        | `1`       | O   | 上游输入接收就绪；本级为空或当前输出可被下游接受时为 `1`      |
-  | `o_tx_vld`        | `1`       | O   | 本级输出有效指示                                              |
-  | `i_tx_rdy`        | `1`       | I   | 下游接收就绪指示                                              |
-  | `o_rx_pipe_upen`  | `1`       | O   | 输入 payload 更新使能，等于输入握手 `i_rx_vld && o_rx_rdy`    |
+  | signal_name      | bit_width | I/O | description                                                |
+  | ---------------- | --------- | --- | ---------------------------------------------------------- |
+  | `i_rx_vld`       | `1`       | I   | 上游输入有效指示                                           |
+  | `o_rx_rdy`       | `1`       | O   | 上游输入接收就绪；本级为空或当前输出可被下游接受时为 `1`   |
+  | `o_tx_vld`       | `1`       | O   | 本级输出有效指示                                           |
+  | `i_tx_rdy`       | `1`       | I   | 下游接收就绪指示                                           |
+  | `o_rx_pipe_upen` | `1`       | O   | 输入 payload 更新使能，等于输入握手 `i_rx_vld && o_rx_rdy` |
 
 * 实现说明
 
@@ -128,13 +129,13 @@
 
 * 接口
 
-  | signal_name      | bit_width  | I/O | description                                            |
-  | ---------------- | ---------- | --- | ------------------------------------------------------ |
-  | `i_rx_vld`       | `1`        | I   | 上游输入有效指示                                       |
-  | `o_rx_rdy`       | `1`        | O   | 第 `0` 级接收就绪，即整条管线对上游的 ready            |
-  | `o_tx_vld`       | `1`        | O   | 最后一级输出有效指示                                   |
-  | `i_tx_rdy`       | `1`        | I   | 下游接收就绪指示                                       |
-  | `o_rx_pipe_upen` | `PIPE_NUM` | O   | 各级 payload 更新使能，bit `0` 对应输入侧第 `0` 级      |
+  | signal_name      | bit_width  | I/O | description                                        |
+  | ---------------- | ---------- | --- | -------------------------------------------------- |
+  | `i_rx_vld`       | `1`        | I   | 上游输入有效指示                                   |
+  | `o_rx_rdy`       | `1`        | O   | 第 `0` 级接收就绪，即整条管线对上游的 ready        |
+  | `o_tx_vld`       | `1`        | O   | 最后一级输出有效指示                               |
+  | `i_tx_rdy`       | `1`        | I   | 下游接收就绪指示                                   |
+  | `o_rx_pipe_upen` | `PIPE_NUM` | O   | 各级 payload 更新使能，bit `0` 对应输入侧第 `0` 级 |
 
 * 实现说明
 
@@ -163,14 +164,14 @@
 
 * 接口
 
-  | signal_name | bit_width | I/O | description                                              |
-  | ----------- | --------- | --- | -------------------------------------------------------- |
-  | `i_rx_dat`  | `DW`      | I   | 上游输入 payload                                         |
-  | `i_rx_vld`  | `1`       | I   | 上游输入有效指示                                         |
-  | `o_rx_rdy`  | `1`       | O   | 上游输入接收就绪，由寄存的 ready 状态输出                |
-  | `o_tx_dat`  | `DW`      | O   | 下游输出 payload，直通模式取输入，缓存模式取缓存寄存器   |
-  | `o_tx_vld`  | `1`       | O   | 下游输出有效指示，缓存模式下保持为 `1`                   |
-  | `i_tx_rdy`  | `1`       | I   | 下游接收就绪指示                                         |
+  | signal_name | bit_width | I/O | description                                            |
+  | ----------- | --------- | --- | ------------------------------------------------------ |
+  | `i_rx_dat`  | `DW`      | I   | 上游输入 payload                                       |
+  | `i_rx_vld`  | `1`       | I   | 上游输入有效指示                                       |
+  | `o_rx_rdy`  | `1`       | O   | 上游输入接收就绪，由寄存的 ready 状态输出              |
+  | `o_tx_dat`  | `DW`      | O   | 下游输出 payload，直通模式取输入，缓存模式取缓存寄存器 |
+  | `o_tx_vld`  | `1`       | O   | 下游输出有效指示，缓存模式下保持为 `1`                 |
+  | `i_tx_rdy`  | `1`       | I   | 下游接收就绪指示                                       |
 
 * 实现说明
 
@@ -194,22 +195,22 @@
 
 * 参数
 
-  | param_name    | range   | default_value | description                         |
-  | ------------- | ------- | ------------- | ----------------------------------- |
-  | `VLD_PIPE_EN` | `0/1`   | `1`           | 是否使能 valid 侧输出寄存           |
-  | `RDY_PIPE_EN` | `0/1`   | `1`           | 是否使能 ready 侧 skid buffer       |
-  | `DW`          | `[1::]` | `8`           | payload 位宽                        |
+  | param_name    | range   | default_value | description                   |
+  | ------------- | ------- | ------------- | ----------------------------- |
+  | `VLD_PIPE_EN` | `0/1`   | `1`           | 是否使能 valid 侧输出寄存     |
+  | `RDY_PIPE_EN` | `0/1`   | `1`           | 是否使能 ready 侧 skid buffer |
+  | `DW`          | `[1::]` | `8`           | payload 位宽                  |
 
 * 接口
 
-  | signal_name | bit_width | I/O | description                                |
-  | ----------- | --------- | --- | ------------------------------------------ |
-  | `i_rx_dat`  | `DW`      | I   | 上游输入 payload                           |
-  | `i_rx_vld`  | `1`       | I   | 上游输入有效指示                           |
-  | `o_rx_rdy`  | `1`       | O   | 上游输入接收就绪，来自 ready 侧管线        |
-  | `o_tx_dat`  | `DW`      | O   | 下游输出 payload                           |
-  | `o_tx_vld`  | `1`       | O   | 下游输出有效指示，来自 valid 侧管线        |
-  | `i_tx_rdy`  | `1`       | I   | 下游接收就绪指示                           |
+  | signal_name | bit_width | I/O | description                         |
+  | ----------- | --------- | --- | ----------------------------------- |
+  | `i_rx_dat`  | `DW`      | I   | 上游输入 payload                    |
+  | `i_rx_vld`  | `1`       | I   | 上游输入有效指示                    |
+  | `o_rx_rdy`  | `1`       | O   | 上游输入接收就绪，来自 ready 侧管线 |
+  | `o_tx_dat`  | `DW`      | O   | 下游输出 payload                    |
+  | `o_tx_vld`  | `1`       | O   | 下游输出有效指示，来自 valid 侧管线 |
+  | `i_tx_rdy`  | `1`       | I   | 下游接收就绪指示                    |
 
 * 实现说明
 
@@ -232,21 +233,21 @@
 
 * 参数
 
-  | param_name | range   | default_value | description |
-  | ---------- | ------- | ------------- | ----------- |
+  | param_name | range   | default_value | description   |
+  | ---------- | ------- | ------------- | ------------- |
   | `PIPE_NUM` | `[1::]` | `2`           | regslice 级数 |
-  | `DW`       | `[1::]` | `8`           | payload 位宽 |
+  | `DW`       | `[1::]` | `8`           | payload 位宽  |
 
 * 接口
 
-  | signal_name | bit_width | I/O | description                         |
-  | ----------- | --------- | --- | ----------------------------------- |
-  | `i_rx_dat`  | `DW`      | I   | 上游输入 payload                    |
-  | `i_rx_vld`  | `1`       | I   | 上游输入有效指示                    |
-  | `o_rx_rdy`  | `1`       | O   | 第 `0` 级对上游给出的接收就绪       |
-  | `o_tx_dat`  | `DW`      | O   | 最后一级输出 payload                |
-  | `o_tx_vld`  | `1`       | O   | 最后一级输出有效指示                |
-  | `i_tx_rdy`  | `1`       | I   | 下游接收就绪指示                    |
+  | signal_name | bit_width | I/O | description                   |
+  | ----------- | --------- | --- | ----------------------------- |
+  | `i_rx_dat`  | `DW`      | I   | 上游输入 payload              |
+  | `i_rx_vld`  | `1`       | I   | 上游输入有效指示              |
+  | `o_rx_rdy`  | `1`       | O   | 第 `0` 级对上游给出的接收就绪 |
+  | `o_tx_dat`  | `DW`      | O   | 最后一级输出 payload          |
+  | `o_tx_vld`  | `1`       | O   | 最后一级输出有效指示          |
+  | `i_tx_rdy`  | `1`       | I   | 下游接收就绪指示              |
 
 * 实现说明
 
@@ -276,12 +277,12 @@
 
 * 接口
 
-  | signal_name | bit_width | I/O | description                                                |
-  | ----------- | --------- | --- | ---------------------------------------------------------- |
-  | `i_rx_vld`  | `1`       | I   | 上游输入有效指示                                           |
-  | `o_rx_rdy`  | `1`       | O   | 上游输入接收就绪，所有输出通道完成当前项接收时为 `1`       |
-  | `o_tx_vld`  | `CH_NUM`  | O   | 各输出通道有效指示；已接收当前项的通道会被屏蔽             |
-  | `i_tx_rdy`  | `CH_NUM`  | I   | 各输出通道接收就绪指示                                     |
+  | signal_name | bit_width | I/O | description                                          |
+  | ----------- | --------- | --- | ---------------------------------------------------- |
+  | `i_rx_vld`  | `1`       | I   | 上游输入有效指示                                     |
+  | `o_rx_rdy`  | `1`       | O   | 上游输入接收就绪，所有输出通道完成当前项接收时为 `1` |
+  | `o_tx_vld`  | `CH_NUM`  | O   | 各输出通道有效指示；已接收当前项的通道会被屏蔽       |
+  | `i_tx_rdy`  | `CH_NUM`  | I   | 各输出通道接收就绪指示                               |
 
 * 实现说明
 
@@ -305,16 +306,16 @@
 
 * 参数
 
-  | param_name | range                                      | default_value | description      |
-  | ---------- | ------------------------------------------ | ------------- | ---------------- |
-  | `MODE`     | `pos/posedge/neg/negedge/dual/dualedge`    | `"pos"`       | 边沿检测模式     |
+  | param_name | range                                   | default_value | description  |
+  | ---------- | --------------------------------------- | ------------- | ------------ |
+  | `MODE`     | `pos/posedge/neg/negedge/dual/dualedge` | `"pos"`       | 边沿检测模式 |
 
 * 接口
 
-  | signal_name | bit_width | I/O | description                                |
-  | ----------- | --------- | --- | ------------------------------------------ |
-  | `i_level`   | `1`       | I   | 待检测的同步输入电平                       |
-  | `o_pulse`   | `1`       | O   | 检测到目标边沿时拉高一个周期的脉冲         |
+  | signal_name | bit_width | I/O | description                        |
+  | ----------- | --------- | --- | ---------------------------------- |
+  | `i_level`   | `1`       | I   | 待检测的同步输入电平               |
+  | `o_pulse`   | `1`       | O   | 检测到目标边沿时拉高一个周期的脉冲 |
 
 * 实现说明
 
@@ -345,13 +346,13 @@
 
 * 接口
 
-  | signal_name      | bit_width | I/O | description                                      |
-  | ---------------- | --------- | --- | ------------------------------------------------ |
-  | `i_cnt_max_m1`   | `CW`      | I   | 本次计数最大值减一，仅在 `i_cnt_start` 当拍有效  |
-  | `i_cnt_start`    | `1`       | I   | 启动计数，并锁存本次计数终点                     |
-  | `o_cnt`          | `CW`      | O   | 当前计数值                                       |
-  | `o_cnt_en`       | `1`       | O   | 当前计数值有效指示，等于内部计数使能             |
-  | `o_cnt_last`     | `1`       | O   | 当前有效计数项为本次计数末项                     |
+  | signal_name    | bit_width | I/O | description                                     |
+  | -------------- | --------- | --- | ----------------------------------------------- |
+  | `i_cnt_max_m1` | `CW`      | I   | 本次计数最大值减一，仅在 `i_cnt_start` 当拍有效 |
+  | `i_cnt_start`  | `1`       | I   | 启动计数，并锁存本次计数终点                    |
+  | `o_cnt`        | `CW`      | O   | 当前计数值                                      |
+  | `o_cnt_en`     | `1`       | O   | 当前计数值有效指示，等于内部计数使能            |
+  | `o_cnt_last`   | `1`       | O   | 当前有效计数项为本次计数末项                    |
 
 * 实现说明
 
@@ -379,23 +380,23 @@
 
 * 参数
 
-  | param_name | range     | default_value     | description          |
-  | ---------- | --------- | ----------------- | -------------------- |
-  | `DW`       | `[1::]`   | `8`               | FIFO 数据位宽        |
-  | `DEPTH`    | `[1:256]` | `4`               | FIFO 深度            |
-  | `CW`       | derived   | `$clog2(DEPTH+1)` | 可写条目计数位宽     |
+  | param_name | range     | default_value     | description      |
+  | ---------- | --------- | ----------------- | ---------------- |
+  | `DW`       | `[1::]`   | `8`               | FIFO 数据位宽    |
+  | `DEPTH`    | `[1:256]` | `4`               | FIFO 深度        |
+  | `CW`       | derived   | `$clog2(DEPTH+1)` | 可写条目计数位宽 |
 
 * 接口
 
-  | signal_name     | bit_width | I/O | description                                      |
-  | --------------- | --------- | --- | ------------------------------------------------ |
-  | `i_wr_en`       | `1`       | I   | 写使能；仅允许在 `o_wr_full=0` 时拉高            |
-  | `i_wr_data`     | `DW`      | I   | 写入 FIFO 的数据                                 |
-  | `o_wr_full`     | `1`       | O   | FIFO 满指示，寄存输出                            |
-  | `i_rd_en`       | `1`       | I   | 读使能；仅允许在 `o_rd_empty=0` 时拉高           |
-  | `o_rd_data`     | `DW`      | O   | 当前读指针指向的数据，`o_rd_empty=0` 时有效      |
-  | `o_rd_empty`    | `1`       | O   | FIFO 空指示，寄存输出                            |
-  | `o_water_level` | `CW`      | O   | FIFO 剩余可写条目数量，寄存输出                  |
+  | signal_name     | bit_width | I/O | description                                 |
+  | --------------- | --------- | --- | ------------------------------------------- |
+  | `i_wr_en`       | `1`       | I   | 写使能；仅允许在 `o_wr_full=0` 时拉高       |
+  | `i_wr_data`     | `DW`      | I   | 写入 FIFO 的数据                            |
+  | `o_wr_full`     | `1`       | O   | FIFO 满指示，寄存输出                       |
+  | `i_rd_en`       | `1`       | I   | 读使能；仅允许在 `o_rd_empty=0` 时拉高      |
+  | `o_rd_data`     | `DW`      | O   | 当前读指针指向的数据，`o_rd_empty=0` 时有效 |
+  | `o_rd_empty`    | `1`       | O   | FIFO 空指示，寄存输出                       |
+  | `o_water_level` | `CW`      | O   | FIFO 剩余可写条目数量，寄存输出             |
 
 * 实现说明
 
@@ -458,19 +459,19 @@
 
 * 接口
 
-  | signal_name           | bit_width | I/O | description                                      |
-  | --------------------- | --------- | --- | ------------------------------------------------ |
-  | `i_wr_fast_en`        | `1`       | I   | fast 写使能；用于预留 FIFO 条目                  |
-  | `i_wr_fast_data_vld`  | `1`       | I   | fast 写数据是否同拍有效                          |
-  | `i_wr_fast_data`      | `DW`      | I   | fast 路写入数据                                  |
-  | `o_wr_full`           | `1`       | O   | FIFO 满指示                                      |
-  | `i_wr_slow_en`        | `1`       | I   | slow 填数写使能                                  |
-  | `i_wr_slow_data`      | `DW`      | I   | slow 路填入数据                                  |
-  | `o_wr_slow_avl_flag`  | `1`       | O   | 存在 slow pending 条目，可接受 slow 写入          |
-  | `i_rd_en`             | `1`       | I   | 读使能                                           |
-  | `o_rd_data`           | `DW`      | O   | 当前可读头部数据                                 |
-  | `o_rd_empty`          | `1`       | O   | 无真实可读数据指示                               |
-  | `o_water_level`       | `CW`      | O   | 剩余可写条目数量                                 |
+  | signal_name          | bit_width | I/O | description                              |
+  | -------------------- | --------- | --- | ---------------------------------------- |
+  | `i_wr_fast_en`       | `1`       | I   | fast 写使能；用于预留 FIFO 条目          |
+  | `i_wr_fast_data_vld` | `1`       | I   | fast 写数据是否同拍有效                  |
+  | `i_wr_fast_data`     | `DW`      | I   | fast 路写入数据                          |
+  | `o_wr_full`          | `1`       | O   | FIFO 满指示                              |
+  | `i_wr_slow_en`       | `1`       | I   | slow 填数写使能                          |
+  | `i_wr_slow_data`     | `DW`      | I   | slow 路填入数据                          |
+  | `o_wr_slow_avl_flag` | `1`       | O   | 存在 slow pending 条目，可接受 slow 写入 |
+  | `i_rd_en`            | `1`       | I   | 读使能                                   |
+  | `o_rd_data`          | `DW`      | O   | 当前可读头部数据                         |
+  | `o_rd_empty`         | `1`       | O   | 无真实可读数据指示                       |
+  | `o_water_level`      | `CW`      | O   | 剩余可写条目数量                         |
 
 * 实现说明
 
@@ -480,56 +481,98 @@
   4. `r_wr_fast_hit_flag` 表示已经从 miss 阶段进入 hit 阶段；该阶段禁止再次 fast miss，直到 slow pending 清空。
   5. `o_rd_empty` 使用读指针是否追上 `r_slow_ptr` 判断，只要 FIFO 中存在真实写入的数据就不为空。
 
+### com_sync_fifo_ram_1p1bank
+
+* 功能
+
+  `com_sync_fifo_ram_1p1bank` 使用一个单口 SRAM 作为主存储，并用一个浅层输出 FIFO 缓冲读出的数据。SRAM 数据位宽为 `2*DW`，每个 SRAM row 存两笔用户侧 `DW` 数据。输入侧写入时，如果 RAM 队列为空、没有 high half 待处理且输出 FIFO 有空间，数据可直接进入输出 FIFO；否则先进入 `pack_buf`，两笔数据拼成一个 SRAM row 后写入 SRAM。读侧只从输出 FIFO 读出，SRAM 内数据需要先通过 fast reserve 和 slow fill 搬到输出 FIFO。
+
+* 参数
+
+  | param_name      | range                | default_value         | description                         |
+  | --------------- | -------------------- | --------------------- | ----------------------------------- |
+  | `DW`            | `[1::]`              | `8`                   | FIFO 数据位宽                       |
+  | `RAM_DEPTH`     | `[2::2]`             | `4`                   | SRAM 侧逻辑 FIFO 深度，按 `DW` 计数 |
+  | `OUT_DEPTH`     | `[RAM_RD_DELAY+3::]` | `4`                   | 输出 FIFO 深度                      |
+  | `RAM_RD_DELAY`  | `[1:16]`             | `1`                   | SRAM 固定读返回延迟                 |
+  | `RAM_ONE_DW`    | derived              | `DW*2`                | 单个 SRAM row 数据位宽              |
+  | `RAM_ONE_DEPTH` | derived              | `RAM_DEPTH/2`         | 单口 SRAM 物理深度                  |
+  | `TOL_DEPTH`     | derived              | `RAM_DEPTH+OUT_DEPTH` | 总缓存深度                          |
+  | `TOL_CW`        | derived              | `$clog2(TOL_DEPTH+1)` | 总可写条目计数位宽                  |
+  | `RAM_ONE_AW`    | derived              | `$clog2(...)`         | 单口 SRAM 地址位宽                  |
+
+* 接口
+
+  | signal_name     | bit_width    | I/O | description            |
+  | --------------- | ------------ | --- | ---------------------- |
+  | `i_wr_en`       | `1`          | I   | 用户侧写使能           |
+  | `i_wr_data`     | `DW`         | I   | 用户侧写入数据         |
+  | `o_wr_full`     | `1`          | O   | 用户侧 FIFO 满指示     |
+  | `i_rd_en`       | `1`          | I   | 用户侧读使能           |
+  | `o_rd_data`     | `DW`         | O   | 用户侧读出数据         |
+  | `o_rd_empty`    | `1`          | O   | 用户侧 FIFO 空指示     |
+  | `o_water_level` | `TOL_CW`     | O   | 总剩余可写条目数量     |
+  | `o_ram_ce_n`    | `1`          | O   | 单口 SRAM 低有效片选   |
+  | `o_ram_we_n`    | `1`          | O   | 单口 SRAM 低有效写使能 |
+  | `o_ram_addr`    | `RAM_ONE_AW` | O   | 单口 SRAM 访问地址     |
+  | `o_ram_wr_data` | `2*DW`       | O   | 单口 SRAM 写数据       |
+  | `i_ram_rd_data` | `2*DW`       | I   | 单口 SRAM 读返回数据   |
+
+* 实现说明
+
+  1. `r_tol_water_level/r_wr_full` 维护用户可见的总剩余容量，并作为 reg_out 输出。
+  2. `r_ram_wr_addr/r_ram_rd_addr/r_ram_used_cnt` 维护 SRAM row 粒度的 FIFO 队列；只有实际 SRAM write/read 时指针才推进。
+  3. `r_pack_vld/r_pack_data` 保存单笔未配对写数据；当下一笔写入到来且不能 direct/drain 时，与新数据拼成 `2*DW` 写入 SRAM。
+  4. `direct_order_avl` 表示 RAM 队列为空且没有 high half 等待占位，此时用户写或 pack drain 可通过输出 FIFO fast hit 直接进入读侧队列。
+  5. `ram_rd_en` 从 SRAM 队列读出一个 row，并在输出 FIFO 中先为 low half 做 fast reserve；`r_rd_req_hi` 记录 high half 还需要继续 reserve/fill。
+  6. `r_ram_rd_vld_pipe` 根据 `RAM_RD_DELAY` 延迟 SRAM read request，生成内部 `ram_rd_data_vld`；模块假设外部 SRAM 返回顺序固定且延迟固定。
+  7. 输出 FIFO 使用 `com_sync_fifo_reg_2w1r`，fast 口用于 direct write、pack drain 和 SRAM 返回占位，slow 口用于 SRAM 返回数据填入。
+  8. `OUT_DEPTH >= RAM_RD_DELAY+3` 用来覆盖 SRAM 固定读延时、low/high 回填节奏以及一次单口写优先导致的 read hold。
+
 ### com_sync_fifo_ram_1p2bank
 
 * 功能
 
-  `com_sync_fifo_ram_1p2bank` 使用两个单口 SRAM bank 作为主存储，并用一个浅层输出 FIFO 缓冲读出的数据。输入侧写入时，如果 RAM 队列为空且输出 FIFO 有空间，数据可直接进入输出 FIFO；否则进入 SRAM 队列。SRAM 读请求会先在输出 FIFO 中通过 fast reserve 预留位置，等 SRAM 返回 `i_ram_rd_data_vld` 后，再通过 slow fill 把数据补入输出 FIFO。
-
-* 接口时序
-
-  用户侧 FIFO 仍按读当拍读、写当拍写处理。SRAM 侧读请求和返回数据之间允许存在延迟：读请求本拍发出并在输出 FIFO 预留位置，返回数据有效时本拍填入预留位置。两个单口 bank 同拍读写同 bank 冲突时，写数据会先进入一项 `ibuf`，后续再写回对应 SRAM bank。
-
-  ![com_sync_fifo_ram_1p2bank 接口时序](assets/com_sync_fifo_ram_1p2bank_wavedrom.png)
+  `com_sync_fifo_ram_1p2bank` 使用两个单口 SRAM bank 作为主存储，并用一个浅层输出 FIFO 缓冲读出的数据。输入侧写入时，如果 RAM 队列为空、没有 hold read 且输出 FIFO 有空间，数据可直接进入输出 FIFO；否则进入 SRAM 队列。SRAM 读请求会先在输出 FIFO 中通过 fast reserve 预留位置，固定 `RAM_RD_DELAY` 拍后再通过 slow fill 把返回数据补入输出 FIFO。
 
 * 参数
 
-  | param_name      | range   | default_value        | description                 |
-  | --------------- | ------- | -------------------- | --------------------------- |
-  | `DW`            | `[1::]` | `8`                  | FIFO 数据位宽               |
-  | `RAM_DEPTH`     | `[2::2]` | `4`                 | 两个单口 SRAM bank 总深度   |
-  | `OUT_DEPTH`     | `[2::]` | `3`                  | 输出 FIFO 深度              |
-  | `RAM_ONE_DEPTH` | derived | `RAM_DEPTH/2`        | 单个 SRAM bank 深度         |
-  | `TOL_DEPTH`     | derived | `RAM_DEPTH+OUT_DEPTH` | 总缓存深度                 |
-  | `TOL_CW`        | derived | `$clog2(TOL_DEPTH+1)` | 总可写条目计数位宽         |
-  | `RAM_ONE_AW`    | derived | `$clog2(...)`        | 单个 SRAM bank 地址位宽     |
+  | param_name      | range    | default_value         | description               |
+  | --------------- | -------- | --------------------- | ------------------------- |
+  | `DW`            | `[1::]`  | `8`                   | FIFO 数据位宽             |
+  | `RAM_DEPTH`     | `[2::2]` | `4`                   | 两个单口 SRAM bank 总深度 |
+  | `OUT_DEPTH`     | `[RAM_RD_DELAY+3::]` | `4` | 输出 FIFO 深度            |
+  | `RAM_RD_DELAY`  | `[1:16]` | `1`                   | SRAM 固定读返回延迟       |
+  | `RAM_ONE_DEPTH` | derived  | `RAM_DEPTH/2`         | 单个 SRAM bank 深度       |
+  | `TOL_DEPTH`     | derived  | `RAM_DEPTH+OUT_DEPTH` | 总缓存深度                |
+  | `TOL_CW`        | derived  | `$clog2(TOL_DEPTH+1)` | 总可写条目计数位宽        |
+  | `RAM_ONE_AW`    | derived  | `$clog2(...)`         | 单个 SRAM bank 地址位宽   |
 
 * 接口
 
-  | signal_name         | bit_width    | I/O | description                         |
-  | ------------------- | ------------ | --- | ----------------------------------- |
-  | `i_wr_en`           | `1`          | I   | 用户侧写使能                        |
-  | `i_wr_data`         | `DW`         | I   | 用户侧写入数据                      |
-  | `o_wr_full`         | `1`          | O   | 用户侧 FIFO 满指示                  |
-  | `i_rd_en`           | `1`          | I   | 用户侧读使能                        |
-  | `o_rd_data`         | `DW`         | O   | 用户侧读出数据                      |
-  | `o_rd_empty`        | `1`          | O   | 用户侧 FIFO 空指示                  |
-  | `o_water_level`     | `TOL_CW`     | O   | 总剩余可写条目数量                  |
-  | `o_ram_ce_n`        | `2`          | O   | 两个 SRAM bank 的低有效片选         |
-  | `o_ram_we_n`        | `2`          | O   | 两个 SRAM bank 的低有效写使能       |
-  | `o_ram_addr`        | `2*RAM_ONE_AW` | O | 两个 SRAM bank 的访问地址           |
-  | `o_ram_wr_data`     | `2*DW`       | O   | 两个 SRAM bank 的写数据             |
-  | `i_ram_rd_data`     | `2*DW`       | I   | 两个 SRAM bank 的读返回数据         |
-  | `i_ram_rd_data_vld` | `2`          | I   | 两个 SRAM bank 的读返回有效指示     |
+  | signal_name         | bit_width      | I/O | description                     |
+  | ------------------- | -------------- | --- | ------------------------------- |
+  | `i_wr_en`           | `1`            | I   | 用户侧写使能                    |
+  | `i_wr_data`         | `DW`           | I   | 用户侧写入数据                  |
+  | `o_wr_full`         | `1`            | O   | 用户侧 FIFO 满指示              |
+  | `i_rd_en`           | `1`            | I   | 用户侧读使能                    |
+  | `o_rd_data`         | `DW`           | O   | 用户侧读出数据                  |
+  | `o_rd_empty`        | `1`            | O   | 用户侧 FIFO 空指示              |
+  | `o_water_level`     | `TOL_CW`       | O   | 总剩余可写条目数量              |
+  | `o_ram_ce_n`        | `2`            | O   | 两个 SRAM bank 的低有效片选     |
+  | `o_ram_we_n`        | `2`            | O   | 两个 SRAM bank 的低有效写使能   |
+  | `o_ram_addr`        | `2*RAM_ONE_AW` | O   | 两个 SRAM bank 的访问地址       |
+  | `o_ram_wr_data`     | `2*DW`         | O   | 两个 SRAM bank 的写数据         |
+  | `i_ram_rd_data`     | `2*DW`         | I   | 两个 SRAM bank 的读返回数据，按 `RAM_RD_DELAY` 固定延迟采样 |
 
 * 实现说明
 
   1. 全局 RAM FIFO 地址最低位选择 bank，高位作为 bank 内地址。
   2. `r_ram_water_level` 统计 SRAM 队列剩余空间，`r_ram_otf_cnt` 统计已发出但尚未返回的 SRAM 读请求。
   3. `out_direct_wr_en` 用于 RAM 队列为空时直接写输出 FIFO，减少不必要的 SRAM 访问。
-  4. `ram_rd_en` 从 SRAM 队列读出，并在输出 FIFO 中通过 `com_sync_fifo_reg_2w1r` fast reserve 预留返回位置。
-  5. `ram_rd_ack` 选择有效 bank 的返回数据，并通过 slow fill 写入输出 FIFO。
-  6. `ibuf` 处理单口 SRAM 同 bank 读写冲突；冲突写先暂存，等对应 bank 空闲时再写入。
+  4. `rd_resv_en` 从 SRAM 队列取出一笔逻辑读，并在输出 FIFO 中通过 `com_sync_fifo_reg_2w1r` fast reserve 预留返回位置。
+  5. `ram_rd_en` 表示实际发给 SRAM bank 的 physical read；若与同 bank write 冲突，则 write priority，read 进入 `rd_hold`。
+  6. `ram_rd_ack` 由 `r_ram_rd_vld_pipe` 按 `RAM_RD_DELAY` 产生，并通过 `r_ram_rd_bank_pipe` 选择对应 bank 的返回数据写入输出 FIFO slow 口。
 
 ### com_dp_buffer
 
@@ -552,14 +595,14 @@
 
 * 接口
 
-  | signal_name | bit_width | I/O | description                          |
-  | ----------- | --------- | --- | ------------------------------------ |
-  | `i_rx_data` | `DW`      | I   | 上游输入 payload                     |
-  | `i_rx_vld`  | `1`       | I   | 上游输入有效指示                     |
+  | signal_name | bit_width | I/O | description                         |
+  | ----------- | --------- | --- | ----------------------------------- |
+  | `i_rx_data` | `DW`      | I   | 上游输入 payload                    |
+  | `i_rx_vld`  | `1`       | I   | 上游输入有效指示                    |
   | `o_rx_rdy`  | `1`       | O   | 上游输入接收就绪，FIFO 未满时为 `1` |
-  | `o_tx_data` | `DW`      | O   | 下游输出 payload                     |
+  | `o_tx_data` | `DW`      | O   | 下游输出 payload                    |
   | `o_tx_vld`  | `1`       | O   | 下游输出有效指示，FIFO 非空时为 `1` |
-  | `i_tx_rdy`  | `1`       | I   | 下游接收就绪指示                     |
+  | `i_tx_rdy`  | `1`       | I   | 下游接收就绪指示                    |
 
 * 实现说明
 
@@ -583,28 +626,28 @@
 
 * 参数
 
-  | param_name        | range   | default_value | description                                                     |
-  | ----------------- | ------- | ------------- | --------------------------------------------------------------- |
-  | `AW`              | `[1::]` | `8`           | RAM 读地址位宽                                                  |
-  | `DW`              | `[1::]` | `8`           | RAM 返回数据位宽                                                |
-  | `DEPTH`           | `[1::]` | `2`           | 返回数据 FIFO 深度                                              |
-  | `RX_RDY_REG_OUT`  | `0/1`   | `0`           | 是否只使用寄存后的 FIFO 空间判断读请求可发，打开后建议加深 FIFO |
+  | param_name       | range   | default_value | description                                                     |
+  | ---------------- | ------- | ------------- | --------------------------------------------------------------- |
+  | `AW`             | `[1::]` | `8`           | RAM 读地址位宽                                                  |
+  | `DW`             | `[1::]` | `8`           | RAM 返回数据位宽                                                |
+  | `DEPTH`          | `[1::]` | `2`           | 返回数据 FIFO 深度                                              |
+  | `RX_RDY_REG_OUT` | `0/1`   | `0`           | 是否只使用寄存后的 FIFO 空间判断读请求可发，打开后建议加深 FIFO |
 
 * 接口
 
-  | signal_name     | bit_width | I/O | description                                  |
-  | --------------- | --------- | --- | -------------------------------------------- |
-  | `i_rx_addr`     | `AW`      | I   | 上游输入的 RAM 读地址                        |
-  | `i_rx_vld`      | `1`       | I   | 上游读地址有效指示                           |
-  | `o_rx_rdy`      | `1`       | O   | 上游读地址接收就绪                           |
-  | `o_tx_data`     | `DW`      | O   | 下游输出的 RAM 返回数据                      |
-  | `o_tx_vld`      | `1`       | O   | 下游输出有效指示                             |
-  | `i_tx_rdy`      | `1`       | I   | 下游接收就绪指示                             |
-  | `o_ram_rd_vld`  | `1`       | O   | 发送给外部 RAM 的读请求有效指示              |
-  | `i_ram_rd_rdy`  | `1`       | I   | 外部 RAM 读请求接收就绪                      |
-  | `o_ram_rd_addr` | `AW`      | O   | 发送给外部 RAM 的读地址                      |
-  | `i_ram_rd_ack`  | `1`       | I   | 外部 RAM 返回数据有效指示                    |
-  | `i_ram_rd_data` | `DW`      | I   | 外部 RAM 返回数据                            |
+  | signal_name     | bit_width | I/O | description                     |
+  | --------------- | --------- | --- | ------------------------------- |
+  | `i_rx_addr`     | `AW`      | I   | 上游输入的 RAM 读地址           |
+  | `i_rx_vld`      | `1`       | I   | 上游读地址有效指示              |
+  | `o_rx_rdy`      | `1`       | O   | 上游读地址接收就绪              |
+  | `o_tx_data`     | `DW`      | O   | 下游输出的 RAM 返回数据         |
+  | `o_tx_vld`      | `1`       | O   | 下游输出有效指示                |
+  | `i_tx_rdy`      | `1`       | I   | 下游接收就绪指示                |
+  | `o_ram_rd_vld`  | `1`       | O   | 发送给外部 RAM 的读请求有效指示 |
+  | `i_ram_rd_rdy`  | `1`       | I   | 外部 RAM 读请求接收就绪         |
+  | `o_ram_rd_addr` | `AW`      | O   | 发送给外部 RAM 的读地址         |
+  | `i_ram_rd_ack`  | `1`       | I   | 外部 RAM 返回数据有效指示       |
+  | `i_ram_rd_data` | `DW`      | I   | 外部 RAM 返回数据               |
 
 * 实现说明
 
