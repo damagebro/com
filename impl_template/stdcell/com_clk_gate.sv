@@ -7,27 +7,27 @@
 //////////////////////////////////////////////////////////////////////////////
 
 module com_clk_gate(
-    input   iena,
-    input   iclk,
-    output  oclk
+    input  wire i_ckg_en,
+    input  wire i_clk,
+    output wire o_clk
     );
 
 `ifdef COM_FPGA
-    assign oclk = iclk;
+    assign o_clk = i_clk;
 `else
     `ifdef COM_CLKGATE_AS_LATCH
-        reg rb_E;
-        always @ ( iclk or iena )
-        if ( ~iclk )
-            rb_E = iena;
-        assign oclk = iclk & rb_E;
+        reg w_ckg_en;
+        always @ ( i_clk or i_ckg_en )
+        if ( ~i_clk )
+            w_ckg_en = i_ckg_en;
+        assign o_clk = i_clk & w_ckg_en;
 
     `else
         // pmu_clk_gate ginst(
-        //     .CK (iclk ),
-        //     .E  (iena ),
+        //     .CK (i_clk ),
+        //     .E  (i_ckg_en ),
         //     .TE (1'b0 ),
-        //     .QCK(oclk )
+        //     .QCK(o_clk )
         //     );
 
         /* use stdcell clk gate */

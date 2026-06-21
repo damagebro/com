@@ -8,7 +8,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 module com_cdc_sig #( parameter
-    SYNC_S = 3, //freq>1.5G ? 4 : freq>1G ? 3 : 2
+    SYNC_S = 3, //by back-end suggest, freq>1.5G ? 4 : freq>1G ? 3 : 2
     DATA_W = 1
 )
 (
@@ -18,7 +18,6 @@ input  wire [DATA_W-1:0]        i_src_data          ,
 output wire [DATA_W-1:0]        o_dst_data          //,
 );
 //localparam-----------------------------------------------------------------
-localparam SYNC_S = `COM_SYNC_STAGE;
 //signal declare-------------------------------------------------------------
 //statement------------------------------------------------------------------
 `ifdef COM_CDC_AS_REG
@@ -32,7 +31,7 @@ localparam SYNC_S = `COM_SYNC_STAGE;
     end
 `else
     //assign o_dst_data from stdcell sync cell.
-    genvar gi;
+    // genvar gi;
     // for(gi=0; gi<DATA_W; gi++) begin
     //     macro_dsync sinst(
     //         .ck (oclk     ),
@@ -42,6 +41,14 @@ localparam SYNC_S = `COM_SYNC_STAGE;
     //         );
     // end
     /* use stdcell dff */
+    reg  [SYNC_S-1:0][DATA_W-1:0] r_sync_data;
+    assign o_dst_data = r_sync_data[SYNC_S-1];
+    always @(posedge i_dst_clk or negedge i_dst_rst_n) begin
+        if( !i_dst_rst_n )
+            r_sync_data <= '0;
+        else
+            r_sync_data <= {r_sync_data[SYNC_S-2:0],i_src_data};
+    end
 `endif
 
 //report---------------------------------------------------------------------

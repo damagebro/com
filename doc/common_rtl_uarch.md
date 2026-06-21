@@ -160,7 +160,7 @@
 
 * 设计细节
     1. `o_wr_full/o_water_level` 是 write-domain 组合状态；`o_rd_empty/o_rd_data` 在 read domain 产生。
-    2. `AW=$clog2(max(DEPTH,2))` 表示 array address width，`CW=$clog2(DEPTH+1)` 表示 count width；pointer 使用 `[AW-0:0]` 宽度，在完整 Gray code 空间中只使用两段状态：`0..PTR_LOW_E` 和 `PTR_HIGH_S..PTR_NUM-1`。
+    2. `AW=$clog2(max(DEPTH,2))` 表示 array address width，`CW=$clog2(DEPTH+1)` 表示 count width；`SYNC_S` 配置两个 pointer CDC 的同步级数；pointer 使用 `[AW-0:0]` 宽度，在完整 Gray code 空间中只使用两段状态：`0..PTR_LOW_E` 和 `PTR_HIGH_S..PTR_NUM-1`。
     3. `F_ptr_next` 只显式处理 `PTR_LOW_E -> PTR_HIGH_S`；`PTR_NUM-1` 为 pointer 全 1，执行 `ptr+1'b1` 后自然回到 0。两个边界在完整 `F_bin2gray` 编码后都只变化 1 bit。
     4. `F_ptr2addr` 将 LOW/HIGH 两段都映射到 `0..DEPTH-1` 的 array 地址；pointer `[AW]` 表示 wrap 区间，write domain 根据读写 pointer 的 `[AW]` 是否相等选择 `equ/neq used_cnt`，并由当前 `used_cnt` 组合产生 full/water_level。
     5. read side 采用预取：内部 FIFO 非空且 `out_dff` 空，或用户同拍 `i_rd_en` 消耗 `out_dff` 时，推进 read pointer 并更新 `r_ckrd_out_data`。
@@ -174,6 +174,25 @@
        A：不是任意裁剪计数空间，而是选取完整 Gray code 的头尾两段状态；段内、`PTR_LOW_E -> PTR_HIGH_S`、`PTR_NUM-1 -> 0` 都保持 1 bit 变化。
     2. Q：为什么 `o_wr_full/o_water_level` 不做 reg_out？
        A：该 async FIFO 面向浅深度场景，通常 `DEPTH<30`，组合计算路径可控；reg_out 会让同步 read pointer 释放的空间再延迟一个 `wr_clk` 才对写侧可见，性能收益不足以抵消额外延时。
+
+### com_async_fifo_reg_exactwl
+
+<img src="assets/com_async_fifo_reg_exactwl_uarch.png" width="760">
+
+* 概述
+    1. 基于 `com_async_fifo_reg` 的任意深度 Gray pointer 环，增加 `fetch_ptr/rd_ptr` 双 read pointer，使 full/water level 按外部实际消费进度计算。
+    2. 逻辑总容量严格为 `DEPTH`，`out_dff` 只作为读侧流水级，不额外增加容量。
+    3. 与 `com_async_fifo_reg` 相比，本模块必须等外部 `rd_hs` 后才向 write domain 释放 entry，full 解除和写侧恢复更晚，且少 1 entry 弹性；连续读写稳定后仍可保持每拍一笔吞吐。
+
+* 模块框图
+    1. 框图见本节开头图片，源文件位于 `common_ip_uarch.drawio` 的 `async_fifo_exactwl` 页面。
+    2. `fetch_ptr` 在 array 数据预取到 `out_dff` 时推进，仅用于 array read address 和内部 empty 判断。
+    3. `rd_ptr` 仅在外部 `rd_hs` 时推进，其 Gray code 同步到 write domain，用于 full/water level 计算。
+
+* 设计细节
+    1. write domain 在同步后的 `rd_ptr` 基础上计算已占用 entry；因此 `out_dff` 中尚未被用户读走的数据仍占用一个逻辑 entry。
+    2. `fetch_ptr-rd_ptr` 的逻辑距离只可能为 0 或 1，分别对应 `out_dff` empty 或 valid。
+    3. full/water level 的容量语义精确，但仍存在 `SYNC_S` 带来的 CDC 可见延时。
 
 ## 附录
 

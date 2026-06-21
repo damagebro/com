@@ -2,19 +2,19 @@
 *
 *  Authors:   dmg
 *    Email:   dmg@sensetime.com
-*     Date:   2026/06/19
+*     Date:   2026/06/21
 *
 *  Description:
-*  - Asynchronous FIFO with register array storage.
-*  - Write and read pointers are transferred with gray-coded CDC.
-*  - Read data is registered in rd_clk domain.
+*  - Asynchronous FIFO with exact logical water level semantics.
+*  - Fetch pointer loads out_dff, read pointer advances on external read.
+*  - Write domain uses synchronized read pointer for full and water level.
 *
 ******************************************************************************/
 
-module com_async_fifo_reg #( parameter
+module com_async_fifo_reg_exactwl #( parameter
     DW     = 8,
     DEPTH  = 4, //range=[1::]
-    SYNC_S = 3, //by back-end suggest, freq>1.5G ? 4 : freq>1G ? 3 : 2
+    SYNC_S = 3, //freq>1.5G ? 4 : freq>1G ? 3 : 2
     localparam CW = $clog2(DEPTH+1)
 )
 (
@@ -41,6 +41,7 @@ localparam [AW-0:0]   DEPTH_PTR  = DEPTH;
 reg  [DEPTH-1:0][DW-1:0] r_ckwr_arr_mem;
 reg  [AW-0:0]            r_ckwr_wr_ptr;
 reg  [AW-0:0]            r_ckwr_wr_ptr_gray;
+reg  [AW-0:0]            r_ckrd_fetch_ptr;
 reg  [AW-0:0]            r_ckrd_rd_ptr;
 reg  [AW-0:0]            r_ckrd_rd_ptr_gray;
 reg                      r_ckrd_out_vld;
@@ -60,11 +61,12 @@ wire [AW-1:0]            ckwr_wr_addr;
 wire [AW-1:0]            ckwr_rd_addr;
 wire                     ckrd_rd_hs;
 wire                     ckrd_mem_rd_en;
-wire                     ckrd_fifo_empty;
+wire                     ckrd_mem_empty;
+wire [AW-0:0]            ckrd_fetch_ptr_nxt;
 wire [AW-0:0]            ckrd_rd_ptr_nxt;
 wire [AW-0:0]            ckrd_rd_ptr_gray_nxt;
 wire [AW-0:0]            ckrd_wr_ptr_bin;
-wire [AW-1:0]            ckrd_rd_addr;
+wire [AW-1:0]            ckrd_fetch_addr;
 wire [DW-1:0]            ckrd_mem_rd_data;
 
 //instance signal--
@@ -94,13 +96,14 @@ assign ckwr_wr_full = ckwr_used_cnt==DEPTH_PTR;
 assign ckwr_water_level = DEPTH_PTR - ckwr_used_cnt;
 
 assign ckrd_rd_hs = i_rd_en && !o_rd_empty;
-assign ckrd_mem_rd_en = !ckrd_fifo_empty && (!r_ckrd_out_vld || i_rd_en);
+assign ckrd_mem_rd_en = !ckrd_mem_empty && (!r_ckrd_out_vld || ckrd_rd_hs);
+assign ckrd_fetch_ptr_nxt = F_ptr_next(r_ckrd_fetch_ptr);
 assign ckrd_rd_ptr_nxt = F_ptr_next(r_ckrd_rd_ptr);
 assign ckrd_rd_ptr_gray_nxt = F_bin2gray(ckrd_rd_ptr_nxt);
 assign ckrd_wr_ptr_bin = F_gray2bin(u_ckrd_wrptr_sync_o_dst_data);
-assign ckrd_fifo_empty = r_ckrd_rd_ptr==ckrd_wr_ptr_bin;
-assign ckrd_rd_addr = F_ptr2addr(r_ckrd_rd_ptr);
-assign ckrd_mem_rd_data = r_ckwr_arr_mem[ckrd_rd_addr];
+assign ckrd_mem_empty = r_ckrd_fetch_ptr==ckrd_wr_ptr_bin;
+assign ckrd_fetch_addr = F_ptr2addr(r_ckrd_fetch_ptr);
+assign ckrd_mem_rd_data = r_ckwr_arr_mem[ckrd_fetch_addr];
 
 //write memory
 always @(posedge wr_clk) begin
@@ -120,13 +123,21 @@ always @(posedge wr_clk or negedge wr_rst_n) begin
     end
 end
 
+//read fetch pointer
+always @(posedge rd_clk or negedge rd_rst_n) begin
+    if( !rd_rst_n )
+        r_ckrd_fetch_ptr <= '0;
+    else if( ckrd_mem_rd_en )
+        r_ckrd_fetch_ptr <= ckrd_fetch_ptr_nxt;
+end
+
 //read pointer
 always @(posedge rd_clk or negedge rd_rst_n) begin
     if( !rd_rst_n ) begin
         r_ckrd_rd_ptr <= '0;
         r_ckrd_rd_ptr_gray <= '0;
     end
-    else if( ckrd_mem_rd_en ) begin
+    else if( ckrd_rd_hs ) begin
         r_ckrd_rd_ptr <= ckrd_rd_ptr_nxt;
         r_ckrd_rd_ptr_gray <= ckrd_rd_ptr_gray_nxt;
     end
@@ -151,14 +162,14 @@ end
 //instance----
 assign u_ckwr_rdptr_sync_i_src_data = r_ckrd_rd_ptr_gray;
 com_cdc_sig #(
-    .SYNC_S              ( SYNC_S                     ), //3
-    .DATA_W              ( AW+1                       )  //3
+    .SYNC_S              ( SYNC_S                    ), //3
+    .DATA_W              ( AW+1                      )  //3
 )u_com_cdc_sig_ckwr_rdptr_sync
 (
-    .i_dst_clk           ( wr_clk                        ), //i
-    .i_dst_rst_n         ( wr_rst_n                      ), //i
-    .i_src_data          ( u_ckwr_rdptr_sync_i_src_data  ), //i
-    .o_dst_data          ( u_ckwr_rdptr_sync_o_dst_data  )  //o
+    .i_dst_clk           ( wr_clk                       ), //i
+    .i_dst_rst_n         ( wr_rst_n                     ), //i
+    .i_src_data          ( u_ckwr_rdptr_sync_i_src_data ), //i
+    .o_dst_data          ( u_ckwr_rdptr_sync_o_dst_data )  //o
 );
 
 assign u_ckrd_wrptr_sync_i_src_data = r_ckwr_wr_ptr_gray;
@@ -218,4 +229,4 @@ endfunction
 `COM_SIGNAL_ASSERT( a0, wr_clk,wr_rst_n,i_wr_en,!o_wr_full , "async fifo write when full" );
 `COM_SIGNAL_ASSERT( a1, rd_clk,rd_rst_n,i_rd_en,!o_rd_empty, "async fifo read when empty" );
 
-endmodule //end of com_async_fifo_reg
+endmodule //end of com_async_fifo_reg_exactwl
