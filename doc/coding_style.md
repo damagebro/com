@@ -25,6 +25,13 @@
     - cfg_xx是CSR的配置寄存器, sta_xx是CSR的状态寄存器, irq_xx是中断状态寄存器;
     - u_xx, 表示是例化模块的端口信号名,  最好格式是 `u_${mid_fix}_[i|o]_${port_name};` 通过"中缀"标识哪个例化模块名, 通过i|o知道子模块端口方向, 通过port_name知道子模块原始端口名;
 12. 数值范围描述; `range=[start:end:step]`(借用python数组表达方式， 不过end可以取到, step扩展支持2^n,表示只能按2的幂次方递增);  举例axi数据位宽, AXI_DW range=[8:2048:2^n];
+13. 多时钟域设计,
+    - 时钟信号名: `xx_clk`,  复位信号名: `xx_rst_n`, 异步设计暂不需要`clear`信号;
+    - 内部信号声明: 比如有a/b两个时钟,  a时钟信号都是: `cka_xx`,  b时钟信号都是: `ckb_xx`;
+    - 内部模块例化名: a时钟例化信号: `u_cka_<inst_name>_[i|o]_xxx`,  b时钟例化信号: `u_ckb_<inst_name>_[i|o]_xxx`;
+    - 单bit信号cdc统一调用`cdc req/ack`协议封装的模块, 多bit信号cdc统一调用`async_fifo`, cdc底层统一封装`sync_cell`模块和后端对接;
+    - 一般来说, 自研代码**禁止**自己开发cdc逻辑, 统一用上述封装。
+
 
 ## rtl代码模板
 

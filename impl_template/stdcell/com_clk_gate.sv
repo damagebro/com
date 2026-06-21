@@ -5,8 +5,7 @@
 //  Authors:   wwq
 //  Version:   2.0
 //////////////////////////////////////////////////////////////////////////////
-`ifndef com_clk_gate_v
-`define com_clk_gate_v
+
 module com_clk_gate(
     input   iena,
     input   iclk,
@@ -47,4 +46,4 @@ module com_clk_gate(
 `endif
 
 endmodule
-`endif
+

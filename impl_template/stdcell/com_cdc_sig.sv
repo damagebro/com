@@ -1,70 +1,56 @@
 //////////////////////////////////////////////////////////////////////////////
 //
-//  Description: Clock Domain Cross for multi-bit data.
+//  Description: Clock domain crossing synchronizer for static or gray-coded signal.
 //
 //  Authors:   wwq
 //  Version:   2.0
+//
 //////////////////////////////////////////////////////////////////////////////
-module com_cdc_sig#(
-    parameter DATA_W
-    )(
-    input               oclk,
-    input               orst_n,
-    input  [DATA_W-1:0] idata,
-    output [DATA_W-1:0] odata
-    );
 
-    localparam SYNC_S = `COM_SYNC_STAGE;
-
-`ifdef COM_FPGA
-    (*ASYNC_REG = "TRUE"*) reg  [SYNC_S-1:0][DATA_W-1:0] sdata;
-
-    always@(posedge oclk or negedge orst_n)
-    if(!orst_n) begin
-        sdata <= '0;
+module com_cdc_sig #( parameter
+    SYNC_S = 3, //freq>1.5G ? 4 : freq>1G ? 3 : 2
+    DATA_W = 1
+)
+(
+input  wire                     i_dst_clk           ,
+input  wire                     i_dst_rst_n         ,
+input  wire [DATA_W-1:0]        i_src_data          ,
+output wire [DATA_W-1:0]        o_dst_data          //,
+);
+//localparam-----------------------------------------------------------------
+localparam SYNC_S = `COM_SYNC_STAGE;
+//signal declare-------------------------------------------------------------
+//statement------------------------------------------------------------------
+`ifdef COM_CDC_AS_REG
+    reg  [SYNC_S-1:0][DATA_W-1:0] r_sync_data;
+    assign o_dst_data = r_sync_data[SYNC_S-1];
+    always @(posedge i_dst_clk or negedge i_dst_rst_n) begin
+        if( !i_dst_rst_n )
+            r_sync_data <= '0;
+        else
+            r_sync_data <= {r_sync_data[SYNC_S-2:0],i_src_data};
     end
-    else begin
-        sdata <= {sdata[SYNC_S-2:0], idata};
-    end
-    assign odata = sdata[SYNC_S-1];
-
 `else
+    //assign o_dst_data from stdcell sync cell.
+    genvar gi;
+    // for(gi=0; gi<DATA_W; gi++) begin
+    //     macro_dsync sinst(
+    //         .ck (oclk     ),
+    //         .clb(orst_n   ),
+    //         .d  (idata[gi]),
+    //         .o  (odata[gi])
+    //         );
+    // end
+    /* use stdcell dff */
+`endif
+
+//report---------------------------------------------------------------------
+`ifdef COM_REPORT_ON
     `ifdef COM_CDC_AS_REG
-        (*ASYNC_REG = "TRUE"*) logic [SYNC_S-1:0][DATA_W-1:0] sdata;
-
-        always@(posedge oclk or negedge orst_n)
-        if(!orst_n) begin
-            sdata <= '0;
+        initial begin
+            $warning("COM Warning: Use reg for cdc at %m");
         end
-        else begin
-            sdata <= {sdata[SYNC_S-2:0], idata};
-        end
-        assign odata = sdata[SYNC_S-1];
-
-    `else
-        genvar gi;
-        // for(gi=0; gi<DATA_W; gi++) begin
-        //     macro_dsync sinst(
-        //         .ck (oclk     ),
-        //         .clb(orst_n   ),
-        //         .d  (idata[gi]),
-        //         .o  (odata[gi])
-        //         );
-        // end
-        /* use stdcell dff */
-
     `endif
 `endif
 
-//------------------------------------------------------------------------------
-// Report & Assertion.
-//------------------------------------------------------------------------------
-// `ifdef COM_REPORT_ON
-//     `ifdef COM_CDC_AS_REG
-//         initial begin
-//             $warning("COM Warning: Use reg for cdc at %m");
-//         end
-//     `endif
-// `endif
-
-endmodule
+endmodule //end of com_cdc_sig

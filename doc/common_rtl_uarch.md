@@ -141,7 +141,39 @@
        | t2    | `i_rd_en`           | `i_rd_en`, `wr_fast_mis`    | 1->1   | `rd_en=ping`, `rd_hold=pong` | `ack_vld=0`    | read d0, reserve d1 |
        | t3    | `i_rd_en`           | `rd_empty`, `i_wr_slow_en`, `wr_fast_mis` | 1->0 | `rd_en=pong`, `rd_hold=ping` | `ack_vld=ping` | rd break, fill d0   |
 
-       A：t0/t1/t2 已经读完 3 笔可读数据；t3 的 slow fill 不能给 t3 同拍 read 使用，所以 `OUT_DEPTH=3` 会断流。`OUT_DEPTH=4` 才能覆盖这 1 拍 read hold。
+        A：t0/t1/t2 已经读完 3 笔可读数据；t3 的 slow fill 不能给 t3 同拍 read 使用，所以 `OUT_DEPTH=3` 会断流。`OUT_DEPTH=4` 才能覆盖这 1 拍 read hold。
+
+### com_async_fifo_reg
+
+<img src="assets/com_async_fifo_reg_uarch.png" width="760">
+
+* 概述
+    1. 小深度异步 FIFO，使用 register array 存储数据，write/read 两侧分别工作在 `wr_clk/rd_clk`。
+    2. 支持任意 `DEPTH>=1`，通过挑选完整 Gray code 头尾两段状态构造合法 pointer 环；不再要求 `DEPTH` 为偶数或 2 的幂。
+    3. 异步设计暂时不保留 `clear` 端口，reset 也不额外做 CDC 处理；write/read 两侧直接使用各自的 `wr_rst_n/rd_rst_n`。
+
+* 模块框图
+    1. 框图见本节开头图片，源文件位于 `common_ip_uarch.drawio` 的 `async_fifo` 页面。
+    2. write domain：`r_ckwr_wr_ptr/r_ckwr_wr_ptr_gray` 维护写指针；`r_ckwr_arr_mem` 在 `wr_clk` 下写入。
+    3. read domain：`r_ckrd_rd_ptr/r_ckrd_rd_ptr_gray` 维护预取指针；`r_ckrd_out_vld/r_ckrd_out_data` 作为读侧 `out_dff`。
+    4. CDC path：读指针 gray 码通过 `com_cdc_sig` 同步到 write domain 计算 full/water_level；写指针 gray 码同步到 read domain 计算 empty。
+
+* 设计细节
+    1. `o_wr_full/o_water_level` 是 write-domain 组合状态；`o_rd_empty/o_rd_data` 在 read domain 产生。
+    2. `AW=$clog2(max(DEPTH,2))` 表示 array address width，`CW=$clog2(DEPTH+1)` 表示 count width；pointer 使用 `[AW-0:0]` 宽度，在完整 Gray code 空间中只使用两段状态：`0..PTR_LOW_E` 和 `PTR_HIGH_S..PTR_NUM-1`。
+    3. `F_ptr_next` 只显式处理 `PTR_LOW_E -> PTR_HIGH_S`；`PTR_NUM-1` 为 pointer 全 1，执行 `ptr+1'b1` 后自然回到 0。两个边界在完整 `F_bin2gray` 编码后都只变化 1 bit。
+    4. `F_ptr2addr` 将 LOW/HIGH 两段都映射到 `0..DEPTH-1` 的 array 地址；pointer `[AW]` 表示 wrap 区间，write domain 根据读写 pointer 的 `[AW]` 是否相等选择 `equ/neq used_cnt`，并由当前 `used_cnt` 组合产生 full/water_level。
+    5. read side 采用预取：内部 FIFO 非空且 `out_dff` 空，或用户同拍 `i_rd_en` 消耗 `out_dff` 时，推进 read pointer 并更新 `r_ckrd_out_data`。
+    6. `out_dff` 的首要作用是 CDC signoff：隔离 register array 的跨域读数据路径，避免 array path 扩散到模块外 CDC 报告；同时也让 `o_rd_data` 成为 read-domain reg_out。
+    7. 由于 read 侧有 `out_dff`，full 时总暂存数据量可达到 `DEPTH+1`；`o_water_level` 仅表示 array 内 write domain 看到的剩余可写 entry。
+    8. 多时钟域内部信号按 `ckwr_`、`ckrd_` 前缀区分；gray pointer CDC 底层使用已有 `com_cdc_sig`。
+    9. reset 不做内部跨时钟握手，外部需要保证 reset 期间没有有效读写，并在 reset 后重新建立 FIFO 空状态。
+
+* 讨论记录
+    1. Q：为什么任意深度可行？
+       A：不是任意裁剪计数空间，而是选取完整 Gray code 的头尾两段状态；段内、`PTR_LOW_E -> PTR_HIGH_S`、`PTR_NUM-1 -> 0` 都保持 1 bit 变化。
+    2. Q：为什么 `o_wr_full/o_water_level` 不做 reg_out？
+       A：该 async FIFO 面向浅深度场景，通常 `DEPTH<30`，组合计算路径可控；reg_out 会让同步 read pointer 释放的空间再延迟一个 `wr_clk` 才对写侧可见，性能收益不足以抵消额外延时。
 
 ## 附录
 
