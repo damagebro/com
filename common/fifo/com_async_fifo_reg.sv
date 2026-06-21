@@ -2,130 +2,220 @@
 *
 *  Authors:   dmg
 *    Email:   dmg@sensetime.com
-*     Date:   2019/11/15-09:20:22
+*     Date:   2026/06/19
 *
 *  Description:
-*  -water_level means (async_fifo_depth, only in src_clk domain)
-*  -when wr_full, the storeged data tol_num=(DEPTH+1);
+*  - Asynchronous FIFO with register array storage.
+*  - Write and read pointers are transferred with gray-coded CDC.
+*  - Read data is registered in rd_clk domain.
 *
 *  Modify:
-*  -2020/09/16, modify by ty:
-*   data register out, to isolated datapath in dst_clk domain, from afifo.arc_mem to rc_out_data;
+*  - Merge com_async_fifo_ctrl into this module.
 *
 ******************************************************************************/
 
-//`include "com_cdc_hs.v"
-//`include "com_cdc_rstn.v"
-//`include "com_cdc_sig.v"
-
-`ifndef com_async_fifo_reg_v
-`define com_async_fifo_reg_v
 module com_async_fifo_reg #( parameter
     DW    = 8,
-    DEPTH = 4,
-    AW    = $clog2(DEPTH+1)
+    DEPTH = 4, //range=[1::]
+    localparam CW = $clog2(DEPTH+1)
 )
 (
 input  wire                     wr_clk              ,
 input  wire                     wr_rst_n            ,
-input  wire                     wr_clear            ,
 input  wire                     rd_clk              ,
 input  wire                     rd_rst_n            ,
-input  wire                     rd_clear            ,
 
-input  wire                     wr_en               ,
-input  wire [DW-1:0]            wr_data             ,
-output wire                     wr_full             ,
-input  wire                     rd_en               ,
-output wire [DW-1:0]            rd_data             ,
-output wire                     rd_empty            ,
-output wire [AW-1:0]            water_level         //,
+input  wire                     i_wr_en             ,
+input  wire [DW-1:0]            i_wr_data           ,
+output wire                     o_wr_full           ,
+input  wire                     i_rd_en             ,
+output wire [DW-1:0]            o_rd_data           ,
+output wire                     o_rd_empty          ,
+output wire [CW-1:0]            o_water_level       //,
 );
 //localparam-----------------------------------------------------------------
-//reg  declare---------------------------------------------------------------
-reg  [DEPTH-1:0][DW-1:0] arc_mem;
-//wire declare---------------------------------------------------------------
-wire [1:0] afifo_wr_reset_signals; //0:sync_wr_rst_n, 1:sync_wr_clear;
-wire [1:0] afifo_rd_reset_signals; //0:sync_rd_rst_n, 1:sync_rd_clear;
-wire sync_wr_rst_n = afifo_wr_reset_signals[0]; //wr clk domain
-wire sync_wr_clear = afifo_wr_reset_signals[1]; //wr clk domain
-wire sync_rd_rst_n = afifo_rd_reset_signals[0]; //rd clk domain
-wire sync_rd_clear = afifo_rd_reset_signals[1]; //rd clk domain
+localparam AW = $clog2((DEPTH>2?DEPTH:2));
+localparam            PTR_NUM       = 1 << (AW+1);
+localparam [AW-0:0]   PTR_LOW_E     = DEPTH - 1'b1;
+localparam [AW-0:0]   PTR_HIGH_S    = PTR_NUM - DEPTH;
+localparam [AW-0:0]   DEPTH_PTR     = DEPTH;
+//signal declare-------------------------------------------------------------
+reg  [DEPTH-1:0][DW-1:0] r_ckwr_arr_mem;
+reg  [AW-0:0]            r_ckwr_wr_ptr;
+reg  [AW-0:0]            r_ckwr_wr_ptr_gray;
+reg  [AW-0:0]            r_ckrd_rd_ptr;
+reg  [AW-0:0]            r_ckrd_rd_ptr_gray;
+reg                      r_ckrd_out_vld;
+reg  [DW-1:0]            r_ckrd_out_data;
+
+wire                     ckwr_wr_hs;
+wire                     ckwr_wr_full;
+wire [AW-0:0]            ckwr_wr_ptr_nxt;
+wire [AW-0:0]            ckwr_wr_ptr_gray_nxt;
+wire [AW-0:0]            ckwr_rd_ptr_bin;
+wire                     ckwr_ptr_wrap_equ;
+wire [AW-0:0]            ckwr_used_cnt_equ;
+wire [AW-0:0]            ckwr_used_cnt_neq;
+wire [AW-0:0]            ckwr_used_cnt;
+wire [AW-0:0]            ckwr_water_level;
+wire [AW-1:0]            ckwr_wr_addr;
+wire [AW-1:0]            ckwr_rd_addr;
+wire                     ckrd_rd_hs;
+wire                     ckrd_mem_rd_en;
+wire                     ckrd_fifo_empty;
+wire [AW-0:0]            ckrd_rd_ptr_nxt;
+wire [AW-0:0]            ckrd_rd_ptr_gray_nxt;
+wire [AW-0:0]            ckrd_wr_ptr_bin;
+wire [AW-1:0]            ckrd_rd_addr;
+wire [DW-1:0]            ckrd_mem_rd_data;
+
+//instance signal--
+wire [AW-0:0]            u_ckwr_rdptr_sync_i_src_data;
+wire [AW-0:0]            u_ckwr_rdptr_sync_o_dst_data;
+wire [AW-0:0]            u_ckrd_wrptr_sync_i_src_data;
+wire [AW-0:0]            u_ckrd_wrptr_sync_o_dst_data;
 //statement------------------------------------------------------------------
+//output assign---
+assign o_wr_full = ckwr_wr_full;
+assign o_rd_data = r_ckrd_out_data;
+assign o_rd_empty = !r_ckrd_out_vld;
+assign o_water_level = ckwr_water_level[CW-1:0];
 
-wire          afifo_wr_en   = wr_en;
-wire          afifo_wr_full ;
-wire [AW-1:0] afifo_wr_addr ;
-wire          afifo_rd_en   ;
-wire          afifo_rd_empty;
-wire [AW-1:0] afifo_rd_addr ;
-com_async_fifo_ctrl #(
-    .DEPTH      ( DEPTH      )  //4
-)u_com_async_fifo_ctrl
+//body---
+assign ckwr_wr_hs = i_wr_en && !o_wr_full;
+assign ckwr_wr_ptr_nxt = F_ptr_next(r_ckwr_wr_ptr);
+assign ckwr_wr_ptr_gray_nxt = F_bin2gray(ckwr_wr_ptr_nxt);
+assign ckwr_rd_ptr_bin = F_gray2bin(u_ckwr_rdptr_sync_o_dst_data);
+assign ckwr_wr_addr = F_ptr2addr(r_ckwr_wr_ptr);
+assign ckwr_rd_addr = F_ptr2addr(ckwr_rd_ptr_bin);
+assign ckwr_ptr_wrap_equ = r_ckwr_wr_ptr[AW]==ckwr_rd_ptr_bin[AW];
+assign ckwr_used_cnt_equ = {1'b0,ckwr_wr_addr} - {1'b0,ckwr_rd_addr};
+assign ckwr_used_cnt_neq = DEPTH_PTR + {1'b0,ckwr_wr_addr} - {1'b0,ckwr_rd_addr};
+assign ckwr_used_cnt = ckwr_ptr_wrap_equ ? ckwr_used_cnt_equ : ckwr_used_cnt_neq;
+assign ckwr_wr_full = ckwr_used_cnt==DEPTH_PTR;
+assign ckwr_water_level = DEPTH_PTR - ckwr_used_cnt;
+
+assign ckrd_rd_hs = i_rd_en && !o_rd_empty;
+assign ckrd_mem_rd_en = !ckrd_fifo_empty && (!r_ckrd_out_vld || i_rd_en);
+assign ckrd_rd_ptr_nxt = F_ptr_next(r_ckrd_rd_ptr);
+assign ckrd_rd_ptr_gray_nxt = F_bin2gray(ckrd_rd_ptr_nxt);
+assign ckrd_wr_ptr_bin = F_gray2bin(u_ckrd_wrptr_sync_o_dst_data);
+assign ckrd_fifo_empty = r_ckrd_rd_ptr==ckrd_wr_ptr_bin;
+assign ckrd_rd_addr = F_ptr2addr(r_ckrd_rd_ptr);
+assign ckrd_mem_rd_data = r_ckwr_arr_mem[ckrd_rd_addr];
+
+//write memory
+always @(posedge wr_clk) begin
+    if( ckwr_wr_hs )
+        r_ckwr_arr_mem[ckwr_wr_addr] <= i_wr_data;
+end
+
+//write pointer
+always @(posedge wr_clk or negedge wr_rst_n) begin
+    if( !wr_rst_n ) begin
+        r_ckwr_wr_ptr <= '0;
+        r_ckwr_wr_ptr_gray <= '0;
+    end
+    else if( ckwr_wr_hs ) begin
+        r_ckwr_wr_ptr <= ckwr_wr_ptr_nxt;
+        r_ckwr_wr_ptr_gray <= ckwr_wr_ptr_gray_nxt;
+    end
+end
+
+//read pointer
+always @(posedge rd_clk or negedge rd_rst_n) begin
+    if( !rd_rst_n ) begin
+        r_ckrd_rd_ptr <= '0;
+        r_ckrd_rd_ptr_gray <= '0;
+    end
+    else if( ckrd_mem_rd_en ) begin
+        r_ckrd_rd_ptr <= ckrd_rd_ptr_nxt;
+        r_ckrd_rd_ptr_gray <= ckrd_rd_ptr_gray_nxt;
+    end
+end
+
+//read output valid
+always @(posedge rd_clk or negedge rd_rst_n) begin
+    if( !rd_rst_n )
+        r_ckrd_out_vld <= 1'b0;
+    else if( ckrd_mem_rd_en )
+        r_ckrd_out_vld <= 1'b1;
+    else if( ckrd_rd_hs )
+        r_ckrd_out_vld <= 1'b0;
+end
+
+//read output data
+always @(posedge rd_clk) begin
+    if( ckrd_mem_rd_en )
+        r_ckrd_out_data <= ckrd_mem_rd_data;
+end
+
+//instance----
+assign u_ckwr_rdptr_sync_i_src_data = r_ckrd_rd_ptr_gray;
+com_cdc_sig #(
+    .DATA_W              ( AW+1                       )  //3
+)u_com_cdc_sig_ckwr_rdptr_sync
 (
-    .wr_clk               ( wr_clk               ), //i
-    .wr_rst_n             ( wr_rst_n             ), //i
-    .wr_clear             ( wr_clear             ), //i
-    .rd_clk               ( rd_clk               ), //i
-    .rd_rst_n             ( rd_rst_n             ), //i
-    .rd_clear             ( rd_clear             ), //i
-    .wr_reset_signals     ( afifo_wr_reset_signals ), //o
-    .rd_reset_signals     ( afifo_rd_reset_signals ), //o
-
-    .wr_en                ( afifo_wr_en          ), //i
-    .wr_addr              ( afifo_wr_addr        ), //o
-    .wr_full              ( afifo_wr_full        ), //o
-    .rd_en                ( afifo_rd_en          ), //i
-    .rd_addr              ( afifo_rd_addr        ), //o
-    .rd_empty             ( afifo_rd_empty       ), //o
-    .water_level          ( water_level          )  //o
+    .i_dst_clk           ( wr_clk                        ), //i
+    .i_dst_rst_n         ( wr_rst_n                      ), //i
+    .i_src_data          ( u_ckwr_rdptr_sync_i_src_data  ), //i
+    .o_dst_data          ( u_ckwr_rdptr_sync_o_dst_data  )  //o
 );
 
-//mem
-always @(posedge wr_clk or negedge sync_wr_rst_n)
-begin
-    if( !sync_wr_rst_n ) begin
-        arc_mem <= 'b0;
-    end
-    else if( afifo_wr_en && !afifo_wr_full ) begin
-        arc_mem[ afifo_wr_addr ] <= wr_data;
-    end
-end
-wire [DW-1:0] afifo_rd_data = arc_mem[ afifo_rd_addr ];
+assign u_ckrd_wrptr_sync_i_src_data = r_ckwr_wr_ptr_gray;
+com_cdc_sig #(
+    .DATA_W              ( AW+1                       )  //3
+)u_com_cdc_sig_ckrd_wrptr_sync
+(
+    .i_dst_clk           ( rd_clk                        ), //i
+    .i_dst_rst_n         ( rd_rst_n                      ), //i
+    .i_src_data          ( u_ckrd_wrptr_sync_i_src_data  ), //i
+    .o_dst_data          ( u_ckrd_wrptr_sync_o_dst_data  )  //o
+);
 
-//sync data to dst_clk domain, register out---
-reg  rc_out_flag;
-reg  [DW-1:0] rc_out_data;
-wire out_wr_en = afifo_rd_en;
-wire out_rd_en = rd_en;
-always @(posedge rd_clk or negedge sync_rd_rst_n)
+//function------------------------------------------------------------------
+function [AW-0:0] F_ptr_next;
+input [AW-0:0] ptr;
 begin
-    if( !sync_rd_rst_n )
-        rc_out_flag <= 1'b0;
-    else if( sync_rd_clear )
-        rc_out_flag <= 1'b0;
-    else if( afifo_rd_en )
-        rc_out_flag <= 1'b1;
-    else if( rd_en )
-        rc_out_flag <= 1'b0;
+    if( ptr==PTR_LOW_E )
+        F_ptr_next = PTR_HIGH_S;
+    else
+        F_ptr_next = ptr + 1'b1;
 end
-always @(posedge rd_clk or negedge sync_rd_rst_n)
+endfunction
+
+function [AW-1:0] F_ptr2addr;
+input [AW-0:0] ptr;
 begin
-    if( !sync_rd_rst_n )
-        rc_out_data <= 'b0;
-    else if( out_wr_en )
-        rc_out_data <= afifo_rd_data;
+    if( ptr<=PTR_LOW_E )
+        F_ptr2addr = ptr[AW-1:0];
+    else
+        F_ptr2addr = ptr[AW-1:0] - PTR_HIGH_S[AW-1:0];
 end
-assign afifo_rd_en = !afifo_rd_empty && (!rc_out_flag || rd_en);
+endfunction
 
+function [AW-0:0] F_bin2gray;
+input [AW-0:0] bin;
+begin
+    F_bin2gray = bin ^ (bin >> 1);
+end
+endfunction
 
-//out---
-//src_clk domain---
-assign wr_full     = afifo_wr_full;
-//dst_clk domain---
-assign rd_data =  rc_out_data;
-assign rd_empty= !rc_out_flag;
+function [AW-0:0] F_gray2bin;
+input [AW-0:0] gray;
+reg   [AW-0:0] bin;
+begin
+    bin[AW] = gray[AW];
+    for( int i=AW-1; i>=0; i-- )
+        bin[i] = bin[i+1] ^ gray[i];
+
+    F_gray2bin = bin;
+end
+endfunction
+
+//assert--------------------------------------------------------------------
+`COM_PARAM_ASSERT( DEPTH>=1, "fifo depth must larger than 0" );
+`COM_SIGNAL_ASSERT( a0, wr_clk,wr_rst_n,i_wr_en,!o_wr_full , "async fifo write when full" );
+`COM_SIGNAL_ASSERT( a1, rd_clk,rd_rst_n,i_rd_en,!o_rd_empty, "async fifo read when empty" );
 
 endmodule //end of com_async_fifo_reg
-`endif //end of com_async_fifo_reg_v
-
