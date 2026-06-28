@@ -17,6 +17,8 @@
 | `com_simo_no_delay`          | 单输入多输出无延迟广播握手                              |
 | `com_edge_detect`            | 输入电平边沿检测并输出单周期脉冲                        |
 | `com_counter`                | 可启动、自动停止的参数化计数器                          |
+| `com_ram_arbiter`            | 多组 RAM 读写接口的独立轮询仲裁与读返回路由             |
+| `com_ram_adp_sp`             | 将独立 RAM 读写接口适配为单口 SRAM 接口                 |
 | `com_sync_fifo_reg`          | 基于寄存器阵列的同步 FIFO                               |
 | `com_sync_fifo_reg_v2`       | `com_sync_fifo_reg` 的重写版本                          |
 | `com_sync_fifo_reg_pfetch`   | 读数据预取并寄存输出的同步 FIFO                         |
@@ -26,12 +28,12 @@
 | `com_sync_fifo_ram_1p2bank`  | 基于两个单口 SRAM bank 的同步 FIFO                      |
 | `com_async_fifo_reg`         | 支持任意深度、带读侧预取的寄存器异步 FIFO               |
 | `com_async_fifo_reg_exactwl` | 逻辑容量和水线语义精确的寄存器异步 FIFO                 |
+| `com_dp_buffer`              | valid/ready 数据通路 FIFO buffer                        |
+| `com_dp_ram`                 | RAM 读请求与返回数据的 valid/ready 桥接 buffer          |
 | `com_cdc_sig`                | 单 bit 或 Gray code 多 bit 信号同步器                    |
 | `com_cdc_rstn`               | 异步拉低、按目标时钟同步释放的复位同步器                |
 | `com_cdc_rstn_pair`          | 汇聚两侧复位源并向两个时钟域分发同步复位                |
 | `com_cdc_handshake`          | 单请求在途、目标侧自动应答的跨时钟域握手模块            |
-| `com_dp_buffer`              | valid/ready 数据通路 FIFO buffer                        |
-| `com_dp_ram`                 | RAM 读请求与返回数据的 valid/ready 桥接 buffer          |
 
 # common_ip
 
@@ -449,6 +451,111 @@
   3. `o_cnt_en` 直接等于 `r_cnt_en`；启动脉冲后一拍才开始输出有效计数。
   4. `r_cnt` 在复位、`clear` 或 `i_cnt_start` 时回到 `INIT`；计数使能期间按 `STEP` 递增。
   5. `o_cnt_last = r_cnt_en && (cnt_nxt > {1'b0, r_cnt_max_m1})`，用下一拍候选值判断当前项是否为末项。
+
+## com_ram_arbiter
+
+* 功能
+
+  `com_ram_arbiter` 将 `WCH` 组写接口和 `RCH` 组读接口分别轮询仲裁为一组 TX RAM 接口。写、读通道相互独立，允许 `o_tx_wr_vld` 和 `o_tx_rd_vld` 同拍有效；模块不判断下游 RAM 是单口还是双口，也不处理最终读写优先级和同地址访问语义。下游通过各自的 ready 决定实际接受哪类请求。
+
+  写接口的 `i_rx_wr_vld` 同时表示请求有效和 byte/lane strobe，任一 bit 为 `1`即存在写请求。读请求握手时保存授权 onehot，经过 `RAM_RD_DELAY`拍后与 `i_tx_rd_ack`组合，将读返回路由至原请求通道。
+
+* 接口时序
+
+  1. 写请求被选中后，地址、数据和完整 strobe 输出到 TX；`|o_tx_wr_vld && i_tx_wr_rdy`表示写握手，对应通道的 `o_rx_wr_rdy`同拍置位。
+  2. `o_tx_rd_vld && i_tx_rd_rdy`表示读请求握手。下游必须在固定 `RAM_RD_DELAY`拍后拉高 `i_tx_rd_ack`，并同时给出 `i_tx_rd_data`。
+  3. `RAM_RD_DELAY`包含 SRAM、ECC 和 regslice 的总延时。读返回保持顺序，不支持动态延时或乱序返回。
+
+* 参数
+
+  | param_name     | range     | default_value | description                                  |
+  | -------------- | --------- | ------------- | -------------------------------------------- |
+  | `WCH`          | `[1::]`   | `2`           | RX 写通道数量                                |
+  | `RCH`          | `[1::]`   | `2`           | RX 读通道数量                                |
+  | `AW`           | `[1::]`   | `8`           | RAM 地址位宽                                 |
+  | `DW`           | `[1::]`   | `8`           | RAM 数据位宽                                 |
+  | `STRB_W`       | `[1::]`   | `1`           | 写 strobe 位宽，要求 `DW%STRB_W==0`          |
+  | `RAM_RD_DELAY` | `[1:16:]` | `1`           | 从 TX 读请求握手到 `i_tx_rd_ack`的固定拍数   |
+
+* 接口
+
+  | signal_name    | bit_width        | I/O | description                                      |
+  | -------------- | ---------------- | --- | ------------------------------------------------ |
+  | `i_rx_wr_addr` | `WCH*AW`         | I   | 各 RX 写通道地址                                 |
+  | `i_rx_wr_data` | `WCH*DW`         | I   | 各 RX 写通道数据                                 |
+  | `i_rx_wr_vld`  | `WCH*STRB_W`     | I   | 各 RX 写通道有效 strobe                          |
+  | `o_rx_wr_rdy`  | `WCH`            | O   | 写请求接受 onehot                                |
+  | `i_rx_rd_addr` | `RCH*AW`         | I   | 各 RX 读通道地址                                 |
+  | `i_rx_rd_vld`  | `RCH`            | I   | 各 RX 读请求有效指示                             |
+  | `o_rx_rd_rdy`  | `RCH`            | O   | 读请求接受 onehot                                |
+  | `o_rx_rd_ack`  | `RCH`            | O   | 读返回有效 onehot                                |
+  | `o_rx_rd_data` | `RCH*DW`         | O   | 广播至各 RX 通道的读数据，以对应 ack 判断有效    |
+  | `o_tx_wr_addr` | `AW`             | O   | 仲裁后的 TX 写地址                               |
+  | `o_tx_wr_data` | `DW`             | O   | 仲裁后的 TX 写数据                               |
+  | `o_tx_wr_vld`  | `STRB_W`         | O   | 仲裁后的 TX 写有效 strobe                        |
+  | `i_tx_wr_rdy`  | `1`              | I   | TX 写接口就绪                                    |
+  | `o_tx_rd_addr` | `AW`             | O   | 仲裁后的 TX 读地址                               |
+  | `o_tx_rd_vld`  | `1`              | O   | TX 读请求有效                                    |
+  | `i_tx_rd_rdy`  | `1`              | I   | TX 读请求就绪                                    |
+  | `i_tx_rd_ack`  | `1`              | I   | TX 读数据返回有效                                |
+  | `i_tx_rd_data` | `DW`             | I   | TX 读返回数据                                    |
+
+* 实现说明
+
+  1. 每个写通道对 `i_rx_wr_vld`执行归约或，生成写仲裁请求。
+  2. 写、读侧各实例化一个 `com_arbiter_rr`，因此两侧轮询状态和反压互不影响。
+  3. 读请求握手时将授权 onehot 写入 `RAM_RD_DELAY`级管线；管线末级与 `i_tx_rd_ack`相与形成 `o_rx_rd_ack`。
+  4. `i_tx_rd_data`广播到所有 RX 读通道，仅 `o_rx_rd_ack`置位的通道可采样该数据。
+
+## com_ram_adp_sp
+
+* 功能
+
+  `com_ram_adp_sp` 将相互独立的逻辑 RAM 写、读握手接口适配为一组物理单口 SRAM 控制接口。同拍出现读写请求时，通过 `WR_PRIORITY`选择写优先或读优先，未被选择的一侧 ready 拉低并保持请求。
+
+  `i_rx_wr_vld`同时作为写请求有效和分段写 strobe。`STRB_W`等分 `DW`位数据，strobe bit `i`控制 `i_rx_wr_data[i*(DW/STRB_W) +: (DW/STRB_W)]`，其中 bit 0 对应最低数据段。物理写使能 `o_sram_we_n`低有效。
+
+* 接口时序
+
+  1. 写握手时 `o_sram_ce_n=0`，`o_sram_we_n=~i_rx_wr_vld`，写地址和数据同拍送往 SRAM。
+  2. 读握手时 `o_sram_ce_n=0`且 `o_sram_we_n='1`，经过固定 `RAM_RD_DELAY`拍后，`o_rx_rd_ack`与 `o_rx_rd_data`同时有效。
+  3. `WR_PRIORITY=1`时，同拍读写只接受写请求；`WR_PRIORITY=0`时只接受读请求。被阻塞的一侧必须保持 valid、地址和数据，直到 ready 有效。
+
+* 参数
+
+  | param_name     | range     | default_value | description                                |
+  | -------------- | --------- | ------------- | ------------------------------------------ |
+  | `AW`           | `[1::]`   | `8`           | SRAM 地址位宽                              |
+  | `DW`           | `[1::]`   | `8`           | SRAM 数据位宽                              |
+  | `STRB_W`       | `[1::]`   | `1`           | 写 strobe 位宽，要求 `DW%STRB_W==0`        |
+  | `RAM_RD_DELAY` | `[1:16:]` | `1`           | 从读请求握手到 SRAM 数据返回的固定拍数     |
+  | `WR_PRIORITY`  | `{0,1}`   | `1`           | `1`为写优先，`0`为读优先                   |
+
+* 接口
+
+  | signal_name      | bit_width | I/O | description                                  |
+  | ---------------- | --------- | --- | -------------------------------------------- |
+  | `i_rx_wr_addr`   | `AW`      | I   | 逻辑写地址                                   |
+  | `i_rx_wr_data`   | `DW`      | I   | 逻辑写数据                                   |
+  | `i_rx_wr_vld`    | `STRB_W`  | I   | 写请求有效和分段写 strobe                    |
+  | `o_rx_wr_rdy`    | `1`       | O   | 写请求接收就绪                               |
+  | `i_rx_rd_addr`   | `AW`      | I   | 逻辑读地址                                   |
+  | `i_rx_rd_vld`    | `1`       | I   | 逻辑读请求有效                               |
+  | `o_rx_rd_rdy`    | `1`       | O   | 逻辑读请求接收就绪                           |
+  | `o_rx_rd_ack`    | `1`       | O   | 逻辑读数据返回有效                           |
+  | `o_rx_rd_data`   | `DW`      | O   | 逻辑读返回数据                               |
+  | `o_sram_ce_n`    | `1`       | O   | 物理 SRAM 片选，低有效                       |
+  | `o_sram_we_n`    | `STRB_W`  | O   | 物理 SRAM 分段写使能，低有效                 |
+  | `o_sram_addr`    | `AW`      | O   | 物理 SRAM 地址                               |
+  | `o_sram_wr_data` | `DW`      | O   | 物理 SRAM 写数据                             |
+  | `i_sram_rd_data` | `DW`      | I   | 物理 SRAM 读数据                             |
+
+* 实现说明
+
+  1. `tie_wr_priority`将 `WR_PRIORITY`转换为单 bit 常量线网，避免参数直接参与组合选择引起 lint 问题。
+  2. 优先级逻辑直接生成两侧 ready；同拍最多只有一个 `wr_sel/rd_sel`有效。
+  3. `r_rd_vld_pipe`记录被接受的读请求，在固定延时后生成 `o_rx_rd_ack`；读数据不额外缓存，直接连接 `i_sram_rd_data`。
+  4. 模块只定义同拍读写冲突的执行顺序，不额外定义跨拍同地址读写的数据旁路行为。
 
 ## com_fifo
 
