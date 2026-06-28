@@ -1,0 +1,67 @@
+{
+  "head": {
+    "text": "com_arbiter_iwrr timing example (REQ_N=3)",
+    "tick": 0
+  },
+  "signal": [
+    {
+      "name": "clk",
+      "wave": "p............"
+    },
+    [
+      "config/request",
+      {
+        "name": "i_cfg_weight {A,B,C}",
+        "wave": "=............",
+        "data": ["2,0,1"]
+      },
+      {
+        "name": "i_req_vld {C,B,A}",
+        "wave": "=............",
+        "data": ["111"]
+      },
+      {
+        "name": "i_gnt_rdy",
+        "wave": "1.01........."
+      }
+    ],
+    {},
+    [
+      "grant",
+      {
+        "name": "o_gnt_vld",
+        "wave": "1............"
+      },
+      {
+        "name": "o_gnt_idx",
+        "wave": "===.===.=====",
+        "data": ["A", "B", "C", "A", "C", "A", "B", "C", "A", "C", "A"]
+      },
+      {
+        "name": "o_gnt_onehot {C,B,A}",
+        "wave": "===.===.=====",
+        "data": ["001", "010", "100", "001", "100", "001", "010", "100", "001", "100", "001"]
+      },
+      {
+        "name": "o_req_rdy {C,B,A}",
+        "wave": "=======.=====",
+        "data": ["001", "010", "000", "100", "001", "100", "001", "010", "100", "001", "100", "001"]
+      }
+    ],
+    {},
+    [
+      "internal",
+      {
+        "name": "w_select_subround",
+        "wave": "=...=.==..=.=",
+        "data": ["0", "1", "2", "0", "1", "2"]
+      }
+    ]
+  ],
+  "foot": {
+    "text": "Visible grant: ABCCACAABCACA; accepted grants: ABCACAABCACA."
+  },
+  "config": {
+    "hscale": 2
+  }
+}

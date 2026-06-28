@@ -3,6 +3,8 @@
 | module                       | function                                                |
 | ---------------------------- | ------------------------------------------------------- |
 | `com_arbiter_rr`             | 多路请求的轮询仲裁，输出 onehot 和 index 形式的授权结果 |
+| `com_arbiter_wrr`            | 按连续配额分配授权的加权轮询仲裁器                      |
+| `com_arbiter_iwrr`           | 将加权配额分散到多个 sub-round 的交织式仲裁器           |
 | `com_find_lsb_first_one`     | 在输入位图中选择最低位的有效项                          |
 | `com_reg`                    | 基础数据寄存器                                          |
 | `com_reg_e`                  | 带写使能的数据寄存器                                    |
@@ -69,6 +71,86 @@
   2. 如果 `i_req_vld & r_avl_bitmap` 中存在请求，则在该范围内选取最低位请求。
   3. 如果当前优先范围内没有请求，则使用完整 `i_req_vld` 重新选择，实现回绕仲裁。
   4. 授权通道握手后，`r_avl_bitmap` 被更新为从下一通道到最高编号通道有效的掩码。
+
+## com_arbiter_wrr
+
+* 功能
+
+  `com_arbiter_wrr` 使用连续配额方式执行 weighted round-robin 仲裁。每路 `i_cfg_weight` 固定为 4 bit 零基编码，实际授权配额为 `weight+1`，范围为 1..16；weight=0 表示每轮授权一次，不用于屏蔽端口。以 A/B/C 三路持续请求为例，配置值为 2/0/1 时，实际配额为 3/1/2，成功握手顺序循环为 `AAABCC`。高权重端口会形成连续授权，控制逻辑较简单，但低权重端口的等待抖动大于交织式 WRR。
+
+* 接口时序
+
+  下图以 A/B/C 配置 2/0/1 展示连续配额授权。`i_gnt_rdy=0` 时 A 的 grant 保持但不消耗 quota，因此可见 grant 中多停留一拍，成功握手序列仍为 `AAABCC`。
+
+  ![com_arbiter_wrr 接口时序](assets/com_arbiter_wrr_wavedrom.png)
+
+* 参数
+
+  | param_name | range   | default_value                 | description                     |
+  | ---------- | ------- | ----------------------------- | ------------------------------- |
+  | `REQ_N`    | `[1::]` | `2`                           | 请求通道数量                    |
+  | `REQ_N_L2` | derived | `$clog2(REQ_N>2 ? REQ_N : 2)` | 授权索引位宽，派生 `localparam` |
+
+* 接口
+
+  | signal_name    | bit_width  | I/O | description                                      |
+  | -------------- | ---------- | --- | ------------------------------------------------ |
+  | `i_cfg_weight` | `REQ_N*4`  | I   | 各请求端口的准静态 CSR 权重，实际配额为 weight+1 |
+  | `i_req_vld`    | `REQ_N`    | I   | 各请求通道有效指示                               |
+  | `o_req_rdy`    | `REQ_N`    | O   | 各请求通道接受指示，仅成功授权的通道置位         |
+  | `o_gnt_onehot` | `REQ_N`    | O   | onehot 形式的授权结果                            |
+  | `o_gnt_idx`    | `REQ_N_L2` | O   | 授权通道索引，`o_gnt_vld=1` 时有效               |
+  | `o_gnt_vld`    | `1`        | O   | 授权结果有效指示                                 |
+  | `i_gnt_rdy`    | `1`        | I   | 授权结果接收就绪指示                             |
+
+* 实现说明
+
+  1. `r_req_active` 记录上一拍是否存在请求；idle-to-active 首拍直接使用 `i_cfg_weight`，同时把整组配置写入 `r_cfg_weight`，后续活跃仲裁只使用 shadow。
+  2. `r_avl_bitmap` 记录下一 owner 的轮询起点；新 owner 第一次握手时即提前移动到该 owner 的下一端口。
+  3. `r_owner_vld/r_owner_idx` 保持当前连续授权端口；weight=0 时不进入 owner 保持状态，因此只授权一次。
+  4. `r_quota_m1` 保存首次授权后剩余的额外授权次数。新 owner 的 weight 非零时装载 `select_weight-1`，后续每次 owner 握手递减，计数为 0 的本次握手是最后一次。
+  5. 当前 owner 提前撤销请求时，未使用配额被丢弃；bitmap 已提前指向下一端口，不会让原 owner 重新抢占轮询起点。
+  6. grant 未握手时，owner、quota 和 bitmap 均不推进；候选选择和 onehot/index 编码复用 `com_find_lsb_first_one`。
+
+## com_arbiter_iwrr
+
+* 功能
+
+  `com_arbiter_iwrr` 使用 interleaved weighted round-robin，把每路配额分散到多个 sub-round。sub-round 0 服务所有有效请求，后续第 N 层只允许 `weight>=N` 的端口参与。A/B/C 配置为 2/0/1 时，sub-round 0 服务 `ABC`，sub-round 1 服务 `AC`，sub-round 2 服务 `A`，成功握手顺序循环为 `ABCACA`。它与连续 WRR 的长期授权比例相同，但授权分布更平滑，代价是增加 sub-round 比较与选择逻辑。
+
+* 接口时序
+
+  下图使用与 WRR 相同的 2/0/1 配置。C 在 `i_gnt_rdy=0` 时保持一拍；握手恢复后继续完成 sub-round 0，随后依次执行 sub-round 1 和 2，成功握手序列为 `ABCACA`。
+
+  ![com_arbiter_iwrr 接口时序](assets/com_arbiter_iwrr_wavedrom.png)
+
+* 参数
+
+  | param_name | range   | default_value                 | description                     |
+  | ---------- | ------- | ----------------------------- | ------------------------------- |
+  | `REQ_N`    | `[1::]` | `2`                           | 请求通道数量                    |
+  | `REQ_N_L2` | derived | `$clog2(REQ_N>2 ? REQ_N : 2)` | 授权索引位宽，派生 `localparam` |
+
+* 接口
+
+  | signal_name    | bit_width  | I/O | description                                      |
+  | -------------- | ---------- | --- | ------------------------------------------------ |
+  | `i_cfg_weight` | `REQ_N*4`  | I   | 各请求端口的准静态 CSR 权重，实际配额为 weight+1 |
+  | `i_req_vld`    | `REQ_N`    | I   | 各请求通道有效指示                               |
+  | `o_req_rdy`    | `REQ_N`    | O   | 各请求通道接受指示，仅成功授权的通道置位         |
+  | `o_gnt_onehot` | `REQ_N`    | O   | onehot 形式的授权结果                            |
+  | `o_gnt_idx`    | `REQ_N_L2` | O   | 授权通道索引，`o_gnt_vld=1` 时有效               |
+  | `o_gnt_vld`    | `1`        | O   | 授权结果有效指示                                 |
+  | `i_gnt_rdy`    | `1`        | I   | 授权结果接收就绪指示                             |
+
+* 实现说明
+
+  1. `r_req_active/r_cfg_weight` 的配置采样方式与 WRR 相同，首次请求可与 CSR 配置同拍到达，活跃仲裁期间的 CSR 改写不会改变 grant。
+  2. `r_subround` 记录当前授权所属层级；端口满足 `arb_weight[i]>=r_subround` 才能参与当前层。
+  3. `r_avl_bitmap` 记录当前 sub-round 中尚未扫描的高编号端口，每次握手后更新为当前 grant 之后的位图。
+  4. `w_cur_req` 优先选择当前 sub-round 尚未服务的有效端口；没有候选时，`w_step_subround` 加一并生成 `w_step_req`，若新层也没有候选则回到 sub-round 0。
+  5. `w_select_subround` 在握手时写入 `r_subround`；下一拍若当前 bitmap 已无候选，step 逻辑组合进入下一层，因此不会插入空拍。
+  6. weight=0 的端口只在 sub-round 0 参与，但仍保证每个完整外层 round 获得一次授权；grant 未握手时 bitmap 和 sub-round 都不推进。
 
 ## com_find_lsb_first_one
 

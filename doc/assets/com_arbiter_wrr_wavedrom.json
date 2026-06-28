@@ -1,0 +1,58 @@
+{
+  "head": {
+    "text": "com_arbiter_wrr timing example (REQ_N=3)",
+    "tick": 0
+  },
+  "signal": [
+    {
+      "name": "clk",
+      "wave": "p............"
+    },
+    [
+      "config/request",
+      {
+        "name": "i_cfg_weight {A,B,C}",
+        "wave": "=............",
+        "data": ["2,0,1"]
+      },
+      {
+        "name": "i_req_vld {C,B,A}",
+        "wave": "=............",
+        "data": ["111"]
+      },
+      {
+        "name": "i_gnt_rdy",
+        "wave": "1.01........."
+      }
+    ],
+    {},
+    [
+      "grant",
+      {
+        "name": "o_gnt_vld",
+        "wave": "1............"
+      },
+      {
+        "name": "o_gnt_idx",
+        "wave": "=...==.=..==.",
+        "data": ["A", "B", "C", "A", "B", "C"]
+      },
+      {
+        "name": "o_gnt_onehot {C,B,A}",
+        "wave": "=...==.=..==.",
+        "data": ["001", "010", "100", "001", "010", "100"]
+      },
+      {
+        "name": "o_req_rdy {C,B,A}",
+        "wave": "=.====.=..==.",
+        "data": ["001", "000", "001", "010", "100", "001", "010", "100"]
+      }
+    ]
+  ],
+  "foot": {
+    "text": "Visible grant: AAAABCCAAABCC; accepted grants: AAABCCAAABCC."
+  },
+  "config": {
+    "hscale": 2
+  }
+}
