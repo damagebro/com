@@ -1,0 +1,44 @@
+{
+  "head": {
+    "text": "com_cdc_handshake timing example (SYNC_S=3)",
+    "tick": 0
+  },
+  "signal": [
+    [
+      "source domain",
+      { "name": "i_src_clk", "wave": "p..............." },
+      { "name": "i_src_req_pulse", "wave": "010.............", "node": ".a.............." },
+      { "name": "r_cksrc_req_toggle", "wave": "0.1.............", "node": "..b............." },
+      { "name": "o_src_busy_level", "wave": "0.1.......0....." }
+    ],
+    {},
+    [
+      "destination domain",
+      { "name": "i_dst_clk", "wave": "p...............", "phase": 0.5 },
+      { "name": "req_toggle_sync", "wave": "0....1..........", "node": ".....c.........." },
+      { "name": "o_dst_req_pulse", "wave": "0.....10........", "node": "......d........." },
+      { "name": "r_ckdst_ack_toggle", "wave": "0.....1.........", "node": "......e........." }
+    ],
+    {},
+    [
+      "ack return",
+      { "name": "ack_toggle_sync", "wave": "0.........1.....", "node": "..........f....." },
+      { "name": "r_cksrc_ack_toggle_d", "wave": "0..........1...." },
+      { "name": "o_src_ack_pulse", "wave": "0.........10....", "node": "..........g....." }
+    ]
+  ],
+  "edge": [
+    "a~>b latch request",
+    "b~>c request CDC",
+    "c~>d issue request",
+    "d~>e auto ack",
+    "e~>f ack CDC",
+    "f~>g complete"
+  ],
+  "foot": {
+    "text": "The destination acknowledges automatically when o_dst_req_pulse is issued; only one request may be outstanding."
+  },
+  "config": {
+    "hscale": 2
+  }
+}

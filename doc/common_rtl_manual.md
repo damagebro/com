@@ -1,29 +1,33 @@
 # 概述
 
-| module                      | function                                                |
-| --------------------------- | ------------------------------------------------------- |
-| `com_arbiter_rr`            | 多路请求的轮询仲裁，输出 onehot 和 index 形式的授权结果 |
-| `com_find_lsb_first_one`    | 在输入位图中选择最低位的有效项                          |
-| `com_reg`                   | 基础数据寄存器                                          |
-| `com_reg_e`                 | 带写使能的数据寄存器                                    |
-| `com_reg_ce`                | 带同步清除和写使能的数据寄存器                          |
-| `com_pipe_vld_single`       | 单级 valid 控制管线，输出数据更新使能                   |
-| `com_pipe_vld`              | 多级 valid 控制管线，输出各级数据更新使能               |
-| `com_pipe_rdy`              | 单级 ready 管线，带一拍反压缓存                         |
-| `com_pipe_vld_rdy`          | 可配置 valid/ready 单级数据管线                         |
-| `com_pipe_regslice`         | 多级 valid/ready 数据寄存切片                           |
-| `com_simo_no_delay`         | 单输入多输出无延迟广播握手                              |
-| `com_edge_detect`           | 输入电平边沿检测并输出单周期脉冲                        |
-| `com_counter`               | 可启动、自动停止的参数化计数器                          |
-| `com_sync_fifo_reg`         | 基于寄存器阵列的同步 FIFO                               |
-| `com_sync_fifo_reg_v2`      | `com_sync_fifo_reg` 的重写版本                          |
-| `com_sync_fifo_reg_pfetch`  | 读数据预取并寄存输出的同步 FIFO                         |
-| `com_sync_fifo_reg_fullbyp` | 满且同拍读出时允许写入的同步 FIFO                       |
-| `com_sync_fifo_reg_2w1r`    | 支持 fast reserve 和 slow fill 的同步 FIFO              |
-| `com_sync_fifo_ram_1p1bank` | 基于一个单口 SRAM 的同步 FIFO                           |
-| `com_sync_fifo_ram_1p2bank` | 基于两个单口 SRAM bank 的同步 FIFO                      |
-| `com_dp_buffer`             | valid/ready 数据通路 FIFO buffer                        |
-| `com_dp_ram`                | RAM 读请求与返回数据的 valid/ready 桥接 buffer          |
+| module                       | function                                                |
+| ---------------------------- | ------------------------------------------------------- |
+| `com_arbiter_rr`             | 多路请求的轮询仲裁，输出 onehot 和 index 形式的授权结果 |
+| `com_find_lsb_first_one`     | 在输入位图中选择最低位的有效项                          |
+| `com_reg`                    | 基础数据寄存器                                          |
+| `com_reg_e`                  | 带写使能的数据寄存器                                    |
+| `com_reg_ce`                 | 带同步清除和写使能的数据寄存器                          |
+| `com_pipe_vld_single`        | 单级 valid 控制管线，输出数据更新使能                   |
+| `com_pipe_vld`               | 多级 valid 控制管线，输出各级数据更新使能               |
+| `com_pipe_rdy`               | 单级 ready 管线，带一拍反压缓存                         |
+| `com_pipe_vld_rdy`           | 可配置 valid/ready 单级数据管线                         |
+| `com_pipe_regslice`          | 多级 valid/ready 数据寄存切片                           |
+| `com_simo_no_delay`          | 单输入多输出无延迟广播握手                              |
+| `com_edge_detect`            | 输入电平边沿检测并输出单周期脉冲                        |
+| `com_counter`                | 可启动、自动停止的参数化计数器                          |
+| `com_sync_fifo_reg`          | 基于寄存器阵列的同步 FIFO                               |
+| `com_sync_fifo_reg_v2`       | `com_sync_fifo_reg` 的重写版本                          |
+| `com_sync_fifo_reg_pfetch`   | 读数据预取并寄存输出的同步 FIFO                         |
+| `com_sync_fifo_reg_fullbyp`  | 满且同拍读出时允许写入的同步 FIFO                       |
+| `com_sync_fifo_reg_2w1r`     | 支持 fast reserve 和 slow fill 的同步 FIFO              |
+| `com_sync_fifo_ram_1p1bank`  | 基于一个单口 SRAM 的同步 FIFO                           |
+| `com_sync_fifo_ram_1p2bank`  | 基于两个单口 SRAM bank 的同步 FIFO                      |
+| `com_async_fifo_reg`         | 支持任意深度、带读侧预取的寄存器异步 FIFO               |
+| `com_async_fifo_reg_exactwl` | 逻辑容量和水线语义精确的寄存器异步 FIFO                 |
+| `com_cdc_sig`                | 单 bit 或 Gray code 多 bit 信号同步器                    |
+| `com_cdc_handshake`          | 单请求在途、目标侧自动应答的跨时钟域握手模块            |
+| `com_dp_buffer`              | valid/ready 数据通路 FIFO buffer                        |
+| `com_dp_ram`                 | RAM 读请求与返回数据的 valid/ready 桥接 buffer          |
 
 # common_ip
 
@@ -574,6 +578,68 @@
   5. `ram_rd_en` 表示实际发给 SRAM bank 的 physical read；若与同 bank write 冲突，则 write priority，read 进入 `rd_hold`。
   6. `ram_rd_ack` 由 `r_ram_rd_vld_pipe` 按 `RAM_RD_DELAY` 产生，并通过 `r_ram_rd_bank_pipe` 选择对应 bank 的返回数据写入输出 FIFO slow 口。
 
+### com_async_fifo_reg
+
+* 功能
+
+  `com_async_fifo_reg` 是使用寄存器阵列存储数据的异步 FIFO，写侧和读侧分别工作在 `wr_clk` 与 `rd_clk`。读写指针采用完整 binary-to-Gray 编码，并通过 `com_cdc_sig` 同步到对侧时钟域；指针环选取完整 Gray code 空间的头尾两段，因此支持任意 `DEPTH>=1`，不要求深度为偶数或 2 的幂。读侧使用 `out_dff` 预取并寄存输出数据，用于隔离跨时钟域 array 路径；该输出寄存器提供额外一项弹性，所以物理暂存容量最多为 `DEPTH+1`，写侧 `o_water_level` 只表示 array 中剩余可写条目，并非严格的 FIFO 总剩余容量。
+
+* 参数
+
+  | param_name | range   | default_value     | description                  |
+  | ---------- | ------- | ----------------- | ---------------------------- |
+  | `DW`       | `[1::]` | `8`               | FIFO 数据位宽                |
+  | `DEPTH`    | `[1::]` | `4`               | register array 深度          |
+  | `SYNC_S`   | `[2::]` | `3`               | Gray pointer CDC 同步级数    |
+  | `CW`       | derived | `$clog2(DEPTH+1)` | 剩余可写条目计数位宽         |
+
+* 接口
+
+  | signal_name     | bit_width | I/O | clock domain | description                                      |
+  | --------------- | --------- | --- | ------------ | ------------------------------------------------ |
+  | `wr_clk`        | `1`       | I   | write        | 写时钟                                           |
+  | `wr_rst_n`      | `1`       | I   | write        | 写时钟域异步低有效复位                           |
+  | `rd_clk`        | `1`       | I   | read         | 读时钟                                           |
+  | `rd_rst_n`      | `1`       | I   | read         | 读时钟域异步低有效复位                           |
+  | `i_wr_en`       | `1`       | I   | `wr_clk`     | 写使能，仅允许在 `o_wr_full=0` 时拉高            |
+  | `i_wr_data`     | `DW`      | I   | `wr_clk`     | 写入 FIFO 的数据                                 |
+  | `o_wr_full`     | `1`       | O   | `wr_clk`     | 写侧视角无可写条目，释放空间存在 CDC 延时         |
+  | `i_rd_en`       | `1`       | I   | `rd_clk`     | 读使能，仅允许在 `o_rd_empty=0` 时拉高           |
+  | `o_rd_data`     | `DW`      | O   | `rd_clk`     | 读侧 `out_dff` 数据，`o_rd_empty=0` 时有效       |
+  | `o_rd_empty`    | `1`       | O   | `rd_clk`     | 读侧 `out_dff` 无有效数据指示                    |
+  | `o_water_level` | `CW`      | O   | `wr_clk`     | register array 剩余可写条目，不含 `out_dff` 容量 |
+
+### com_async_fifo_reg_exactwl
+
+* 功能
+
+  `com_async_fifo_reg_exactwl` 在 `com_async_fifo_reg` 的基础上增加 `fetch_ptr/rd_ptr` 双读指针。`fetch_ptr` 在数据预取到 `out_dff` 时推进，`rd_ptr` 仅在用户实际读出时推进，并同步到写时钟域计算 `o_wr_full/o_water_level`。因此 `out_dff` 只作为读侧流水级，FIFO 逻辑容量严格为 `DEPTH`，水线按用户实际消费进度计算；代价是读出数据经 CDC 反馈后才释放写侧空间，full 解除比基础版本更晚，且少一项额外弹性。
+
+* 参数
+
+  | param_name | range   | default_value     | description                     |
+  | ---------- | ------- | ----------------- | ------------------------------- |
+  | `DW`       | `[1::]` | `8`               | FIFO 数据位宽                   |
+  | `DEPTH`    | `[1::]` | `4`               | FIFO 严格逻辑深度               |
+  | `SYNC_S`   | `[2::]` | `3`               | Gray pointer CDC 同步级数       |
+  | `CW`       | derived | `$clog2(DEPTH+1)` | 剩余可写条目计数位宽            |
+
+* 接口
+
+  | signal_name     | bit_width | I/O | clock domain | description                                  |
+  | --------------- | --------- | --- | ------------ | -------------------------------------------- |
+  | `wr_clk`        | `1`       | I   | write        | 写时钟                                       |
+  | `wr_rst_n`      | `1`       | I   | write        | 写时钟域异步低有效复位                       |
+  | `rd_clk`        | `1`       | I   | read         | 读时钟                                       |
+  | `rd_rst_n`      | `1`       | I   | read         | 读时钟域异步低有效复位                       |
+  | `i_wr_en`       | `1`       | I   | `wr_clk`     | 写使能，仅允许在 `o_wr_full=0` 时拉高        |
+  | `i_wr_data`     | `DW`      | I   | `wr_clk`     | 写入 FIFO 的数据                             |
+  | `o_wr_full`     | `1`       | O   | `wr_clk`     | 严格逻辑容量已满指示                         |
+  | `i_rd_en`       | `1`       | I   | `rd_clk`     | 读使能，仅允许在 `o_rd_empty=0` 时拉高       |
+  | `o_rd_data`     | `DW`      | O   | `rd_clk`     | 读侧 `out_dff` 数据，`o_rd_empty=0` 时有效   |
+  | `o_rd_empty`    | `1`       | O   | `rd_clk`     | 读侧 `out_dff` 无有效数据指示                |
+  | `o_water_level` | `CW`      | O   | `wr_clk`     | 按用户实际读出进度计算的剩余可写条目         |
+
 ### com_dp_buffer
 
 * 功能
@@ -657,6 +723,59 @@
   4. `b_rd_avl_flag` 用 `r_otf_cnt` 和 FIFO 剩余可写条目比较，确保后续 RAM 返回不会溢出内部 FIFO。
   5. `RX_RDY_REG_OUT=0` 时，可把本拍下游读出释放的 FIFO 空间计入 `b_rd_avl_flag`，吞吐更激进，但 `o_rx_rdy` 会受到 `i_tx_rdy` 影响。
   6. `RX_RDY_REG_OUT=1` 时，只使用寄存后的 FIFO 空间做判断，减少 ready 路径的组合依赖；这种模式通常需要把 `DEPTH` 额外加深一项。
+
+## com_cdc
+
+### com_cdc_sig
+
+* 功能
+
+  `com_cdc_sig` 是目标时钟域同步器封装，`SYNC_S` 配置同步级数，`DATA_W` 配置信号位宽。它适用于单 bit 电平信号，或已经由上层保证每次仅变化 1 bit 的 Gray code 多 bit 信号；不能直接用于普通多 bit binary/data bus，否则各 bit 独立同步可能形成不一致的中间值。RTL 仿真可通过 `COM_CDC_AS_REG` 使用寄存器同步链，后端实现时由 stdcell 模板对接工艺同步单元。
+
+* 参数
+
+  | param_name | range   | default_value | description        |
+  | ---------- | ------- | ------------- | ------------------ |
+  | `SYNC_S`   | `[2::]` | `3`           | 目标域同步级数     |
+  | `DATA_W`   | `[1::]` | `1`           | 同步信号位宽       |
+
+* 接口
+
+  | signal_name  | bit_width | I/O | description                                          |
+  | ------------ | --------- | --- | ---------------------------------------------------- |
+  | `i_src_data` | `DATA_W`  | I   | 源域电平或 Gray code；跨域期间必须满足 CDC 稳定要求 |
+  | `o_dst_data` | `DATA_W`  | O   | 经 `SYNC_S` 级同步后的目标域信号                     |
+
+### com_cdc_handshake
+
+* 功能
+
+  `com_cdc_handshake` 使用两相 toggle req/ack 协议，把源时钟域的单拍 `i_src_req_pulse` 传送为目标时钟域的单拍 `o_dst_req_pulse`。目标侧发出请求脉冲时自动生成应答，不需要外部 `i_dst_ack`；应答同步返回源域后产生单拍 `o_src_ack_pulse`。模块只允许一个请求在途，`o_src_busy_level=1` 期间源侧不得再次发送请求，往返延时由两侧时钟相位和 `SYNC_S` 决定。
+
+* 接口时序
+
+  下图以 `SYNC_S=3` 展示源侧请求、目标侧单拍请求与自动应答，以及应答返回后源侧 `busy` 解除的完整过程。图中省略两侧复位信号。
+
+  ![com_cdc_handshake 接口时序](assets/com_cdc_handshake_wavedrom.png)
+
+* 参数
+
+  | param_name | range   | default_value | description                |
+  | ---------- | ------- | ------------- | -------------------------- |
+  | `SYNC_S`   | `[2::]` | `3`           | req/ack 两条 CDC 同步级数  |
+
+* 接口
+
+  | signal_name        | bit_width | I/O | clock domain | description                                      |
+  | ------------------ | --------- | --- | ------------ | ------------------------------------------------ |
+  | `i_src_clk`        | `1`       | I   | source       | 源时钟                                           |
+  | `i_src_rst_n`      | `1`       | I   | source       | 源时钟域异步低有效复位                           |
+  | `i_dst_clk`        | `1`       | I   | destination  | 目标时钟                                         |
+  | `i_dst_rst_n`      | `1`       | I   | destination  | 目标时钟域异步低有效复位                         |
+  | `i_src_req_pulse`  | `1`       | I   | `i_src_clk`  | 源域单拍请求，仅允许在 `o_src_busy_level=0` 时发送 |
+  | `o_src_ack_pulse`  | `1`       | O   | `i_src_clk`  | 请求完成后返回的源域单拍应答                     |
+  | `o_src_busy_level` | `1`       | O   | `i_src_clk`  | 请求已发出但应答尚未同步返回                     |
+  | `o_dst_req_pulse`  | `1`       | O   | `i_dst_clk`  | 目标域单拍请求，产生时模块自动发回应答           |
 
 # com_axi
 
