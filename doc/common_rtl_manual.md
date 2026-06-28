@@ -25,6 +25,8 @@
 | `com_async_fifo_reg`         | 支持任意深度、带读侧预取的寄存器异步 FIFO               |
 | `com_async_fifo_reg_exactwl` | 逻辑容量和水线语义精确的寄存器异步 FIFO                 |
 | `com_cdc_sig`                | 单 bit 或 Gray code 多 bit 信号同步器                    |
+| `com_cdc_rstn`               | 异步拉低、按目标时钟同步释放的复位同步器                |
+| `com_cdc_rstn_pair`          | 汇聚两侧复位源并向两个时钟域分发同步复位                |
 | `com_cdc_handshake`          | 单请求在途、目标侧自动应答的跨时钟域握手模块            |
 | `com_dp_buffer`              | valid/ready 数据通路 FIFO buffer                        |
 | `com_dp_ram`                 | RAM 读请求与返回数据的 valid/ready 桥接 buffer          |
@@ -745,6 +747,49 @@
   | ------------ | --------- | --- | ---------------------------------------------------- |
   | `i_src_data` | `DATA_W`  | I   | 源域电平或 Gray code；跨域期间必须满足 CDC 稳定要求 |
   | `o_dst_data` | `DATA_W`  | O   | 经 `SYNC_S` 级同步后的目标域信号                     |
+
+### com_cdc_rstn
+
+* 功能
+
+  `com_cdc_rstn` 用于产生异步拉低、按目标时钟同步释放的复位信号。`i_async_rst_n` 拉低时，`o_dst_rst_n` 不等待时钟立即拉低；`i_async_rst_n` 释放后，常数 `1'b1` 通过 `com_cdc_sig` 的同步链传递，经过 `SYNC_S` 个目标时钟沿后释放 `o_dst_rst_n`。如果目标时钟停止，输出保持复位，直到目标时钟恢复。
+
+* 参数
+
+  | param_name | range   | default_value | description    |
+  | ---------- | ------- | ------------- | -------------- |
+  | `SYNC_S`   | `[2::]` | `3`           | 复位同步级数   |
+
+* 接口
+
+  | signal_name     | bit_width | I/O | description                    |
+  | --------------- | --------- | --- | ------------------------------ |
+  | `i_dst_clk`     | `1`       | I   | 目标时钟                       |
+  | `i_async_rst_n` | `1`       | I   | 异步低有效复位源               |
+  | `o_dst_rst_n`   | `1`       | O   | 目标域同步释放复位             |
+
+### com_cdc_rstn_pair
+
+* 功能
+
+  `com_cdc_rstn_pair` 汇聚 src/dst 两侧的原始复位源，并分别产生两侧可直接使用的同步释放复位。内部使用 `i_rx_src_rst_n && i_rx_dst_rst_n` 生成公共异步复位：任意输入复位拉低时，`o_tx_src_rst_n/o_tx_dst_rst_n` 都立即拉低；只有两个输入复位都释放后，两侧输出才分别通过各自的 `com_cdc_rstn`，按本地时钟独立同步释放。结构中不存在两侧输出复位的组合反馈。
+
+* 参数
+
+  | param_name | range   | default_value | description            |
+  | ---------- | ------- | ------------- | ---------------------- |
+  | `SYNC_S`   | `[2::]` | `3`           | 两侧复位同步级数       |
+
+* 接口
+
+  | signal_name        | bit_width | I/O | clock domain | description                  |
+  | ------------------ | --------- | --- | ------------ | ---------------------------- |
+  | `i_rx_src_clk`     | `1`       | I   | source       | src 侧时钟                   |
+  | `i_rx_src_rst_n`   | `1`       | I   | asynchronous | src 侧原始低有效复位源       |
+  | `i_rx_dst_clk`     | `1`       | I   | destination  | dst 侧时钟                   |
+  | `i_rx_dst_rst_n`   | `1`       | I   | asynchronous | dst 侧原始低有效复位源       |
+  | `o_tx_src_rst_n`   | `1`       | O   | source       | src 侧异步拉低、同步释放复位 |
+  | `o_tx_dst_rst_n`   | `1`       | O   | destination  | dst 侧异步拉低、同步释放复位 |
 
 ### com_cdc_handshake
 

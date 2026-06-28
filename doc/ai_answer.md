@@ -60,3 +60,14 @@
 - 复杂框图统一放到 `doc/assets/common_ip_uarch.drawio`，按模块页面维护；已导出 `com_sync_fifo_ram_1p1bank_uarch.png`，`1p2bank` 导出时曾遇到 draw.io 页面索引不稳定，需要后续确认导出页是否正确。
 - 文档编码注意：曾因 PowerShell 默认编码读写导致 `common_rtl_uarch.md` 中文变成乱码；后续中文 Markdown 优先用 UTF-8 严格读写，并检查是否残留常见乱码字符。
 - 权限/流程注意：若删除文件、draw.io 导出或 git index lock 处理超过 1 分钟，应暂停并提示用户，不继续绕权限问题耗时。
+
+### 2026-06-19 至 2026-06-28: Async FIFO 与 CDC 开发
+
+- 完成 `com_async_fifo_reg`：register array 保存数据，读侧用 `out_dff` 隔离 CDC 路径；指针采用完整 binary-to-Gray 编码并选取 Gray code 头尾两段，支持任意 `DEPTH>=1`。
+- 基础 AFIFO 的 `out_dff` 提供额外一项弹性，最大暂存量为 `DEPTH+1`；`o_wr_full/o_water_level` 是写域基于同步后读指针得到的保守状态，空间释放存在 CDC 延时，water level 不表示严格总容量。
+- 新增 `com_async_fifo_reg_exactwl`，使用 `fetch_ptr/rd_ptr` 双读指针：预取只推进 `fetch_ptr`，用户读出才推进 `rd_ptr`，因此逻辑容量严格为 `DEPTH`，代价是写侧空间释放更晚且少一项弹性。
+- 多时钟域代码统一使用 `cksrc_/ckdst_`、`ckwr_/ckrd_` 区分内部信号，并通过 `SYNC_S` 配置 `com_cdc_sig` 同步级数；异步设计不增加 `clear`，两侧直接使用各自复位。
+- 完成 `com_cdc_handshake`：使用 toggle req/ack 传递单 bit 请求脉冲，目标侧产生单拍请求后自动应答，只允许一个请求在途；`busy` 保持为 req/ack toggle 不一致的组合判断，不额外增加 DFF。
+- 重写 `com_cdc_rstn`，实现复位异步拉低、按目标时钟同步释放；新增 `com_cdc_rstn_pair`，合并 src/dst 两侧原始复位源，任一来源复位都会让两侧立即复位，两侧随后按各自时钟独立同步释放。
+- `common_rtl_uarch.md` 已补两个 AFIFO 的框图和设计说明；`common_rtl_manual.md` 新增 `## com_cdc`，补齐 AFIFO、`com_cdc_sig`、handshake、reset 模块的功能、参数和接口，并为 handshake 生成 WaveDrom 时序图。
+- CDC RTL 核心功能基本完成；后续仍需清理 filelist 中失效的 `com_cdc_pulse/com_async_fifo_ctrl`，对接真实 synchronizer stdcell、增加 Gray bus skew/max-delay 约束，并补异步随机仿真或 formal 检查。
