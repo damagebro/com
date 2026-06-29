@@ -1,0 +1,95 @@
+{
+  "head": {
+    "text": "com_ram_adp_rmw back-to-back partial writes (RAM_RD_DELAY=2)",
+    "tick": 0
+  },
+  "signal": [
+    {
+      "name": "clk",
+      "wave": "p........"
+    },
+    [
+      "RX partial write",
+      {
+        "name": "i_rx_wr_addr",
+        "wave": "=========",
+        "data": ["A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"],
+        "node": "a........"
+      },
+      {
+        "name": "i_rx_wr_vld",
+        "wave": "=========",
+        "data": ["0001", "0010", "0100", "1000", "0001", "0010", "0100", "1000", "0001"]
+      },
+      {
+        "name": "o_rx_wr_rdy",
+        "wave": "1........"
+      }
+    ],
+    {},
+    [
+      "TX RMW read",
+      {
+        "name": "o_tx_rd_addr",
+        "wave": "=========",
+        "data": ["A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"]
+      },
+      {
+        "name": "o_tx_rd_vld",
+        "wave": "1........"
+      },
+      {
+        "name": "i_tx_rd_rdy",
+        "wave": "1........"
+      },
+      {
+        "name": "i_tx_rd_ack",
+        "wave": "0.1......",
+        "node": "..b......"
+      },
+      {
+        "name": "i_tx_rd_data",
+        "wave": "x.=======",
+        "data": ["old0", "old1", "old2", "old3", "old4", "old5", "old6"]
+      }
+    ],
+    {},
+    [
+      "TX full writeback",
+      {
+        "name": "o_tx_wr_addr",
+        "wave": "x..======",
+        "data": ["A0", "A1", "A2", "A3", "A4", "A5"],
+        "node": "...c....."
+      },
+      {
+        "name": "o_tx_wr_data",
+        "wave": "x..======",
+        "data": ["merge0", "merge1", "merge2", "merge3", "merge4", "merge5"]
+      },
+      {
+        "name": "o_tx_wr_vld",
+        "wave": "0..1....."
+      },
+      {
+        "name": "i_tx_wr_rdy",
+        "wave": "1........"
+      },
+      {
+        "name": "r_rmw_pend_cnt",
+        "wave": "====.....",
+        "data": ["0", "1", "2", "3"]
+      }
+    ]
+  ],
+  "edge": [
+    "a~>b fixed read latency",
+    "b~>c writeback FIFO"
+  ],
+  "foot": {
+    "text": "Different addresses: one partial write and one full writeback per cycle after pipeline fill."
+  },
+  "config": {
+    "hscale": 2
+  }
+}

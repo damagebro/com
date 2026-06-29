@@ -19,6 +19,7 @@
 | `com_counter`                | 可启动、自动停止的参数化计数器                          |
 | `com_ram_arbiter`            | 多组 RAM 读写接口的独立轮询仲裁与读返回路由             |
 | `com_ram_adp_sp`             | 将独立 RAM 读写接口适配为单口 SRAM 接口                 |
+| `com_ram_adp_rmw`            | 将 partial write 转换为 read-modify-write               |
 | `com_sync_fifo_reg`          | 基于寄存器阵列的同步 FIFO                               |
 | `com_sync_fifo_reg_v2`       | `com_sync_fifo_reg` 的重写版本                          |
 | `com_sync_fifo_reg_pfetch`   | 读数据预取并寄存输出的同步 FIFO                         |
@@ -556,6 +557,79 @@
   2. 优先级逻辑直接生成两侧 ready；同拍最多只有一个 `wr_sel/rd_sel`有效。
   3. `r_rd_vld_pipe`记录被接受的读请求，在固定延时后生成 `o_rx_rd_ack`；读数据不额外缓存，直接连接 `i_sram_rd_data`。
   4. 模块只定义同拍读写冲突的执行顺序，不额外定义跨拍同地址读写的数据旁路行为。
+
+## com_ram_adp_rmw
+
+* 功能
+
+  `com_ram_adp_rmw`位于两组 RAM valid/ready 接口之间，将 RX 多 bit 写 strobe 转换为 TX 单 bit full-write valid。`i_rx_wr_vld`全为 `1`时，写请求组合直通 TX；出现 partial write 时，模块先通过 TX read 读取原数据，按 strobe 合并新旧数据，再通过 TX write 发出一次 full write。
+
+  普通 RX read 不从内部 flag、RMW info 或 writeback FIFO forwarding 数据。每个被接受的普通读请求都必须实际发起一次 TX read，返回数据直接来自 `i_tx_rd_data`。该限制让普通读的 request/ack 路径保持统一，避免 forwarding 命中与未命中导致 `rd_vld`到 `rd_ack`延时不固定。
+
+* 接口时序
+
+  下图以 `RAM_RD_DELAY=2`展示不同地址的连续 partial write。假设 TX read/write 始终 ready，A0、A1、A2…互不相同；RX partial write 与 TX RMW read 可以逐拍握手，读返回经数据合并和 writeback FIFO 后，TX full write 同样可以逐拍输出。
+
+  ![com_ram_adp_rmw 接口时序](assets/com_ram_adp_rmw_wavedrom.png)
+
+  1. 无在途同地址 RMW 时，full write 和普通 read 均为 RX 到 TX 的组合握手路径，不额外插入寄存周期。
+  2. partial write 被接受时发起 TX read，同时向 `rdflag_fifo`写入 RMW 标记，并把地址、strobe 和新写数据写入 `rmw_info_fifo`。
+  3. TX read ack 返回后，普通 read 同拍产生 `o_rx_rd_ack`；RMW read 使用返回数据完成合并，并把 full-write 数据写入 writeback FIFO。
+  4. RMW writeback 优先使用 TX write 通道；从 partial write 被接受到 writeback 完成期间，同地址的新读写请求被阻塞，不同地址请求仍可继续传输。
+  5. partial write 与普通 read 同拍竞争 TX read 通道时，由 `WR_PRIORITY`决定优先级。
+
+* 性能参数
+
+  | item                    | value                    | condition/description                                  |
+  | ----------------------- | ------------------------ | ------------------------------------------------------ |
+  | RX partial throughput   | `1 request/cycle`        | 地址不同，TX read/write 无反压，且无普通 read 竞争     |
+  | TX RMW-read throughput  | `1 request/cycle`        | TX read ready 持续有效                                  |
+  | TX writeback throughput | `1 request/cycle`        | TX write ready 持续有效                                 |
+  | First writeback latency | `RAM_RD_DELAY+1` cycles  | read ack 后进入 `rmw_wb_fifo`，下一拍可输出            |
+  | RMW capacity            | `RAM_RD_DELAY+1` entries | flag、RMW info、writeback FIFO 和地址表使用相同容量     |
+  | Same-address behavior   | serialized               | 等待旧 RMW writeback 握手后，才允许新的同地址读写请求  |
+
+* 参数
+
+  | param_name     | range     | default_value | description                                  |
+  | -------------- | --------- | ------------- | -------------------------------------------- |
+  | `AW`           | `[1::]`   | `8`           | RAM 地址位宽                                 |
+  | `DW`           | `[1::]`   | `8`           | RAM 数据位宽                                 |
+  | `STRB_W`       | `[1::]`   | `1`           | RX 写 strobe 位宽，要求 `DW%STRB_W==0`       |
+  | `RAM_RD_DELAY` | `[1:16:]` | `1`           | TX read 的固定返回延时，用于确定内部 FIFO 深度 |
+  | `WR_PRIORITY`  | `{0,1}`   | `1`           | `1`为 partial write 优先，`0`为普通 read 优先 |
+
+* 接口
+
+  | signal_name    | bit_width | I/O | description                                   |
+  | -------------- | --------- | --- | --------------------------------------------- |
+  | `i_rx_wr_addr` | `AW`      | I   | RX 写地址                                     |
+  | `i_rx_wr_data` | `DW`      | I   | RX 写数据                                     |
+  | `i_rx_wr_vld`  | `STRB_W`  | I   | RX 写请求有效及分段写 strobe                  |
+  | `o_rx_wr_rdy`  | `1`       | O   | RX 写请求接收就绪                             |
+  | `i_rx_rd_addr` | `AW`      | I   | RX 读地址                                     |
+  | `i_rx_rd_vld`  | `1`       | I   | RX 读请求有效                                 |
+  | `o_rx_rd_rdy`  | `1`       | O   | RX 读请求接收就绪                             |
+  | `o_rx_rd_ack`  | `1`       | O   | RX 普通读返回有效                             |
+  | `o_rx_rd_data` | `DW`      | O   | RX 普通读返回数据                             |
+  | `o_tx_wr_addr` | `AW`      | O   | TX full-write 地址                            |
+  | `o_tx_wr_data` | `DW`      | O   | TX full-write 数据                            |
+  | `o_tx_wr_vld`  | `1`       | O   | TX full-write 有效指示                        |
+  | `i_tx_wr_rdy`  | `1`       | I   | TX 写请求接收就绪                             |
+  | `o_tx_rd_addr` | `AW`      | O   | TX 读地址                                     |
+  | `o_tx_rd_vld`  | `1`       | O   | TX 读请求有效                                 |
+  | `i_tx_rd_rdy`  | `1`       | I   | TX 读请求接收就绪                             |
+  | `i_tx_rd_ack`  | `1`       | I   | TX 读数据返回有效                             |
+  | `i_tx_rd_data` | `DW`      | I   | TX 读返回数据                                 |
+
+* 实现说明
+
+  1. `rdflag_fifo`位宽为 1 bit，每次 TX read 握手都写入，记录返回属于普通 read 还是 RMW read；普通 read 只翻转该窄 FIFO。
+  2. `rmw_info_fifo`仅在 partial-write read 握手时写入，保存 RMW 的地址、strobe 和新写数据；RMW read ack 返回时按顺序弹出。
+  3. `rmw_wb_fifo`缓存已经完成数据合并、等待 TX write 接受的 full-write 地址和数据。其深度为 `RAM_RD_DELAY+1`，确保无反压的 TX read 返回都有预留写回空间。
+  4. 三个 FIFO 深度均为 `RAM_RD_DELAY+1`并使用 `com_sync_fifo_reg`。普通 read 不会写宽位 `rmw_info_fifo`，降低 partial write 比例较小时的动态功耗。
+  5. `r_rmw_addr_mem/r_rmw_addr_vld`组成在途 RMW 地址表，用于并行比较所有尚未写回的地址；地址只在 RMW 申请和完成时更新。
+  6. strobe bit `i`替换数据范围 `i*SUB_DW +: SUB_DW`，其中 `SUB_DW=DW/STRB_W`；TX write 不再输出分段 strobe，所有写请求均为 full write。
 
 ## com_fifo
 

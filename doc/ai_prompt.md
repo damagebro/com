@@ -72,10 +72,10 @@
 1. com_sync_fifo_reg_v2 + com_sync_fifo_reg_pfetch + com_sync_fifo_reg_fullbyp + com_sync_fifo_reg_2w1r 的rtl+文档, 比较和 com_sync_fifo_reg 的差异
 2. cdc  pulse/async_fifo开发;
    - com_async_fifo_reg 修改,
-   - com_async_fifo_reg_exactwl 增强;
+   - com_async_fifo_reg_exactwl 增强;   //增加每次变1bit的断言;
    - com_cdc_handshake;    //s2d_toggle,   d2s_toggle;
-   - com_cdc_rstn/com_cdc_pulse;
-3. com_arbiter_wrr, com_ram_arbiter
+   - com_cdc_rstn, com_cdc_rstn_pair;
+3. com_arbiter_wrr, com_ram_arbiter/com_ram_adp_sp/com_ram_adp_rmw,  com_ram_twosp_as_tp
 
 2026/? mem_tool开发:
 
