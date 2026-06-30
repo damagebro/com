@@ -19,6 +19,7 @@
 | `com_counter`                | 可启动、自动停止的参数化计数器                          |
 | `com_ram_arbiter`            | 多组 RAM 读写接口的独立轮询仲裁与读返回路由             |
 | `com_ram_adp_sp`             | 将独立 RAM 读写接口适配为单口 SRAM 接口                 |
+| `com_ram_adp_2sp`            | 将逻辑 RAM 接口映射到两个交织单口 SRAM bank             |
 | `com_ram_adp_rmw`            | 将 partial write 转换为 read-modify-write               |
 | `com_sync_fifo_reg`          | 基于寄存器阵列的同步 FIFO                               |
 | `com_sync_fifo_reg_v2`       | `com_sync_fifo_reg` 的重写版本                          |
@@ -558,6 +559,49 @@
   3. `r_rd_vld_pipe`记录被接受的读请求，在固定延时后生成 `o_rx_rd_ack`；读数据不额外缓存，直接连接 `i_sram_rd_data`。
   4. 模块只定义同拍读写冲突的执行顺序，不额外定义跨拍同地址读写的数据旁路行为。
 
+## com_ram_adp_2sp
+
+* 功能
+
+  `com_ram_adp_2sp`将一组逻辑 RAM 读写接口映射到两个交织的 single-port SRAM bank。逻辑地址 `addr[0]`选择 bank，`addr[AW-1:1]`作为 bank 内地址。读写访问不同 bank 时可以同拍执行；访问相同 bank 时按照 `WR_PRIORITY`选择一路访问，另一侧通过 ready 反压。
+
+* 参数
+
+  | param_name     | range     | default_value | description                              |
+  | -------------- | --------- | ------------- | ---------------------------------------- |
+  | `AW`           | `[2::]`   | `8`           | 逻辑 RAM 地址位宽                        |
+  | `DW`           | `[1::]`   | `8`           | RAM 数据位宽                             |
+  | `STRB_W`       | `[1::]`   | `1`           | 写 strobe 位宽，要求 `DW%STRB_W==0`      |
+  | `RAM_RD_DELAY` | `[1:16:]` | `1`           | single-port SRAM 的固定读返回延时        |
+  | `WR_PRIORITY`  | `{0,1}`   | `1`           | 同 bank 冲突优先级，`1`写优先、`0`读优先 |
+
+* 接口
+
+  | signal_name     | bit_width          | I/O | description                                  |
+  | --------------- | ------------------ | --- | -------------------------------------------- |
+  | `i_rx_wr_addr`  | `AW`               | I   | 逻辑写地址，bit 0 为写 bank 选择             |
+  | `i_rx_wr_data`  | `DW`               | I   | 逻辑写数据                                   |
+  | `i_rx_wr_vld`   | `STRB_W`           | I   | 写请求有效及分段写 strobe                    |
+  | `o_rx_wr_rdy`   | `1`                | O   | 写请求接收就绪                               |
+  | `i_rx_rd_addr`  | `AW`               | I   | 逻辑读地址，bit 0 为读 bank 选择             |
+  | `i_rx_rd_vld`   | `1`                | I   | 逻辑读请求有效                               |
+  | `o_rx_rd_rdy`   | `1`                | O   | 逻辑读请求接收就绪                           |
+  | `o_rx_rd_ack`   | `1`                | O   | 逻辑读返回有效                               |
+  | `o_rx_rd_data`  | `DW`               | O   | 由延迟后的 bank 选择得到的读返回数据         |
+  | `o_ram_ce_n`    | `2`                | O   | 两个 SRAM bank 的低有效片选                   |
+  | `o_ram_we_n`    | `2*STRB_W`         | O   | 两个 SRAM bank 的低有效分段写使能             |
+  | `o_ram_addr`    | `2*(AW-1)`         | O   | 两个 SRAM bank 的 bank 内地址                 |
+  | `o_ram_wr_data` | `2*DW`             | O   | 两个 SRAM bank 的写数据                       |
+  | `i_ram_rd_data` | `2*DW`             | I   | 两个 SRAM bank 的读返回数据                   |
+
+* 实现说明
+
+  1. `wr_bank/rd_bank`分别取写、读逻辑地址 bit 0；`same_bank`用于识别同拍冲突。
+  2. `wr_block/rd_block`根据 `tie_wr_priority`产生反压，保证同一个 single-port bank 同拍最多执行一种访问。
+  3. `ram_wr_en/ram_rd_en`将成功握手转换为两 bank onehot 访问使能，并生成 `ce_n/we_n`。
+  4. `r_ram_rd_vld_pipe/r_ram_rd_bank_pipe`保持读有效与 bank 选择对齐，返回端不需要额外的 `rd_data_vld`输入。
+  5. 模块不缓存写数据或读数据；除同 bank 冲突外，请求路径为组合逻辑。
+
 ## com_ram_adp_rmw
 
 * 功能
@@ -577,6 +621,7 @@
   3. TX read ack 返回后，普通 read 同拍产生 `o_rx_rd_ack`；RMW read 使用返回数据完成合并，并把 full-write 数据写入 writeback FIFO。
   4. RMW writeback 优先使用 TX write 通道；从 partial write 被接受到 writeback 完成期间，同地址的新读写请求被阻塞，不同地址请求仍可继续传输。
   5. partial write 与普通 read 同拍竞争 TX read 通道时，由 `WR_PRIORITY`决定优先级。
+  6. `rmw_wb`与 `direct_write`同时请求 TX write 时，`rmw_wb`固定优先。只要 `rmw_wb_fifo`非空，模块持续输出队首 writeback，并将 RX full write 反压；writeback FIFO 排空后，direct write 恢复组合直通。
 
 * 性能参数
 
@@ -630,6 +675,7 @@
   4. 三个 FIFO 深度均为 `RAM_RD_DELAY+1`并使用 `com_sync_fifo_reg`。普通 read 不会写宽位 `rmw_info_fifo`，降低 partial write 比例较小时的动态功耗。
   5. `r_rmw_addr_mem/r_rmw_addr_vld`组成在途 RMW 地址表，用于并行比较所有尚未写回的地址；地址只在 RMW 申请和完成时更新。
   6. strobe bit `i`替换数据范围 `i*SUB_DW +: SUB_DW`，其中 `SUB_DW=DW/STRB_W`；TX write 不再输出分段 strobe，所有写请求均为 full write。
+  7. TX write 使用固定优先级 `rmw_wb > direct_write`。该策略优先释放无法反压的 read ack 所产生的写回数据和 RMW 槽位，避免 writeback 长时间滞留；代价是持续 writeback 时 direct write 会等待。
 
 ## com_fifo
 
