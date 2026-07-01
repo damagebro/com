@@ -114,8 +114,8 @@ always @(posedge clk) begin
 end
 
 //assert--------------------------------------
-`COM_PARAM_ASSERT( DEPTH>0, "fifo depth must larger than 0" );
-`COM_SIGNAL_ASSERT_LITE( a0, i_wr_en,!o_wr_full , "fifo write when full"  );
-`COM_SIGNAL_ASSERT_LITE( a1, i_rd_en,!o_rd_empty, "fifo read when empty"  );
+`COM_PARAM_ASSERT( DEPTH>0, "fifo depth must larger than 0" )
+`COM_SIGNAL_ASSERT_LITE( a0, i_wr_en,!o_wr_full , "fifo write when full"  )
+`COM_SIGNAL_ASSERT_LITE( a1, i_rd_en,!o_rd_empty, "fifo read when empty"  )
 
 endmodule //end of com_sync_fifo_reg_fullbyp

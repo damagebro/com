@@ -40,6 +40,6 @@ com_cdc_sig #(
 );
 
 // //assert---------------------------------------------------------------------
-// `COM_PARAM_ASSERT( SYNC_S>=2, "cdc sync stage must larger than 1" );
+// `COM_PARAM_ASSERT( SYNC_S>=2, "cdc sync stage must larger than 1" )
 
 endmodule //end of com_cdc_rstn

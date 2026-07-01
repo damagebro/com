@@ -143,9 +143,9 @@ com_arbiter_rr #(
 );
 
 //assert---------------------------------------------------------------------
-`COM_PARAM_ASSERT( WCH>=1, "write channel number must larger than 0" );
-`COM_PARAM_ASSERT( RCH>=1, "read channel number must larger than 0" );
-`COM_PARAM_ASSERT( STRB_W>=1 && DW%STRB_W==0, "DW must be divisible by STRB_W" );
-`COM_PARAM_ASSERT( RAM_RD_DELAY>=1 && RAM_RD_DELAY<=16, "ram read delay range is [1:16]" );
+`COM_PARAM_ASSERT( WCH>=1, "write channel number must larger than 0" )
+`COM_PARAM_ASSERT( RCH>=1, "read channel number must larger than 0" )
+`COM_PARAM_ASSERT( STRB_W>=1 && DW%STRB_W==0, "DW must be divisible by STRB_W" )
+`COM_PARAM_ASSERT( RAM_RD_DELAY>=1 && RAM_RD_DELAY<=16, "ram read delay range is [1:16]" )
 
 endmodule //end of com_ram_arbiter

@@ -151,6 +151,6 @@ com_find_lsb_first_one #(
 );
 
 //assert---------------------------------------------------------------------
-`COM_PARAM_ASSERT( REQ_N>=1, "request number must larger than 0" );
+`COM_PARAM_ASSERT( REQ_N>=1, "request number must larger than 0" )
 
 endmodule //end of com_arbiter_wrr

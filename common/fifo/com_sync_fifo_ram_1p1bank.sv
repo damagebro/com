@@ -306,15 +306,15 @@ com_sync_fifo_reg_2w1r #(
 );
 
 //assert--------------------------------------
-`COM_PARAM_ASSERT( RAM_DEPTH>=2, "fifo ram depth must larger than 1" );
-`COM_PARAM_ASSERT( RAM_DEPTH%2==0, "fifo ram depth must be even" );
-`COM_PARAM_ASSERT( RAM_RD_DELAY>=1 && RAM_RD_DELAY<=16, "ram read delay range is [1:16]" );
-`COM_PARAM_ASSERT( OUT_DEPTH>=(RAM_RD_DELAY+3), "fifo out depth must cover ram read delay and one write conflict" );
-`COM_SIGNAL_ASSERT_LITE( a0, i_wr_en,!o_wr_full, "fifo write when full" );
-`COM_SIGNAL_ASSERT_LITE( a1, i_rd_en,!o_rd_empty, "fifo read when empty" );
-`COM_SIGNAL_ASSERT_LITE( a2, ram_ack_ilgl,1'b0, "ram read ack without output slot" );
-`COM_SIGNAL_ASSERT_LITE( a3, ram_ack_high_ilgl,1'b0, "ram read high data without output slot" );
-`COM_SIGNAL_ASSERT_LITE( a4, ram_otf_underflow_ilgl,1'b0, "ram otf count underflow" );
-`COM_SIGNAL_ASSERT_LITE( a5, wr_path_miss,1'b0, "fifo ram write path unavailable" );
+`COM_PARAM_ASSERT( RAM_DEPTH>=2, "fifo ram depth must larger than 1" )
+`COM_PARAM_ASSERT( RAM_DEPTH%2==0, "fifo ram depth must be even" )
+`COM_PARAM_ASSERT( RAM_RD_DELAY>=1 && RAM_RD_DELAY<=16, "ram read delay range is [1:16]" )
+`COM_PARAM_ASSERT( OUT_DEPTH>=(RAM_RD_DELAY+3), "fifo out depth must cover ram read delay and one write conflict" )
+`COM_SIGNAL_ASSERT_LITE( a0, i_wr_en,!o_wr_full, "fifo write when full" )
+`COM_SIGNAL_ASSERT_LITE( a1, i_rd_en,!o_rd_empty, "fifo read when empty" )
+`COM_SIGNAL_ASSERT_LITE( a2, ram_ack_ilgl,1'b0, "ram read ack without output slot" )
+`COM_SIGNAL_ASSERT_LITE( a3, ram_ack_high_ilgl,1'b0, "ram read high data without output slot" )
+`COM_SIGNAL_ASSERT_LITE( a4, ram_otf_underflow_ilgl,1'b0, "ram otf count underflow" )
+`COM_SIGNAL_ASSERT_LITE( a5, wr_path_miss,1'b0, "fifo ram write path unavailable" )
 
 endmodule //end of com_sync_fifo_ram_1p1bank

@@ -182,10 +182,10 @@ always @(posedge clk) begin
 end
 
 //assert--------------------------------------
-`COM_PARAM_ASSERT( DEPTH>0, "fifo depth must larger than 0" );
-`COM_SIGNAL_ASSERT_LITE( a0, i_wr_fast_en,!o_wr_full , "fifo write when full"  );
-`COM_SIGNAL_ASSERT_LITE( a1, i_rd_en,!o_rd_empty, "fifo read when empty"  );
-`COM_SIGNAL_ASSERT_LITE( a2, i_wr_slow_en,o_wr_slow_avl_flag, "slow write out of reserved range" );
-`COM_SIGNAL_ASSERT_LITE( a3, wr_fast_miss_ilgl,1'b0, "unsupported fast miss condition" );
+`COM_PARAM_ASSERT( DEPTH>0, "fifo depth must larger than 0" )
+`COM_SIGNAL_ASSERT_LITE( a0, i_wr_fast_en,!o_wr_full , "fifo write when full"  )
+`COM_SIGNAL_ASSERT_LITE( a1, i_rd_en,!o_rd_empty, "fifo read when empty"  )
+`COM_SIGNAL_ASSERT_LITE( a2, i_wr_slow_en,o_wr_slow_avl_flag, "slow write out of reserved range" )
+`COM_SIGNAL_ASSERT_LITE( a3, wr_fast_miss_ilgl,1'b0, "unsupported fast miss condition" )
 
 endmodule //end of com_sync_fifo_reg_2w1r

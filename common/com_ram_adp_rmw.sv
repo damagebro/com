@@ -302,11 +302,11 @@ com_sync_fifo_reg #(
 );
 
 //assert---------------------------------------------------------------------
-`COM_PARAM_ASSERT( STRB_W>=1 && DW%STRB_W==0, "DW must be divisible by STRB_W" );
-`COM_PARAM_ASSERT( RAM_RD_DELAY>=1 && RAM_RD_DELAY<=16, "ram read delay range is [1:16]" );
-`COM_PARAM_ASSERT( WR_PRIORITY==0 || WR_PRIORITY==1, "WR_PRIORITY must be 0 or 1" );
-`COM_SIGNAL_ASSERT_LITE( a0, i_tx_rd_ack,!u_rdflag_o_rd_empty, "read ack without request flag" );
-`COM_SIGNAL_ASSERT_LITE( a1, u_rmw_info_i_rd_en,!u_rmw_info_o_rd_empty, "rmw response without request info" );
-`COM_SIGNAL_ASSERT_LITE( a2, u_rmw_wb_i_wr_en,!u_rmw_wb_o_wr_full, "rmw writeback fifo overflow" );
+`COM_PARAM_ASSERT( STRB_W>=1 && DW%STRB_W==0, "DW must be divisible by STRB_W" )
+`COM_PARAM_ASSERT( RAM_RD_DELAY>=1 && RAM_RD_DELAY<=16, "ram read delay range is [1:16]" )
+`COM_PARAM_ASSERT( WR_PRIORITY==0 || WR_PRIORITY==1, "WR_PRIORITY must be 0 or 1" )
+`COM_SIGNAL_ASSERT_LITE( a0, i_tx_rd_ack,!u_rdflag_o_rd_empty, "read ack without request flag" )
+`COM_SIGNAL_ASSERT_LITE( a1, u_rmw_info_i_rd_en,!u_rmw_info_o_rd_empty, "rmw response without request info" )
+`COM_SIGNAL_ASSERT_LITE( a2, u_rmw_wb_i_wr_en,!u_rmw_wb_o_wr_full, "rmw writeback fifo overflow" )
 
 endmodule //end of com_ram_adp_rmw

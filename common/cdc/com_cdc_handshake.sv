@@ -109,7 +109,7 @@ com_cdc_sig #(
 );
 
 //assert--------------------------------------------------------------------
-`COM_PARAM_ASSERT( SYNC_S>=2, "cdc sync stage must larger than 1" );
-`COM_SIGNAL_ASSERT( a0, i_src_clk,i_src_rst_n,i_src_req_pulse,!o_src_busy_level, "cdc handshake request when busy" );
+`COM_PARAM_ASSERT( SYNC_S>=2, "cdc sync stage must larger than 1" )
+`COM_SIGNAL_ASSERT( a0, i_src_clk,i_src_rst_n,i_src_req_pulse,!o_src_busy_level, "cdc handshake request when busy" )
 
 endmodule //end of com_cdc_handshake

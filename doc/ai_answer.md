@@ -71,3 +71,17 @@
 - 重写 `com_cdc_rstn`，实现复位异步拉低、按目标时钟同步释放；新增 `com_cdc_rstn_pair`，合并 src/dst 两侧原始复位源，任一来源复位都会让两侧立即复位，两侧随后按各自时钟独立同步释放。
 - `common_rtl_uarch.md` 已补两个 AFIFO 的框图和设计说明；`common_rtl_manual.md` 新增 `## com_cdc`，补齐 AFIFO、`com_cdc_sig`、handshake、reset 模块的功能、参数和接口，并为 handshake 生成 WaveDrom 时序图。
 - CDC RTL 核心功能基本完成；后续仍需清理 filelist 中失效的 `com_cdc_pulse/com_async_fifo_ctrl`，对接真实 synchronizer stdcell、增加 Gray bus skew/max-delay 约束，并补异步随机仿真或 formal 检查。
+
+### 2026-06-28 至 2026-06-30: common_ip 仲裁与 RAM 适配模块收尾
+
+- 完成 `com_arbiter_wrr/com_arbiter_iwrr`。weight 固定 4 bit、零基编码，实际配额为 `weight+1`；WRR 连续服务配额，IWRR 按 sub-round 交织配额。`i_cfg_weight`作为准静态 CSR 配置，活跃仲裁期间使用 shadow weight。
+- 统一 RAM valid/ready 接口：write valid 同时作为分段 strobe，read 使用 request `vld/rdy`和无反压返回 `ack/data`；`RAM_RD_DELAY`包含 SRAM、ECC 和 regslice 的固定总延时。
+- 完成 `com_ram_arbiter`：写、读通道分别 round-robin 仲裁，读 grant onehot 按固定延时保存并路由返回；模块不处理最终单口/双口优先级和同地址语义。
+- 完成 `com_ram_adp_sp`：将独立 RAM 读写握手转换为单口 SRAM `ce_n/we_n`，同拍冲突按 `WR_PRIORITY`选择；strobe bit `i`控制对应连续数据分段。
+- 完成 `com_ram_adp_rmw`：RX 多 bit partial write 先发 TX read，再合并旧数据并输出 1 bit full-write valid；普通 full write/read 无额外寄存延时，普通 read 禁止从内部 buffer forwarding，必须实际发起 TX read。
+- RMW 功耗优化：读上下文拆为 1 bit `rdflag_fifo`和仅 partial write 活动的宽位 `rmw_info_fifo`；`rmw_wb_fifo`保存合并结果。三个 FIFO 和在途地址表深度均为 `RAM_RD_DELAY+1`，覆盖无反压 read ack；同地址请求等待旧 RMW 写回，不同地址 partial write 可背靠背访问。
+- RMW TX write 固定优先级为 `rmw_wb > direct_write`，优先排空不可反压 read ack 产生的写回数据。Manual 已补 WaveDrom，标注不同地址稳态吞吐为每拍一笔 partial request 和一笔 full writeback，首笔写回延时为 `RAM_RD_DELAY+1`。
+- 完成 `com_ram_adp_2sp`：`addr[0]`选择两个交织 single-port SRAM bank；不同 bank 读写同拍执行，同 bank 冲突按 `WR_PRIORITY`选择，读 bank 与 valid 延迟后选择返回数据。
+- 新增代码规则：端口未使用的派生 `localparam`放到 signal declare 之前；参数参与运行时信号比较时先转换为 `tie_*`线网，便于 lint/覆盖率统一 waive；`STRB_DW`统一命名为 `SUB_DW`。
+- AFIFO 增加 Gray 指针断言：仅在上一拍握手且已退出复位时，用 `$onehot(cur_gray^$past(cur_gray))`检查源时钟域指针恰好变化 1 bit；不对目标域同步后指针做该检查。
+- 根据 `com_define.sv`宏展开，清理 `common/`全部 RTL 断言宏调用末尾的多余分号；property label 的冒号只由宏内部生成。`com_common.f`暂不增量修改，待 common_ip 模块全部整理后统一更新。

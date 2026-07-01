@@ -23,7 +23,7 @@ input  wire                     i_level             ,
 output wire                     o_pulse             //,
 );
 //localparam-----------------------------------------------------------------
-`COM_PARAM_ASSERT( MODE=="pos"||MODE=="posedge" || MODE=="neg"||MODE=="negedge" || MODE=="dual"||MODE=="dualedge", "illegal MODE" ); //spyglass disable W193
+`COM_PARAM_ASSERT( MODE=="pos"||MODE=="posedge" || MODE=="neg"||MODE=="negedge" || MODE=="dual"||MODE=="dualedge", "illegal MODE" ) //spyglass disable W193
 //signal declare-------------------------------------------------------------
 reg  r_level;
 //statement------------------------------------------------------------------
