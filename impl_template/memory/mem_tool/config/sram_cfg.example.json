@@ -1,0 +1,30 @@
+{
+    "common_opt": {
+        "gen_sram_shell": 0,
+        "gen_sram_list": 0,
+        "gen_sram_excel": 0,
+        "gen_sram_instance": 1,
+        "subsys_prefix": "cpu",
+        "excel_filename": "cpu_memory_require.xlsx",
+        "env_var": {
+            "PROJ_ROOT": ""
+        }
+    },
+    "gen_sram_list_by_runsim": {
+        "top_module_name": "cpu_subsys",
+        "rtl_filelist": [
+            "xx.sv",
+            "-v xx.sv",
+            "-f xx.f"
+        ]
+    },
+    "gen_sram_excel": {
+        "default_ram_wr_clk_MHz": 1500,
+        "default_ram_rd_clk_MHz": 1000
+    },
+    "comment": [
+        "This file is a reserved configuration example.",
+        "The current CLI entry uses command-line arguments.",
+        "rpt_by_run_sim is not implemented yet."
+    ]
+}

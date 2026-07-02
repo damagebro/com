@@ -19,7 +19,7 @@ parameter  MEM_USER = 0            , //range=[0:], Memory user diy
 localparam ADDR_W   = $clog2(DEPTH)  // Address width,
 )(
 input  wire                   clk    ,
-input  wire [`COM_SRAM_W-1:0] mem_cfg,
+input  wire [`COM_SRAM_W-1:0]  mem_cfg,
 
 input  wire                   rd_en   ,
 input  wire [ADDR_W-1:0]      rd_addr ,
@@ -67,8 +67,7 @@ endgenerate
 //------------------------------------------------------------------------------
 // Report & Assertion.
 //------------------------------------------------------------------------------
-`ifdef COM_REPORT_OFF
-//synopsys translate_off
+`ifdef COM_REPORT_ON
     integer fp_mem;
     string s;
     string str_size;
@@ -96,8 +95,7 @@ endgenerate
             $fwrite(fp_mem,"%-20s Warning: can't find wrapper;  %m\n",s);
         end
     end
-//synopsys translate_on
-`endif //end of COM_REPORT_OFF
+`endif //end of COM_REPORT_ON
 `endif //end of ifdef COM_RAM_AS_BBOX
 
 endmodule

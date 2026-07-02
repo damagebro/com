@@ -12,23 +12,21 @@
 *
 ******************************************************************************/
 
-module com_tpram2ck_shell#(
+module com_spram_shell#(
 parameter  DATA_W   = 32           , //range=[1:], Data width of memory.
 parameter  DEPTH    = 64           , //range=[1:], Depth of memory.
 parameter  STRB_W   = 1            , //range=[1:DATA_W], assert(DEPTH%STRB_W==0);  partial_write strobe width,  //assume DATA_W=30bit, STRB_W=2; so => strb[1:0]=2bit, strb[0]->wdata[0*15 +:15], strb[1]->wdata[1*15 +:15];
 parameter  MEM_USER = 0            , //range=[0:], Memory user diy
 localparam ADDR_W   = $clog2(DEPTH)  // Address width,
 )(
-input  wire [`COM_SRAM_W-1:0] mem_cfg ,
+input  wire                   clk    ,
+input  wire [`COM_SRAM_W-1:0]  mem_cfg,
 
-input  wire                   wr_clk  ,
-input  wire [STRB_W-1:0]      wr_en   , //assume DATA_W=30bit, STRB_W=2; so => wr_en[1:0]=2bit, wr_en[0]->wdata[0*15 +:15], wr_en[1]->wdata[1*15 +:15];
-input  wire [ADDR_W-1:0]      wr_addr ,
-input  wire [DATA_W-1:0]      wr_data ,
-input  wire                   rd_clk  ,
-input  wire                   rd_en   ,
-input  wire [ADDR_W-1:0]      rd_addr ,
-output wire [DATA_W-1:0]      rd_data //,
+input  wire                   ce_n   ,
+input  wire [STRB_W-1:0]      we     ,
+input  wire [ADDR_W-1:0]      addr   ,
+input  wire [DATA_W-1:0]      wr_data,
+output wire [DATA_W-1:0]      rd_data//,
 );
 
 `ifndef COM_RAM_AS_BBOX
@@ -43,7 +41,9 @@ output wire [DATA_W-1:0]      rd_data //,
 //------------------------------------------------------------------------------
 // Ram logic
 //------------------------------------------------------------------------------
-logic use_cell; // use cell as ram.
+wire [STRB_W-1:0] wr_en = {STRB_W{!ce_n}} & we;
+wire rd_en = !ce_n && !we;
+wire use_cell; // use cell as ram.
 
 generate
     if(RAM_AS_REG || !MEM_USE_CELL) begin: USEREG
@@ -52,13 +52,13 @@ generate
             .DEPTH  (DEPTH  ),
             .STRB_W (STRB_W )
         )u_tpram_reg(
-            .wr_clk (wr_clk ),
+            .wr_clk (clk    ),
             .wr_en  (wr_en  ),
-            .wr_addr(wr_addr),
+            .wr_addr(addr   ),
             .wr_data(wr_data),
-            .rd_clk (rd_clk ),
+            .rd_clk (clk    ),
             .rd_en  (rd_en  ),
-            .rd_addr(rd_addr),
+            .rd_addr(addr   ),
             .rd_data(rd_data)
         );
         assign use_cell = 1'b0;
@@ -66,15 +66,15 @@ generate
     else begin: USECELL
     /*************************************************************************************************/// Start of user logic.
         // if( DEPTH==1024 && DATA_W==128 && STRB_W==1 && MEM_USER==0 )begin
-        //     tpram2ck_1024x128_wrapper t_tpram2ck_1024x128_wrapper( .clk(clk),.mem_cfg(mem_cfg), .wr_en(wr_en),.wr_addr(wr_addr),.wr_data(wr_data), .rd_en(rd_en),.rd_addr(rd_addr),.rd_data(rd_data);
+        //     spram_1024x128_wrapper t_spram_1024x128_wrapper( .clk(clk),.mem_cfg(mem_cfg), .wr_en(wr_en),.wr_addr(wr_addr),.wr_data(wr_data), .rd_en(rd_en),.rd_addr(rd_addr),.rd_data(rd_data);
         //     assign use_cell = 1'b1;
         // end
         // else if( DEPTH==1024 && DATA_W==128 && STRB_W==2 && MEM_USER==0 )begin
-        //     tpram2ck_1024x128x2_wrapper t_tpram2ck_1024x128x2_wrapper( .clk(clk),.mem_cfg(mem_cfg), .wr_en(wr_en),.wr_addr(wr_addr),.wr_data(wr_data), .rd_en(rd_en),.rd_addr(rd_addr),.rd_data(rd_data);
+        //     spram_1024x128x2_wrapper t_spram_1024x128x2_wrapper( .clk(clk),.mem_cfg(mem_cfg), .wr_en(wr_en),.wr_addr(wr_addr),.wr_data(wr_data), .rd_en(rd_en),.rd_addr(rd_addr),.rd_data(rd_data);
         //     assign use_cell = 1'b1;
         // end
         // else if( DEPTH==1024 && DATA_W==128 && STRB_W==1 && MEM_USER==1 )begin
-        //     tpram2ck_1024x128_usr1_wrapper t_tpram2ck_1024x128_usr1_wrapper( .clk(clk),.mem_cfg(mem_cfg), .wr_en(wr_en),.wr_addr(wr_addr),.wr_data(wr_data), .rd_en(rd_en),.rd_addr(rd_addr),.rd_data(rd_data);
+        //     spram_1024x128_usr1_wrapper t_spram_1024x128_usr1_wrapper( .clk(clk),.mem_cfg(mem_cfg), .wr_en(wr_en),.wr_addr(wr_addr),.wr_data(wr_data), .rd_en(rd_en),.rd_addr(rd_addr),.rd_data(rd_data);
         //     assign use_cell = 1'b1;
         // end
         if(0) begin
@@ -85,20 +85,20 @@ generate
             `ifdef COM_RAM_NFOUND_CHK
             com_tpram_reg
             `else
-            com_tpram2ck_not_found
+            com_spram_not_found
             `endif
             #(
                 .DATA_W (DATA_W ),
                 .DEPTH  (DEPTH  ),
                 .STRB_W (STRB_W )
             )u_tpram_reg(
-                .wr_clk (wr_clk ),
+                .wr_clk (clk    ),
                 .wr_en  (wr_en  ),
-                .wr_addr(wr_addr),
+                .wr_addr(addr   ),
                 .wr_data(wr_data),
-                .rd_clk (rd_clk ),
+                .rd_clk (clk    ),
                 .rd_en  (rd_en  ),
-                .rd_addr(rd_addr),
+                .rd_addr(addr   ),
                 .rd_data(rd_data)
             );
             assign use_cell = 1'b0;
@@ -109,15 +109,14 @@ endgenerate
 //------------------------------------------------------------------------------
 // Report & Assertion.
 //------------------------------------------------------------------------------
-`ifdef COM_REPORT_OFF
-//synopsys translate_off
+`ifdef COM_REPORT_ON
     integer fp_mem;
     string s;
     string str_size;
     string str_user;
     string str_mem_type;
     initial begin
-        str_mem_type = "tpram2ck";
+        str_mem_type = "spram";
         fp_mem = $fopen({"./",str_mem_type,".lst"},"wt");
         $fclose(fp_mem);
     end
@@ -141,8 +140,7 @@ endgenerate
             $fwrite(fp_mem,"%-20s Warning: can't find wrapper;  %m\n",s);
         end
     end
-//synopsys translate_on
-`endif //end of COM_REPORT_OFF
+`endif //end of COM_REPORT_ON
 `endif //end of ifdef COM_RAM_AS_BBOX
 
 endmodule
