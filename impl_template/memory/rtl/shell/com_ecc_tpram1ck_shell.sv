@@ -42,11 +42,12 @@ localparam LST_ECC_W     = LST_ORI_W>0 ? F_lut_ecc_width(LST_ORI_W) : 0;
 localparam LST_ECC_NUM   = LST_ORI_W>0;
 localparam LST_SAFE_W    = LST_ORI_W>=4 ? LST_ORI_W : 4;
 localparam LST_SAFE_ECC_W = F_lut_ecc_width(LST_SAFE_W);
-// One RAM row stores DATA_W original bits and all SECDED check bits.
+localparam SUB_DW        = DATA_W/STRB_W;
+// One RAM row stores one partial-write flag, DATA_W original bits and all SECDED check bits.
 // nrm: NRM_ECC_NUM complete ECC words, each with NRM_ORI_W data bits and NRM_ECC_W check bits.
 // lst: optional last ECC word with LST_ORI_W data bits and LST_ECC_W check bits.
-// Storage order: {lst_ecc,nrm_ecc,original_data}; lst_ecc is omitted when LST_ECC_NUM=0.
-localparam TOL_RAM_W     = DATA_W+NRM_ECC_W*NRM_ECC_NUM+LST_ECC_W*LST_ECC_NUM;
+// Storage order: {partial_write_flag,lst_ecc,nrm_ecc,original_data}.
+localparam TOL_RAM_W     = 1+DATA_W+NRM_ECC_W*NRM_ECC_NUM+LST_ECC_W*LST_ECC_NUM;
 localparam RD_VLD_DELAY  = 1+REQ_PIPE+RSP_PIPE;
 
 function automatic int F_lut_ecc_width( int ori_bit_width );
@@ -70,15 +71,20 @@ wire                   cfg_ecc_correct_n;
 wire                   cfg_ecc_inject_en;
 wire [1:0]             cfg_ecc_inject_val;
 wire                   rd_req;
+wire                   wr_req;
+wire                   full_write;
+wire                   partial_write;
+wire                   rd_partial_write_flag;
 wire [DATA_W-1:0]      wr_data_inj;
 wire [DATA_W-1:0]      stored_rd_data;
 wire [DATA_W-1:0]      correct_rd_data;
 wire [TOL_RAM_W-1:0]   ecc_ram_wr_data;
 wire [TOL_RAM_W-1:0]   ecc_ram_rd_data;
+wire [TOL_RAM_W-1:0]   ram_wr_bit_en;
 wire                   ecc_ce;
 wire                   ecc_ue;
 
-wire [STRB_W-1:0]      u_ram_i_wr_en;
+wire [TOL_RAM_W-1:0]   u_ram_i_wr_en;
 wire [ADDR_W-1:0]      u_ram_i_wr_addr;
 wire [TOL_RAM_W-1:0]   u_ram_i_wr_data;
 wire                   u_ram_i_rd_en;
@@ -113,7 +119,7 @@ wire                      u_lst_dec_o_ecc_ue;
 
 //statement------------------------------------------------------------------
 //output assign---
-assign o_rd_data = correct_rd_data;
+assign o_rd_data = rd_partial_write_flag ? stored_rd_data : correct_rd_data;
 assign o_pls_ecc_err = r_rd_vld_pipe[RD_VLD_DELAY-1] ? {ecc_ue,ecc_ce} : '0;
 
 //body---
@@ -121,12 +127,25 @@ assign cfg_ecc_correct_n = i_cfg_ecc_ctrl[0];
 assign cfg_ecc_inject_en = i_cfg_ecc_ctrl[1];
 assign cfg_ecc_inject_val = i_cfg_ecc_ctrl[3:2];
 assign rd_req = i_rd_en;
+assign wr_req = |i_wr_en;
+assign full_write = &i_wr_en;
+assign partial_write = wr_req && !full_write;
 assign wr_data_inj = cfg_ecc_inject_en ?
                      {i_wr_data[DATA_W-1:2],i_wr_data[1:0]^cfg_ecc_inject_val} :
                      i_wr_data;
 
-assign ecc_ce = (|u_nrm_dec_o_ecc_ce) || u_lst_dec_o_ecc_ce;
-assign ecc_ue = (|u_nrm_dec_o_ecc_ue) || u_lst_dec_o_ecc_ue;
+assign ecc_ce = !rd_partial_write_flag &&
+                ((|u_nrm_dec_o_ecc_ce) || u_lst_dec_o_ecc_ce);
+assign ecc_ue = !rd_partial_write_flag &&
+                ((|u_nrm_dec_o_ecc_ue) || u_lst_dec_o_ecc_ue);
+
+generate
+for( genvar gi=0; gi<STRB_W; gi++ ) begin:gen_ram_wr_bit_en
+    assign ram_wr_bit_en[gi*SUB_DW +:SUB_DW] = {SUB_DW{i_wr_en[gi]}};
+end
+endgenerate
+assign ram_wr_bit_en[TOL_RAM_W-2:DATA_W] = {(TOL_RAM_W-DATA_W-1){full_write}};
+assign ram_wr_bit_en[TOL_RAM_W-1] = wr_req;
 
 always @(posedge clk) begin
     r_rd_vld_pipe[0] <= rd_req;
@@ -137,7 +156,7 @@ end
 //request pipeline
 generate
 if( REQ_PIPE ) begin:gen_req_pipe
-    reg  [STRB_W-1:0]    r_ram_wr_en;
+    reg  [TOL_RAM_W-1:0] r_ram_wr_en;
     reg  [ADDR_W-1:0]    r_ram_wr_addr;
     reg  [TOL_RAM_W-1:0] r_ram_wr_data;
     reg                  r_ram_rd_en;
@@ -149,7 +168,7 @@ if( REQ_PIPE ) begin:gen_req_pipe
     assign u_ram_i_rd_en = r_ram_rd_en;
     assign u_ram_i_rd_addr = r_ram_rd_addr;
     always @(posedge clk) begin
-        r_ram_wr_en <= i_wr_en;
+        r_ram_wr_en <= ram_wr_bit_en;
         r_ram_wr_addr <= i_wr_addr;
         r_ram_wr_data <= ecc_ram_wr_data;
     end
@@ -159,7 +178,7 @@ if( REQ_PIPE ) begin:gen_req_pipe
     end
 end
 else begin:gen_req_direct
-    assign u_ram_i_wr_en = i_wr_en;
+    assign u_ram_i_wr_en = ram_wr_bit_en;
     assign u_ram_i_wr_addr = i_wr_addr;
     assign u_ram_i_wr_data = ecc_ram_wr_data;
     assign u_ram_i_rd_en = i_rd_en;
@@ -184,8 +203,8 @@ endgenerate
 //ECC data packing
 generate
 if( LST_ECC_NUM ) begin:gen_lst_pack
-    assign ecc_ram_wr_data = {u_lst_enc_o_ecc_enc_data,u_nrm_enc_o_ecc_enc_data,wr_data_inj};
-    assign {u_lst_dec_i_ecc_dec_data,u_nrm_dec_i_ecc_dec_data,stored_rd_data} = ecc_ram_rd_data;
+    assign ecc_ram_wr_data = {partial_write,u_lst_enc_o_ecc_enc_data,u_nrm_enc_o_ecc_enc_data,wr_data_inj};
+    assign {rd_partial_write_flag,u_lst_dec_i_ecc_dec_data,u_nrm_dec_i_ecc_dec_data,stored_rd_data} = ecc_ram_rd_data;
     assign correct_rd_data = {u_lst_dec_o_correct_data,u_nrm_dec_o_correct_data};
 end
 else begin:gen_nrm_pack
@@ -193,8 +212,8 @@ else begin:gen_nrm_pack
     assign u_lst_dec_i_original_data = '0;
     assign u_lst_dec_o_ecc_ce = 1'b0;
     assign u_lst_dec_o_ecc_ue = 1'b0;
-    assign ecc_ram_wr_data = {u_nrm_enc_o_ecc_enc_data,wr_data_inj};
-    assign {u_nrm_dec_i_ecc_dec_data,stored_rd_data} = ecc_ram_rd_data;
+    assign ecc_ram_wr_data = {partial_write,u_nrm_enc_o_ecc_enc_data,wr_data_inj};
+    assign {rd_partial_write_flag,u_nrm_dec_i_ecc_dec_data,stored_rd_data} = ecc_ram_rd_data;
     assign correct_rd_data = u_nrm_dec_o_correct_data;
 end
 endgenerate
@@ -266,7 +285,7 @@ endgenerate
 com_tpram1ck_shell #(
     .DATA_W   ( TOL_RAM_W ),
     .DEPTH    ( DEPTH     ),
-    .STRB_W   ( STRB_W    ),
+    .STRB_W   ( TOL_RAM_W ),
     .MEM_USER ( MEM_USER  )
 )u_com_tpram1ck_shell
 (
@@ -285,7 +304,6 @@ com_tpram1ck_shell #(
 `COM_PARAM_ASSERT( DEPTH>=1, "DEPTH must be larger than 0" )
 `COM_PARAM_ASSERT( STRB_W>=1 && DATA_W%STRB_W==0, "DATA_W must be divisible by STRB_W" )
 `COM_PARAM_ASSERT( ECC_DW>=4 && ECC_DW<=DATA_W, "ECC_DW range is [4:DATA_W]" )
-`COM_PARAM_ASSERT( TOL_RAM_W%STRB_W==0, "physical RAM width must be divisible by STRB_W" )
 `COM_PARAM_ASSERT( LST_ORI_W==0 || LST_ORI_W>=4, "the last ECC word must be at least 4 bits" )
 `COM_PARAM_ASSERT( REQ_PIPE==0 || REQ_PIPE==1, "REQ_PIPE must be 0 or 1" )
 `COM_PARAM_ASSERT( RSP_PIPE==0 || RSP_PIPE==1, "RSP_PIPE must be 0 or 1" )

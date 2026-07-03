@@ -37,13 +37,14 @@ module com_clk_gate(
 //------------------------------------------------------------------------------
 // Report & Assertion.
 //------------------------------------------------------------------------------
-`ifdef COM_REPORT_ON
+// synopsys translate_off
+`ifndef COM_REPORT_OFF
     `ifdef COM_CLKGATE_AS_LATCH
         initial begin
             $warning("COM Warning: Use latch as clk gate at %m");
         end
     `endif
 `endif
+// synopsys translate_on
 
 endmodule
-

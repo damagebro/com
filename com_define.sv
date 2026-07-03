@@ -5,8 +5,17 @@
     `define COM_SYNC_STAGE 3
 `endif
 
-`ifndef COM_SRAM_W    //if sram config signal bit_width;
-    `define COM_SRAM_W 4
+`ifndef COM_MEM_CTRL_W
+    `define COM_MEM_CTRL_W 4
+`endif
+
+`ifndef COM_ECC_CTRL_W
+    `define COM_ECC_CTRL_W 4
+`endif
+
+// Legacy width used by AXI/image/sim before their memory-control migration.
+`ifndef COM_SRAM_W
+    `define COM_SRAM_W `COM_MEM_CTRL_W
 `endif
 
 //--------------------------------------------------------------------------------

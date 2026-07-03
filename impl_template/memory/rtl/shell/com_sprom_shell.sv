@@ -67,7 +67,8 @@ end
 endgenerate
 
 //report---------------------------------------------------------------------
-`ifdef COM_REPORT_ON
+// synopsys translate_off
+`ifndef COM_REPORT_OFF
 integer fp_mem;
 string s;
 string str_size;
@@ -93,6 +94,7 @@ initial begin
         $fwrite(fp_mem,"%-20s Warning: can't find wrapper;  %m\n",s);
 end
 `endif
+// synopsys translate_on
 //assert---------------------------------------------------------------------
 `COM_PARAM_ASSERT( DEPTH>=1, "DEPTH must be larger than 0" )
 `endif

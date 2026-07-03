@@ -52,12 +52,14 @@ output wire [DATA_W-1:0]        o_dst_data          //,
 `endif
 
 //report---------------------------------------------------------------------
-`ifdef COM_REPORT_ON
+// synopsys translate_off
+`ifndef COM_REPORT_OFF
     `ifdef COM_CDC_AS_REG
         initial begin
             $warning("COM Warning: Use reg for cdc at %m");
         end
     `endif
 `endif
+// synopsys translate_on
 
 endmodule //end of com_cdc_sig
