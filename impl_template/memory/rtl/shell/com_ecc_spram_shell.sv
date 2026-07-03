@@ -5,201 +5,280 @@
 *     Date:   2025/07/07-20:01:49
 *
 *  Description:
-*  -
-*
-*  Modify:
-*  -
+*  - SECDED protected single-port SRAM implementation shell.
 *
 ******************************************************************************/
 
-module com_ecc_spram_shell#(
-parameter  DATA_W   = 32           , //range=[4:8178], Data width of memory.
-parameter  DEPTH    = 64           , //range=[1:], Depth of memory.
-parameter  STRB_W   = 1            , //range=[1:DATA_W], assert(DEPTH%STRB_W==0);  partial_write strobe width,  //assume DATA_W=30bit, STRB_W=2; so => strb[1:0]=2bit, strb[0]->wdata[0*15 +:15], strb[1]->wdata[1*15 +:15];
-parameter  MEM_USER = 0            , //range=[0:], Memory user diy
+module com_ecc_spram_shell #( parameter
+    DATA_W   = 32,              //range=[4:8178:]
+    DEPTH    = 64,              //range=[1::]
+    STRB_W   = 1,               //range=[1:DATA_W:]
+    MEM_USER = 0,
+    REQ_PIPE = 0,               //range=[0:1:]
+    RSP_PIPE = 0,               //range=[0:1:]
+    ECC_DW   = DATA_W,          //range=[4:DATA_W:]
+    localparam ADDR_W = $clog2(DEPTH)
+)
+(
+input  wire                         clk                 ,
+input  wire [`COM_MEM_CTRL_W-1:0]   i_cfg_mem_ctrl      ,
+input  wire [`COM_ECC_CTRL_W-1:0]   i_cfg_ecc_ctrl      , //[0]correct_n, [1]inject_en, [3:2]inject_val
 
-parameter  REQ_PIPE = 0            , //range=[0:1], raddr + wdata/waddr insert regslice "before access sram_lib and after ecc_encode";
-parameter  RSP_PIPE = 0            , //range=[0:1], rdata insert regslice "after access sram_lib and before ecc_decode";
-parameter  ECC_DW   = DATA_W/STRB_W, //range=[8:DATA_W:STRB_W==1?any:DATA_W/STRB_W]; SUB_DW=DATA_W/STRB_W, assert(STRB_W==1 || (SUB_DW%ECC_DW==0));
-localparam ADDR_W   = $clog2(DEPTH)  //Address width,
-)(
-input  wire                   clk           ,
-input  wire [`COM_SRAM_W-1:0]  mem_cfg       ,  //[0]ecc_correct enbale, [1]ecc_inject_error enable, [3:2]ecc_inject_error val;
-
-input  wire                   ce_n          ,
-input  wire [STRB_W-1:0]      we            ,  //assume DATA_W=30bit, STRB_W=2; so => we[1:0]=we[0]->wdata[0*15 +:15],  we[1]->wdata[1*15 +:15];
-input  wire [ADDR_W-1:0]      addr          ,
-input  wire [DATA_W-1:0]      wr_data       ,
-output wire [DATA_W-1:0]      rd_data       ,
-output wire [1:0]             o_pls_ecc_err //,  //[0]=ce(correctable error), ecc_error_bits=1bit; [1]=ue(uncorrectable error), ecc_error_bits>=2bit;
+input  wire                         i_ce_n              ,
+input  wire [STRB_W-1:0]            i_we_n              , //0: write, 1: read
+input  wire [ADDR_W-1:0]            i_addr              ,
+input  wire [DATA_W-1:0]            i_wr_data           ,
+output wire [DATA_W-1:0]            o_rd_data           ,
+output wire [1:0]                   o_pls_ecc_err       //,
 );
 //localparam-----------------------------------------------------------------
-localparam SUB_DW  = DATA_W/STRB_W;  //each strb_w[bit_idx] ctrl sub_data_width;
-`COM_PARAM_ASSERT(STRB_W==1 || (SUB_DW%ECC_DW==0), "if STRB_W>1, (DATA_W/STRB_W)%%ECC_DW must be zero;");
-`COM_PARAM_ASSERT((DATA_W>=4 && DATA_W<=8178), "ecc_ram data_bit_width range=[4:8178]");
+localparam NRM_ORI_W     = ECC_DW;
+localparam NRM_ECC_W     = F_lut_ecc_width(NRM_ORI_W);
+localparam NRM_ECC_NUM   = DATA_W/ECC_DW;
+localparam NRM_TOL_W     = NRM_ORI_W*NRM_ECC_NUM;
+localparam LST_ORI_W     = DATA_W%ECC_DW;
+localparam LST_ECC_W     = LST_ORI_W>0 ? F_lut_ecc_width(LST_ORI_W) : 0;
+localparam LST_ECC_NUM   = LST_ORI_W>0;
+localparam LST_SAFE_W    = LST_ORI_W>=4 ? LST_ORI_W : 4;
+localparam LST_SAFE_ECC_W = F_lut_ecc_width(LST_SAFE_W);
+// One RAM row stores DATA_W original bits and all SECDED check bits.
+// nrm: NRM_ECC_NUM complete ECC words, each with NRM_ORI_W data bits and NRM_ECC_W check bits.
+// lst: optional last ECC word with LST_ORI_W data bits and LST_ECC_W check bits.
+// Storage order: {lst_ecc,nrm_ecc,original_data}; lst_ecc is omitted when LST_ECC_NUM=0.
+localparam TOL_RAM_W     = DATA_W+NRM_ECC_W*NRM_ECC_NUM+LST_ECC_W*LST_ECC_NUM;
+localparam RD_VLD_DELAY  = 1+REQ_PIPE+RSP_PIPE;
 
-localparam NRM_ORI_W   = ECC_DW;  //ori_ram_data_width
-localparam NRM_ECC_W   = F_lut_ecc_width(NRM_ORI_W); //ecc addtion from ori_ram_data_width;
-localparam NRM_ECC_NUM = DATA_W/ECC_DW;
-localparam NRM_TOL_W   = NRM_ORI_W*NRM_ECC_NUM;
-localparam LST_ORI_W   = DATA_W%ECC_DW;
-localparam LST_ECC_W   = LST_ORI_W>0 ? F_lut_ecc_width(LST_ORI_W) : 0;
-localparam LST_ECC_NUM = LST_ORI_W>0 ? 1 : 0;
-localparam TOL_RAM_W = DATA_W + NRM_ECC_W*NRM_ECC_NUM+LST_ECC_W*LST_ECC_NUM;  //{lst_ecc_data,nrm_ecc_data*n,ori_ram_data};
-
-function automatic int F_lut_ecc_width( int ori_bit_width );  //only for parameter calc
+function automatic int F_lut_ecc_width( int ori_bit_width );
     int ret;
-    ret = ori_bit_width<=11   ? 5  :       // [4   :11  ]    5   ;
-          ori_bit_width<=26   ? 6  :       // [12  :26  ]    6   ;
-          ori_bit_width<=57   ? 7  :       // [27  :57  ]    7   ;
-          ori_bit_width<=120  ? 8  :       // [58  :120 ]    8   ;
-          ori_bit_width<=247  ? 9  :       // [121 :247 ]    9   ;
-          ori_bit_width<=502  ? 10 :       // [248 :502 ]    10  ;
-          ori_bit_width<=1013 ? 11 :       // [503 :1013]    11  ;
-          ori_bit_width<=2036 ? 12 :       // [1014:2036]    12  ;
-          ori_bit_width<=4083 ? 13 :       // [2037:4083]    13  ;
-          ori_bit_width<=8178 ? 14 : 15;   // [4084:8178]    14  ;
+    ret = ori_bit_width<=11   ? 5  :
+          ori_bit_width<=26   ? 6  :
+          ori_bit_width<=57   ? 7  :
+          ori_bit_width<=120  ? 8  :
+          ori_bit_width<=247  ? 9  :
+          ori_bit_width<=502  ? 10 :
+          ori_bit_width<=1013 ? 11 :
+          ori_bit_width<=2036 ? 12 :
+          ori_bit_width<=4083 ? 13 : 14;
     return ret;
 endfunction:F_lut_ecc_width
+
 //signal declare-------------------------------------------------------------
-wire [TOL_RAM_W-1:0]                   w_ram_wr_data  ;
-wire [TOL_RAM_W-1:0]                   w_ram_rd_data  ;
+reg  [RD_VLD_DELAY-1:0] r_rd_vld_pipe;
 
-wire [NRM_ECC_NUM-1:0][NRM_ORI_W-1:0]  u_nrm_ori_wr_data;
-wire [NRM_ECC_NUM-1:0][NRM_ECC_W-1:0]  u_nrm_ecc_wr_data;
-wire [NRM_ECC_NUM-1:0][NRM_ORI_W-1:0]  u_nrm_ori_rd_data;
-wire [NRM_ECC_NUM-1:0][NRM_ECC_W-1:0]  u_nrm_ecc_rd_data;
-wire [NRM_ECC_NUM-1:0][NRM_ORI_W-1:0]  u_nrm_crt_rd_data; //correct
-wire                  u_ram_ce_n     ;
-wire [STRB_W-1:0]     u_ram_we       ;
-wire [ADDR_W-1:0]     u_ram_addr     ;
-wire [TOL_RAM_W-1:0]  u_ram_wr_data  ;
-wire [TOL_RAM_W-1:0]  u_ram_rd_data  ;
-// generate if( REQ_PIPE )begin end endgenerate;
-// generate if( RSP_PIPE )begin end endgenerate;
+wire                   cfg_ecc_correct_n;
+wire                   cfg_ecc_inject_en;
+wire [1:0]             cfg_ecc_inject_val;
+wire                   rd_req;
+wire [DATA_W-1:0]      wr_data_inj;
+wire [DATA_W-1:0]      stored_rd_data;
+wire [DATA_W-1:0]      correct_rd_data;
+wire [TOL_RAM_W-1:0]   ecc_ram_wr_data;
+wire [TOL_RAM_W-1:0]   ecc_ram_rd_data;
+wire                   ecc_ce;
+wire                   ecc_ue;
+
+wire                   u_ram_i_ce_n;
+wire [STRB_W-1:0]      u_ram_i_we_n;
+wire [ADDR_W-1:0]      u_ram_i_addr;
+wire [TOL_RAM_W-1:0]   u_ram_i_wr_data;
+wire [TOL_RAM_W-1:0]   u_ram_o_rd_data;
+
+wire [NRM_ECC_NUM-1:0][NRM_ORI_W-1:0] u_nrm_enc_i_original_data;
+wire [NRM_ECC_NUM-1:0][NRM_ECC_W-1:0] u_nrm_enc_i_ecc_dec_data;
+wire [NRM_ECC_NUM-1:0][NRM_ORI_W-1:0] u_nrm_enc_o_correct_data;
+wire [NRM_ECC_NUM-1:0][NRM_ECC_W-1:0] u_nrm_enc_o_ecc_enc_data;
+wire [NRM_ECC_NUM-1:0]                u_nrm_enc_o_ecc_ce;
+wire [NRM_ECC_NUM-1:0]                u_nrm_enc_o_ecc_ue;
+wire [NRM_ECC_NUM-1:0][NRM_ORI_W-1:0] u_nrm_dec_i_original_data;
+wire [NRM_ECC_NUM-1:0][NRM_ECC_W-1:0] u_nrm_dec_i_ecc_dec_data;
+wire [NRM_ECC_NUM-1:0][NRM_ORI_W-1:0] u_nrm_dec_o_correct_data;
+wire [NRM_ECC_NUM-1:0][NRM_ECC_W-1:0] u_nrm_dec_o_ecc_enc_data;
+wire [NRM_ECC_NUM-1:0]                u_nrm_dec_o_ecc_ce;
+wire [NRM_ECC_NUM-1:0]                u_nrm_dec_o_ecc_ue;
+
+wire [LST_SAFE_W-1:0]     u_lst_enc_i_original_data;
+wire [LST_SAFE_ECC_W-1:0] u_lst_enc_i_ecc_dec_data;
+wire [LST_SAFE_W-1:0]     u_lst_enc_o_correct_data;
+wire [LST_SAFE_ECC_W-1:0] u_lst_enc_o_ecc_enc_data;
+wire                      u_lst_enc_o_ecc_ce;
+wire                      u_lst_enc_o_ecc_ue;
+wire [LST_SAFE_W-1:0]     u_lst_dec_i_original_data;
+wire [LST_SAFE_ECC_W-1:0] u_lst_dec_i_ecc_dec_data;
+wire [LST_SAFE_W-1:0]     u_lst_dec_o_correct_data;
+wire [LST_SAFE_ECC_W-1:0] u_lst_dec_o_ecc_enc_data;
+wire                      u_lst_dec_o_ecc_ce;
+wire                      u_lst_dec_o_ecc_ue;
+
 //statement------------------------------------------------------------------
+//output assign---
+assign o_rd_data = correct_rd_data;
+assign o_pls_ecc_err = r_rd_vld_pipe[RD_VLD_DELAY-1] ? {ecc_ue,ecc_ce} : '0;
 
-wire       i_cfg_ecc_correct_en = mem_cfg[0];
-wire       i_cfg_ecc_inject_en  = mem_cfg[1];
-wire [1:0] i_cfg_ecc_inject_val = mem_cfg[3:2];
-wire [DATA_W-1:0] wr_data_t = i_cfg_ecc_inject_en ? {wr_data[DATA_W-1:2], wr_data[1:0]^i_cfg_ecc_inject_val[1:0]} : wr_data;
-//#nrm_ecc---------------------------------------------------------------------------------
-assign o_pls_ecc_err = '0;
+//body---
+assign cfg_ecc_correct_n = i_cfg_ecc_ctrl[0];
+assign cfg_ecc_inject_en = i_cfg_ecc_ctrl[1];
+assign cfg_ecc_inject_val = i_cfg_ecc_ctrl[3:2];
+assign rd_req = !i_ce_n && (&i_we_n);
+assign wr_data_inj = cfg_ecc_inject_en ?
+                     {i_wr_data[DATA_W-1:2],i_wr_data[1:0]^cfg_ecc_inject_val} :
+                     i_wr_data;
 
-//1. ecc_enc/ecc_dec-----
-assign u_nrm_ori_wr_data = wr_data_t[NRM_TOL_W-1:0];
-assign u_nrm_ecc_wr_data = '0;  //TBD
-assign u_nrm_crt_rd_data = u_nrm_ori_rd_data;  //TBD
-// DW_ecc #(
-//     .DW  (NRM_ORI_W)
-// )u_dw_ecc_enc_nrm[NRM_ECC_NUM-1:0]
-// (
-//     .i_original_data (u_nrm_ori_wr_data  ),  //i
-//     .i_ecc_dec_data  ('0                 ),  //i
-//     .o_correct_data  ('0                 ),  //o
-//     .o_ecc_enc_data  (u_nrm_ecc_wr_data  )   //o
-// );
-// DW_ecc #(
-//     .DW  (NRM_ORI_W)
-// )u_dw_ecc_dec_nrm[NRM_ECC_NUM-1:0]
-// (
-//     .i_original_data (u_nrm_ori_rd_data  ),  //i
-//     .i_ecc_dec_data  (u_nrm_ecc_rd_data  ),  //i
-//     .o_correct_data  (u_nrm_crt_rd_data  ),  //o
-//     .o_ecc_enc_data  (                   )   //o
-// );
-generate
-if( LST_ECC_NUM )begin:gen_lst_ecc
-    wire [LST_ORI_W-1:0]  u_lst_ori_wr_data;
-    wire [LST_ECC_W-1:0]  u_lst_ecc_wr_data;
-    wire [LST_ORI_W-1:0]  u_lst_ori_rd_data;
-    wire [LST_ECC_W-1:0]  u_lst_ecc_rd_data;
-    wire [LST_ORI_W-1:0]  u_lst_crt_rd_data; //correct
-    assign rd_data = {u_lst_crt_rd_data,u_nrm_crt_rd_data};
-    assign w_ram_wr_data = {u_lst_ecc_wr_data,u_nrm_ecc_wr_data, u_lst_ori_wr_data,u_nrm_ori_wr_data};
-    assign {u_lst_ecc_rd_data,u_nrm_ecc_rd_data, u_lst_ori_rd_data,u_nrm_ori_rd_data} = w_ram_rd_data;
-    assign u_lst_ori_wr_data = wr_data_t[NRM_TOL_W +:LST_ORI_W];
-    assign u_lst_ecc_wr_data = '0;  //TBD
-    assign u_lst_crt_rd_data = u_lst_ori_rd_data;  //TBD
-    // DW_ecc #(
-    //     .DW  (LST_ORI_W)
-    // )u_dw_ecc_enc_lst
-    // (
-    //     .i_original_data (u_lst_ori_wr_data  ),  //i
-    //     .i_ecc_dec_data  ('0                 ),  //i
-    //     .o_correct_data  ('0                 ),  //o
-    //     .o_ecc_enc_data  (u_lst_ecc_wr_data  )   //o
-    // );
-    // DW_ecc #(
-    //     .DW  (LST_ORI_W)
-    // )u_dw_ecc_dec_lst
-    // (
-    //     .i_original_data (u_lst_ori_rd_data  ),  //i
-    //     .i_ecc_dec_data  (u_lst_ecc_rd_data  ),  //i
-    //     .o_correct_data  (u_lst_crt_rd_data  ),  //o
-    //     .o_ecc_enc_data  (                   )   //o
-    // );
-end:gen_lst_ecc
-else begin
-    assign rd_data = {u_nrm_crt_rd_data};
-    assign w_ram_wr_data = {u_nrm_ecc_wr_data, u_nrm_ori_wr_data};
-    assign {u_nrm_ecc_rd_data, u_nrm_ori_rd_data} = w_ram_rd_data;
+assign ecc_ce = (|u_nrm_dec_o_ecc_ce) || u_lst_dec_o_ecc_ce;
+assign ecc_ue = (|u_nrm_dec_o_ecc_ue) || u_lst_dec_o_ecc_ue;
+
+always @(posedge clk) begin
+    r_rd_vld_pipe[0] <= rd_req;
+    for( int i=1; i<RD_VLD_DELAY; i++ )
+        r_rd_vld_pipe[i] <= r_rd_vld_pipe[i-1];
 end
-endgenerate
 
-//2. REQ_PIPE/RSP_PIPE-----------------
+//request pipeline
 generate
-if( REQ_PIPE )begin
-    reg                   r_ram_ce_n    ;
-    reg  [STRB_W-1:0]     r_ram_we      ;
-    reg  [ADDR_W-1:0]     r_ram_addr    ;
-    reg  [TOL_RAM_W-1:0]  r_ram_wr_data ;
-    assign u_ram_ce_n     = r_ram_ce_n   ;
-    assign u_ram_we       = r_ram_we     ;
-    assign u_ram_addr     = r_ram_addr   ;
-    assign u_ram_wr_data  = r_ram_wr_data;
-    always@(posedge clk)begin
-        r_ram_ce_n <= ce_n;
-        r_ram_we   <= we  ;
-        r_ram_addr <= addr;
-        r_ram_wr_data <= w_ram_wr_data;
+if( REQ_PIPE ) begin:gen_req_pipe
+    reg                    r_ram_ce_n;
+    reg  [STRB_W-1:0]      r_ram_we_n;
+    reg  [ADDR_W-1:0]      r_ram_addr;
+    reg  [TOL_RAM_W-1:0]   r_ram_wr_data;
+
+    assign u_ram_i_ce_n = r_ram_ce_n;
+    assign u_ram_i_we_n = r_ram_we_n;
+    assign u_ram_i_addr = r_ram_addr;
+    assign u_ram_i_wr_data = r_ram_wr_data;
+    always @(posedge clk) begin
+        r_ram_ce_n <= i_ce_n;
+        r_ram_we_n <= i_we_n;
+        r_ram_addr <= i_addr;
+        r_ram_wr_data <= ecc_ram_wr_data;
     end
 end
-else begin
-    assign u_ram_ce_n     = ce_n ;
-    assign u_ram_we       = we   ;
-    assign u_ram_addr     = addr ;
-    assign u_ram_wr_data  = w_ram_wr_data;
-end
-endgenerate
-generate
-if( RSP_PIPE )begin
-    reg  [TOL_RAM_W-1:0]  r_ram_rd_data;
-    assign w_ram_rd_data  = r_ram_rd_data;
-    always@(posedge clk)begin
-        r_ram_rd_data <= u_ram_rd_data;
-    end
-end
-else begin
-    assign w_ram_rd_data  = u_ram_rd_data;
+else begin:gen_req_direct
+    assign u_ram_i_ce_n = i_ce_n;
+    assign u_ram_i_we_n = i_we_n;
+    assign u_ram_i_addr = i_addr;
+    assign u_ram_i_wr_data = ecc_ram_wr_data;
 end
 endgenerate
 
-//3. sram_shell-----
-com_spram_shell #(
-    .DATA_W               ( TOL_RAM_W           ), //32
-    .DEPTH                ( DEPTH               ), //64
-    .STRB_W               ( STRB_W              ), //1
-    .MEM_USER             ( MEM_USER            )  //0
-)u_com_spram_shell
+//response pipeline
+generate
+if( RSP_PIPE ) begin:gen_rsp_pipe
+    reg [TOL_RAM_W-1:0] r_ram_rd_data;
+
+    assign ecc_ram_rd_data = r_ram_rd_data;
+    always @(posedge clk)
+        r_ram_rd_data <= u_ram_o_rd_data;
+end
+else begin:gen_rsp_direct
+    assign ecc_ram_rd_data = u_ram_o_rd_data;
+end
+endgenerate
+
+//ECC data packing
+generate
+if( LST_ECC_NUM ) begin:gen_lst_pack
+    assign ecc_ram_wr_data = {u_lst_enc_o_ecc_enc_data,u_nrm_enc_o_ecc_enc_data,wr_data_inj};
+    assign {u_lst_dec_i_ecc_dec_data,u_nrm_dec_i_ecc_dec_data,stored_rd_data} = ecc_ram_rd_data;
+    assign correct_rd_data = {u_lst_dec_o_correct_data,u_nrm_dec_o_correct_data};
+end
+else begin:gen_nrm_pack
+    assign u_lst_dec_i_ecc_dec_data = '0;
+    assign u_lst_dec_i_original_data = '0;
+    assign u_lst_dec_o_ecc_ce = 1'b0;
+    assign u_lst_dec_o_ecc_ue = 1'b0;
+    assign ecc_ram_wr_data = {u_nrm_enc_o_ecc_enc_data,wr_data_inj};
+    assign {u_nrm_dec_i_ecc_dec_data,stored_rd_data} = ecc_ram_rd_data;
+    assign correct_rd_data = u_nrm_dec_o_correct_data;
+end
+endgenerate
+
+//instance----
+assign u_nrm_enc_i_original_data = i_wr_data[NRM_TOL_W-1:0];
+assign u_nrm_enc_i_ecc_dec_data = '0;
+com_ecc_secded #(
+    .DW ( NRM_ORI_W )
+)u_com_ecc_secded_nrm_enc[NRM_ECC_NUM-1:0]
 (
-    .clk                 ( clk                  ), //i
-    .mem_cfg             ( mem_cfg              ), //i
-    .ce_n                ( u_ram_ce_n           ), //i
-    .we                  ( u_ram_we             ), //i
-    .addr                ( u_ram_addr           ), //i
-    .wr_data             ( u_ram_wr_data        ), //i
-    .rd_data             ( u_ram_rd_data        )  //o
+    .i_correct_n     ( 1'b1                         ), //i
+    .i_original_data ( u_nrm_enc_i_original_data     ), //i
+    .i_ecc_dec_data  ( u_nrm_enc_i_ecc_dec_data      ), //i
+    .o_correct_data  ( u_nrm_enc_o_correct_data      ), //o
+    .o_ecc_enc_data  ( u_nrm_enc_o_ecc_enc_data      ), //o
+    .o_ecc_ce        ( u_nrm_enc_o_ecc_ce            ), //o
+    .o_ecc_ue        ( u_nrm_enc_o_ecc_ue            )  //o
 );
 
-endmodule
+assign u_nrm_dec_i_original_data = stored_rd_data[NRM_TOL_W-1:0];
+com_ecc_secded #(
+    .DW ( NRM_ORI_W )
+)u_com_ecc_secded_nrm_dec[NRM_ECC_NUM-1:0]
+(
+    .i_correct_n     ( cfg_ecc_correct_n             ), //i
+    .i_original_data ( u_nrm_dec_i_original_data     ), //i
+    .i_ecc_dec_data  ( u_nrm_dec_i_ecc_dec_data      ), //i
+    .o_correct_data  ( u_nrm_dec_o_correct_data      ), //o
+    .o_ecc_enc_data  ( u_nrm_dec_o_ecc_enc_data      ), //o
+    .o_ecc_ce        ( u_nrm_dec_o_ecc_ce            ), //o
+    .o_ecc_ue        ( u_nrm_dec_o_ecc_ue            )  //o
+);
+
+generate
+if( LST_ECC_NUM ) begin:gen_lst_ecc
+    assign u_lst_enc_i_original_data = i_wr_data[NRM_TOL_W +:LST_SAFE_W];
+    assign u_lst_enc_i_ecc_dec_data = '0;
+    assign u_lst_dec_i_original_data = stored_rd_data[NRM_TOL_W +:LST_SAFE_W];
+
+    com_ecc_secded #(
+        .DW ( LST_SAFE_W )
+    )u_com_ecc_secded_lst_enc
+    (
+        .i_correct_n     ( 1'b1                       ), //i
+        .i_original_data ( u_lst_enc_i_original_data   ), //i
+        .i_ecc_dec_data  ( u_lst_enc_i_ecc_dec_data    ), //i
+        .o_correct_data  ( u_lst_enc_o_correct_data    ), //o
+        .o_ecc_enc_data  ( u_lst_enc_o_ecc_enc_data    ), //o
+        .o_ecc_ce        ( u_lst_enc_o_ecc_ce          ), //o
+        .o_ecc_ue        ( u_lst_enc_o_ecc_ue          )  //o
+    );
+
+    com_ecc_secded #(
+        .DW ( LST_SAFE_W )
+    )u_com_ecc_secded_lst_dec
+    (
+        .i_correct_n     ( cfg_ecc_correct_n           ), //i
+        .i_original_data ( u_lst_dec_i_original_data   ), //i
+        .i_ecc_dec_data  ( u_lst_dec_i_ecc_dec_data    ), //i
+        .o_correct_data  ( u_lst_dec_o_correct_data    ), //o
+        .o_ecc_enc_data  ( u_lst_dec_o_ecc_enc_data    ), //o
+        .o_ecc_ce        ( u_lst_dec_o_ecc_ce          ), //o
+        .o_ecc_ue        ( u_lst_dec_o_ecc_ue          )  //o
+    );
+end
+endgenerate
+
+com_spram_shell #(
+    .DATA_W   ( TOL_RAM_W ),
+    .DEPTH    ( DEPTH     ),
+    .STRB_W   ( STRB_W    ),
+    .MEM_USER ( MEM_USER  )
+)u_com_spram_shell
+(
+    .clk                 ( clk                 ), //i
+    .i_cfg_mem_ctrl      ( i_cfg_mem_ctrl      ), //i
+    .i_ce_n              ( u_ram_i_ce_n        ), //i
+    .i_we_n              ( u_ram_i_we_n        ), //i
+    .i_addr              ( u_ram_i_addr        ), //i
+    .i_wr_data           ( u_ram_i_wr_data     ), //i
+    .o_rd_data           ( u_ram_o_rd_data     )  //o
+);
+
+//assert---------------------------------------------------------------------
+`COM_PARAM_ASSERT( DATA_W>=4 && DATA_W<=8178, "DATA_W range is [4:8178]" )
+`COM_PARAM_ASSERT( DEPTH>=1, "DEPTH must be larger than 0" )
+`COM_PARAM_ASSERT( STRB_W>=1 && DATA_W%STRB_W==0, "DATA_W must be divisible by STRB_W" )
+`COM_PARAM_ASSERT( ECC_DW>=4 && ECC_DW<=DATA_W, "ECC_DW range is [4:DATA_W]" )
+`COM_PARAM_ASSERT( TOL_RAM_W%STRB_W==0, "physical RAM width must be divisible by STRB_W" )
+`COM_PARAM_ASSERT( LST_ORI_W==0 || LST_ORI_W>=4, "the last ECC word must be at least 4 bits" )
+`COM_PARAM_ASSERT( REQ_PIPE==0 || REQ_PIPE==1, "REQ_PIPE must be 0 or 1" )
+`COM_PARAM_ASSERT( RSP_PIPE==0 || RSP_PIPE==1, "RSP_PIPE must be 0 or 1" )
+
+endmodule //end of com_ecc_spram_shell

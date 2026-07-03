@@ -5,97 +5,96 @@
 *     Date:   2025/07/07-20:01:49
 *
 *  Description:
-*  -
-*
-*  Modify:
-*  -
+*  - Single-port ROM implementation shell.
 *
 ******************************************************************************/
 
-module com_sprom_shell#(
-parameter  DATA_W   = 32           , //range=[1:], Data width of memory.
-parameter  DEPTH    = 64           , //range=[1:], Depth of memory.
-parameter  MEM_USER = 0            , //range=[0:], Memory user diy
-localparam ADDR_W   = $clog2(DEPTH)  // Address width,
-)(
-input  wire                   clk    ,
-input  wire [`COM_SRAM_W-1:0]  mem_cfg,
+module com_sprom_shell #( parameter
+    DATA_W   = 32, //range=[1::]
+    DEPTH    = 64, //range=[1::]
+    MEM_USER = 0,
+    localparam ADDR_W = $clog2(DEPTH)
+)
+(
+input  wire                         clk                 ,
+input  wire [`COM_MEM_CTRL_W-1:0]   i_cfg_mem_ctrl      ,
 
-input  wire                   rd_en   ,
-input  wire [ADDR_W-1:0]      rd_addr ,
-output wire [DATA_W-1:0]      rd_data//,
+input  wire                         i_rd_en             ,
+input  wire [ADDR_W-1:0]            i_rd_addr           ,
+output wire [DATA_W-1:0]            o_rd_data           //,
 );
-
-`ifndef COM_RAM_AS_BBOX
+//localparam-----------------------------------------------------------------
 `ifdef COM_RAM_AS_REG
-    localparam RAM_AS_REG     = 1;
+localparam RAM_AS_REG = 1;
 `else
-    localparam RAM_AS_REG     = 0;
+localparam RAM_AS_REG = 0;
 `endif
 
-wire use_cell; // use cell as ram.
-//------------------------------------------------------------------------------
-// Ram logic
-//------------------------------------------------------------------------------
+//signal declare-------------------------------------------------------------
+wire                   u_rom_i_rd_en;
+wire [ADDR_W-1:0]      u_rom_i_rd_addr;
+wire [DATA_W-1:0]      u_rom_o_rd_data;
+wire                   use_cell;
+
+//statement------------------------------------------------------------------
+`ifndef COM_RAM_AS_BBOX
+//output assign---
+assign o_rd_data = u_rom_o_rd_data;
+
+//body---
+assign u_rom_i_rd_en = i_rd_en;
+assign u_rom_i_rd_addr = i_rd_addr;
+
 generate
-    if(RAM_AS_REG) begin: USEREG
+if( RAM_AS_REG ) begin:gen_rom_as_reg
+    assign u_rom_o_rd_data = '0;
+    assign use_cell = 1'b0;
+end
+else begin:gen_rom_as_cell
+// Start of user logic.
+    if( 0 ) begin:gen_none
+        assign use_cell = 1'b1;
+    end
+// End of user logic.
+    else begin:gen_rom_not_found
+        `ifndef COM_RAM_NFOUND_CHK
+        com_sprom_not_found u_com_sprom_not_found();
+        `endif
+        assign u_rom_o_rd_data = '0;
         assign use_cell = 1'b0;
     end
-    else begin: USECELL
-    /*************************************************************************************************/// Start of user logic.
-        // if( DEPTH==1024 && DATA_W==128 && MEM_USER==0 )begin
-        //     sprom_1024x128_wrapper t_sprom_1024x128_wrapper( .clk(clk),.mem_cfg(mem_cfg), .rd_en(rd_en),.rd_addr(rd_addr),.rd_data(rd_data);
-        //     assign use_cell = 1'b1;
-        // end
-        // else if( DEPTH==1024 && DATA_W==128 && MEM_USER==1 )begin
-        //     spram_1024x128_usr1_wrapper t_spram_1024x128_usr1_wrapper( .clk(clk),.mem_cfg(mem_cfg), .rd_en(rd_en),.rd_addr(rd_addr),.rd_data(rd_data);
-        //     assign use_cell = 1'b1;
-        // end
-        if(0) begin
-            assign use_cell = 1'b1;
-        end
-    /*************************************************************************************************/// End of user logic.
-        else begin: NFOUND
-            `ifndef COM_RAM_NFOUND_CHK
-            com_sprom_not_found u_com_sprom_not_found();
-            `endif
-            assign use_cell = 1'b0;
-        end
-    end
+end
 endgenerate
 
-//------------------------------------------------------------------------------
-// Report & Assertion.
-//------------------------------------------------------------------------------
+//report---------------------------------------------------------------------
 `ifdef COM_REPORT_ON
-    integer fp_mem;
-    string s;
-    string str_size;
-    string str_user;
-    string str_mem_type;
-    initial begin
-        str_mem_type = "sprom";
-        fp_mem = $fopen({"./",str_mem_type,".lst"},"wt");
-        $fclose(fp_mem);
-    end
-    initial begin
-        #1;
-        fp_mem = $fopen({"./",str_mem_type,".lst"},"at");
-        str_user = "";
-        if( MEM_USER!=0 )begin
-            str_user = $psprintf("_usr%1d", MEM_USER);
-        end
-        str_size = $psprintf("%1dx%1d",DEPTH,DATA_W);
-        s = {str_mem_type,str_size,str_user};
+integer fp_mem;
+string s;
+string str_size;
+string str_user;
+string str_mem_type;
+initial begin
+    str_mem_type = "sprom";
+    fp_mem = $fopen({"./",str_mem_type,".lst"},"wt");
+    $fclose(fp_mem);
+end
+initial begin
+    #1;
+    fp_mem = $fopen({"./",str_mem_type,".lst"},"at");
+    str_user = "";
+    if( MEM_USER!=0 )
+        str_user = $psprintf("_usr%1d",MEM_USER);
+    str_size = $psprintf("%1dx%1d",DEPTH,DATA_W);
+    s = {str_mem_type,str_size,str_user};
 
-        if(use_cell) begin                              // use cell
-            $fwrite(fp_mem,"%-20s    Info: normal ram as cell;  %m\n",s);
-        end
-        else begin                                      // use reg, out of expection
-            $fwrite(fp_mem,"%-20s Warning: can't find wrapper;  %m\n",s);
-        end
-    end
-`endif //end of COM_REPORT_ON
-`endif //end of ifdef COM_RAM_AS_BBOX
+    if( use_cell )
+        $fwrite(fp_mem,"%-20s    Info: normal ram as cell;  %m\n",s);
+    else
+        $fwrite(fp_mem,"%-20s Warning: can't find wrapper;  %m\n",s);
+end
+`endif
+//assert---------------------------------------------------------------------
+`COM_PARAM_ASSERT( DEPTH>=1, "DEPTH must be larger than 0" )
+`endif
 
-endmodule
+endmodule //end of com_sprom_shell

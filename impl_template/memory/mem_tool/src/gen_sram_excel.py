@@ -282,11 +282,46 @@ def gen_sram_instance( sram_cfg_json ):
     str_ori_prefix = 'com'
     str_new_prefix = sram_cfg_json['common_opt']['subsys_prefix']
 
-    dict_inst = {}
-    dict_inst['spram']    = "( .clk(clk),.mem_cfg(mem_cfg), .wr_en(wr_en),.wr_addr(addr),.wr_data(wr_data), .rd_en(rd_en),.rd_addr(addr),.rd_data(rd_data) );"
-    dict_inst['tpram1ck'] = "( .clk(clk),.mem_cfg(mem_cfg), .wr_en(wr_en),.wr_addr(wr_addr),.wr_data(wr_data), .rd_en(rd_en),.rd_addr(rd_addr),.rd_data(rd_data) );"
-    dict_inst['tpram2ck'] = "( .wr_clk(wr_clk),.rd_clk(rd_clk),.mem_cfg(mem_cfg), .wr_en(wr_en),.wr_addr(wr_addr),.wr_data(wr_data), .rd_en(rd_en),.rd_addr(rd_addr),.rd_data(rd_data) );"
-    dict_inst['sprom']    = "( .clk(clk),.mem_cfg(mem_cfg), .rd_en(rd_en),.rd_addr(rd_addr),.rd_data(rd_data) );"
+    dict_inst = {
+        'spram': [
+            ('clk',        'clk',          'i'),
+            ('i_cfg_mem_ctrl',  'i_cfg_mem_ctrl',  'i'),
+            ('i_wr_en',    'u_ram_i_wr_en',    'i'),
+            ('i_wr_addr',  'u_ram_i_wr_addr',  'i'),
+            ('i_wr_data',  'u_ram_i_wr_data',  'i'),
+            ('i_rd_en',    'u_ram_i_rd_en',    'i'),
+            ('i_rd_addr',  'u_ram_i_rd_addr',  'i'),
+            ('o_rd_data',  'u_ram_o_rd_data',  'o'),
+        ],
+        'tpram1ck': [
+            ('clk',        'clk',          'i'),
+            ('i_cfg_mem_ctrl',  'i_cfg_mem_ctrl',  'i'),
+            ('i_wr_en',    'u_ram_i_wr_en',    'i'),
+            ('i_wr_addr',  'u_ram_i_wr_addr',  'i'),
+            ('i_wr_data',  'u_ram_i_wr_data',  'i'),
+            ('i_rd_en',    'u_ram_i_rd_en',    'i'),
+            ('i_rd_addr',  'u_ram_i_rd_addr',  'i'),
+            ('o_rd_data',  'u_ram_o_rd_data',  'o'),
+        ],
+        'tpram2ck': [
+            ('i_cfg_mem_ctrl',  'i_cfg_mem_ctrl',  'i'),
+            ('wr_clk',     'wr_clk',       'i'),
+            ('i_wr_en',    'u_ram_i_wr_en',    'i'),
+            ('i_wr_addr',  'u_ram_i_wr_addr',  'i'),
+            ('i_wr_data',  'u_ram_i_wr_data',  'i'),
+            ('rd_clk',     'rd_clk',       'i'),
+            ('i_rd_en',    'u_ram_i_rd_en',    'i'),
+            ('i_rd_addr',  'u_ram_i_rd_addr',  'i'),
+            ('o_rd_data',  'u_ram_o_rd_data',  'o'),
+        ],
+        'sprom': [
+            ('clk',        'clk',          'i'),
+            ('i_cfg_mem_ctrl',  'i_cfg_mem_ctrl',  'i'),
+            ('i_rd_en',    'u_rom_i_rd_en',    'i'),
+            ('i_rd_addr',  'u_rom_i_rd_addr',  'i'),
+            ('o_rd_data',  'u_rom_o_rd_data',  'o'),
+        ],
+    }
 
     wb_name = os.path.join(str_work_path, sram_cfg_json['common_opt']['excel_filename'])
     if( os.path.isfile(wb_name) ):
@@ -329,20 +364,32 @@ def gen_sram_instance( sram_cfg_json ):
         #2. gen sram_instance
         str_inst = ''
         for i,ram_item in enumerate(li_ram):
-            s = f'if( DEPTH=={ram_item['depth']} && DATA_W=={ram_item['width']} && STRB_W=={ram_item['strb_w']} && MEM_USER=={ram_item['mem_user']} )begin:gen_sram_phy\n'
-            if( i>0 ):
-                s = f'else {s}'
+            li_cond = [
+                f'DEPTH=={ram_item["depth"]}',
+                f'DATA_W=={ram_item["width"]}',
+            ]
+            if( sram_type!='sprom' ):
+                li_cond.append(f'STRB_W=={ram_item["strb_w"]}')
+            li_cond.append(f'MEM_USER=={ram_item["mem_user"]}')
+            str_cond = ' && '.join(li_cond)
+            str_if = 'if' if i==0 else 'else if'
             str_shape = f'{ram_item['depth']}x{ram_item['width']}'
             if( ram_item['strb_w']>1 ):
                 str_shape = f'{str_shape}x{ram_item['strb_w']}'
             str_suffix = ''
             if( len(ram_item['suffix'])>1 ):
-                str_suffix = f'_{str_suffix}'
+                str_suffix = f'_{ram_item["suffix"]}'
             str_wrap_name = f'{ram_item['prefix']}_{sram_type}_{str_shape}{str_suffix}_wrapper'
-            str_inst += f"{' '*8 }" + s
-            str_inst += f"{' '*12}" + f'{str_wrap_name} u_{str_wrap_name} {dict_inst[sram_type]}\n'
-            str_inst += f"{' '*12}" + "assign use_cell = 1'b1;\n"
-            str_inst += f"{' '*8 }" + "end:gen_sram_phy\n"
+            str_inst += f'    {str_if}( {str_cond} ) begin:gen_sram_phy\n'
+            str_inst += f'        {str_wrap_name} u_{str_wrap_name}\n'
+            str_inst += '        (\n'
+            li_port = dict_inst[sram_type]
+            for port_idx,(port_name,signal_name,direction) in enumerate(li_port):
+                str_comma = ',' if port_idx<len(li_port)-1 else ' '
+                str_inst += f'            .{port_name:<11} ( {signal_name:<12} ){str_comma} //{direction}\n'
+            str_inst += '        );\n'
+            str_inst += "        assign use_cell = 1'b1;\n"
+            str_inst += '    end:gen_sram_phy\n'
         s_prev,s_midd,s_last = file_str_split( new_ram_file, "// Start of user logic." )
         e_prev,e_midd,e_last = file_str_split( new_ram_file, "// End of user logic." )
         str_wr = f'{s_prev}{s_midd}{str_inst}{e_midd}{e_last}'

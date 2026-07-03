@@ -5,68 +5,74 @@
 *     Date:   2025/07/07-20:01:49
 *
 *  Description:
-*   USER_EDIT_REQUIRED: copy this template for each ROM and manually tie all ROM
-*   values below. The memory tool never overwrites an existing generated file.
-*   if use rom_shell, rom_shell must intergrated by this rom_manual module;
-*   the rom_manual goal: when sim/emu/fpga verify flow, rom_code use "tie value" rather than initial from file, only synthesis_flow rom_lib initial from file;
-*   the designer responsibility: (1)tie rom_value in this module, (2)each rom_module, copy this file and change file_name+module_name; (3)move each rom_module to project_path;
-*
-*  Modify:
-*  -
+*  - USER_EDIT_REQUIRED: copy this template for each ROM and manually tie all
+*    ROM values below. The memory tool never overwrites an existing file.
+*  - Simulation, emulation and FPGA use tied values; synthesis uses ROM cells.
 *
 ******************************************************************************/
 
-module com_sprom_manual#(
-parameter  DATA_W   = 32           , //range=[1:], Data width of memory.
-parameter  DEPTH    = 64           , //range=[1:], Depth of memory.
-parameter  MEM_USER = 0            , //range=[0:], Memory user diy
-localparam ADDR_W   = $clog2(DEPTH)  // Address width,
-)(
-input  wire                   clk    ,
-input  wire [`COM_SRAM_W-1:0]  mem_cfg,
+module com_sprom_manual #( parameter
+    DATA_W   = 32, //range=[1::]
+    DEPTH    = 64, //range=[1::]
+    MEM_USER = 0,
+    localparam ADDR_W = $clog2(DEPTH)
+)
+(
+input  wire                         clk                 ,
+input  wire [`COM_MEM_CTRL_W-1:0]   i_cfg_mem_ctrl      ,
 
-input  wire                   rd_en   ,
-input  wire [ADDR_W-1:0]      rd_addr ,
-output wire [DATA_W-1:0]      rd_data//,
+input  wire                         i_rd_en             ,
+input  wire [ADDR_W-1:0]            i_rd_addr           ,
+output wire [DATA_W-1:0]            o_rd_data           //,
 );
-
 `ifdef COM_RAM_AS_REG
-    reg  [DATA_W-1:0] w_tie_romfile[0:DEPTH];
-    reg  [DATA_W-1:0] r_rd_data;
-    always @( posedge clk )begin
-        if( rd_en )
-            r_rd_data <= w_tie_romfile[rd_addr];
-    end
-    always@* begin   // USER_EDIT_REQUIRED: tie every ROM entry here.
-        w_tie_romfile[0] = '0;
-        w_tie_romfile[1] = '1;
-        // ...
-    end
+//signal declare-------------------------------------------------------------
+reg [DATA_W-1:0] w_tie_romfile[0:DEPTH-1];
+reg [DATA_W-1:0] r_rd_data;
 
-    com_sprom_shell #(  //only for rom_shape print to rom_lst;
-        .DATA_W               ( DATA_W              ), //32
-        .DEPTH                ( DEPTH               ), //64
-        .MEM_USER             ( MEM_USER            )  //0
-    )u_com_sprom_shell_for_rpt
-    (
-        .clk                 ( '0             ), //i
-        .mem_cfg             ( '0             ), //i
-        .rd_en               ( '0             ), //i
-        .rd_addr             ( '0             ), //i
-        .rd_data             (                )  //o
-    );
+//statement------------------------------------------------------------------
+//output assign---
+assign o_rd_data = r_rd_data;
+
+//body---
+always @(posedge clk) begin
+    if( i_rd_en )
+        r_rd_data <= w_tie_romfile[i_rd_addr];
+end
+
+always @* begin
+    for( int i=0; i<DEPTH; i++ )
+        w_tie_romfile[i] = '0;
+    // USER_EDIT_REQUIRED: tie ROM entries here.
+end
+
+//instance----
+com_sprom_shell #(
+    .DATA_W              ( DATA_W             ),
+    .DEPTH               ( DEPTH              ),
+    .MEM_USER            ( MEM_USER           )
+)u_com_sprom_shell_rpt
+(
+    .clk                 ( '0                 ), //i
+    .i_cfg_mem_ctrl      ( '0                 ), //i
+    .i_rd_en             ( '0                 ), //i
+    .i_rd_addr           ( '0                 ), //i
+    .o_rd_data           (                    )  //o
+);
 `else
-    com_sprom_shell #(
-        .DATA_W               ( DATA_W              ), //32
-        .DEPTH                ( DEPTH               ), //64
-        .MEM_USER             ( MEM_USER            )  //0
-    )u_com_sprom_shell(
-        .clk                 ( clk                  ), //i
-        .mem_cfg             ( mem_cfg              ), //i
-        .rd_en               ( rd_en                ), //i
-        .rd_addr             ( rd_addr              ), //i
-        .rd_data             ( rd_data              )  //o
-    );
+//instance----
+com_sprom_shell #(
+    .DATA_W              ( DATA_W             ),
+    .DEPTH               ( DEPTH              ),
+    .MEM_USER            ( MEM_USER           )
+)u_com_sprom_shell
+(
+    .clk                 ( clk                ), //i
+    .i_cfg_mem_ctrl      ( i_cfg_mem_ctrl     ), //i
+    .i_rd_en             ( i_rd_en            ), //i
+    .i_rd_addr           ( i_rd_addr          ), //i
+    .o_rd_data           ( o_rd_data          )  //o
+);
 `endif
 
-endmodule
+endmodule //end of com_sprom_manual

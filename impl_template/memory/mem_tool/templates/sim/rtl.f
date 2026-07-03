@@ -3,6 +3,7 @@
 //--------------------------------------
 ${IMPL_PATH}/define/impl_define_sim.sv
 ${COM_PATH}/com_define.sv
+${IMPL_PATH}/dw/com_ecc_secded.sv
 
 //--------------------------------------
 //impl
