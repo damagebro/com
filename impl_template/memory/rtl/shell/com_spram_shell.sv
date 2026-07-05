@@ -81,10 +81,11 @@ else begin:gen_ram_as_cell
     end
 // End of user logic.
     else begin:gen_ram_not_found
+        // Enable strict checking to reject any shape without a SRAM PHY.
         `ifdef COM_RAM_NFOUND_CHK
-        com_tpram_reg
-        `else
         com_spram_not_found
+        `else
+        com_tpram_reg
         `endif
         #(
             .DATA_W          ( DATA_W             ),

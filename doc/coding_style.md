@@ -23,7 +23,7 @@
     - pls_xx, 表示单周期脉冲信号;
     - tie_xx, 表示是一个常数值, 是内部tie的值;
     - cfg_xx是CSR的配置寄存器, sta_xx是CSR的状态寄存器, irq_xx是中断状态寄存器;
-    - u_xx, 表示是例化模块的端口信号名,  最好格式是 `u_${mid_fix}_[i|o]_${port_name};` 通过"中缀"标识哪个例化模块名, 通过i|o知道子模块端口方向, 通过port_name知道子模块原始端口名;
+    - u_xx, 表示是例化模块的端口信号名,  最好格式是 `u_${tag_name}_[i|o]_${port_name};` 通过"tag"标识哪个例化模块名, 通过i|o知道子模块端口方向, 通过port_name知道子模块原始端口名;
 12. 数值范围描述; `range=[start:end:step]`(借用python数组表达方式， 不过end可以取到, step扩展支持2^n,表示只能按2的幂次方递增);  举例axi数据位宽, AXI_DW range=[8:2048:2^n];
 13. 多时钟域设计,
     - 时钟信号名: `xx_clk`,  复位信号名: `xx_rst_n`, 异步设计暂不需要`clear`信号;

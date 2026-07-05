@@ -12,5 +12,6 @@
 //#3.implement define---------------------------------
 // `define COM_RAM_AS_BBOX
 `define COM_RAM_AS_REG
+// `define COM_RAM_NFOUND_CHK //compile error when a memory shape has no PHY
 // `define COM_CDC_AS_REG
 `define COM_ECC_USE_RTL

@@ -57,7 +57,8 @@ else begin:gen_rom_as_cell
     end
 // End of user logic.
     else begin:gen_rom_not_found
-        `ifndef COM_RAM_NFOUND_CHK
+        // Enable strict checking to reject any shape without a ROM PHY.
+        `ifdef COM_RAM_NFOUND_CHK
         com_sprom_not_found u_com_sprom_not_found();
         `endif
         assign u_rom_o_rd_data = '0;
