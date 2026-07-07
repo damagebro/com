@@ -13,10 +13,6 @@ class MemToolError(RuntimeError):
     pass
 
 
-class ConfigError(MemToolError):
-    pass
-
-
 class InputFormatError(MemToolError):
     pass
 
@@ -138,4 +134,3 @@ class MemoryShape:
             rd_clk_mhz=values.get("rd_clk_mhz"),
             ppa_target=values.get("ppa_target", 0),
         )
-

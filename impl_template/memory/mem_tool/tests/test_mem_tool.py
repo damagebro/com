@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import sys
 import tempfile
@@ -224,28 +223,23 @@ class RtlGenerationTests(unittest.TestCase):
 
 
 class ConfigTests(unittest.TestCase):
-    def test_json_config_and_cli_override(self) -> None:
+    def test_cli_config(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            config_path = Path(directory) / "config.json"
-            config_path.write_text(
-                json.dumps(
-                    {
-                        "mode": "excel",
-                        "common_opt": {
-                            "subsys_prefix": "cpu",
-                            "excel_filename": "memory.xlsx",
-                            "env_var": {"work_path": directory},
-                        },
-                        "gen_sram_excel": {
-                            "default_ram_wr_clk_MHz": 1200,
-                            "default_ram_rd_clk_MHz": 900,
-                        },
-                    }
-                ),
-                encoding="utf-8",
-            )
             config = parse_config(
-                ["--config", str(config_path), "--clk_a", "1400"]
+                [
+                    "-p",
+                    "cpu",
+                    "-m",
+                    "excel",
+                    "-w",
+                    directory,
+                    "-x",
+                    "memory.xlsx",
+                    "-xcka",
+                    "1400",
+                    "-xckb",
+                    "900",
+                ]
             )
         self.assertEqual(config.mode, "excel")
         self.assertEqual(config.subsys_prefix, "cpu")

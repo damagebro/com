@@ -37,11 +37,11 @@ python3 ./src/main.py -p cpu -m excel -w ./build \
 
 时钟参数映射：
 
-| Memory类型 | 写时钟 | 读时钟 |
-| --- | --- | --- |
-| `spram` | A时钟：`xcka` | A时钟：`xcka` |
+| Memory类型 | 写时钟        | 读时钟        |
+| ---------- | ------------- | ------------- |
+| `spram`    | A时钟：`xcka` | A时钟：`xcka` |
 | `tpram1ck` | A时钟：`xcka` | A时钟：`xcka` |
-| `sprom` | - | A时钟：`xcka` |
+| `sprom`    | -             | A时钟：`xcka` |
 | `tpram2ck` | A时钟：`xcka` | B时钟：`xckb` |
 
 只有`tpram2ck`需要A/B两个时钟，其余memory的全部访问都使用A时钟。未指定`xckb`时，B时钟频率默认等于`xcka`。
@@ -74,49 +74,99 @@ python3 ./src/main.py -p cpu -m inst -w ./build \
 
 验证阶段默认使用RTL model完成基础读写、partial write和ECC功能验证；集成PHY wrapper后再次进行编译及读写冒烟检查。签收时应核对Excel shape数量、RTL实例数量和后端macro数量，并开启`COM_RAM_NFOUND_CHK`检查遗漏项。
 
-## RTL开发者集成说明
+## RTL集成说明
 
-### RTL目录
+`com_*`是工具内部通用模板名。项目集成时必须先通过`-p/--subsys_prefix`生成subsystem专属模块，项目RTL只例化`<subsys_prefix>_*`。
 
-```text
-memory/
-├── rtl/
-│   ├── shell/
-│   │   ├── com_spram_shell.sv
-│   │   ├── com_tpram1ck_shell.sv
-│   │   ├── com_tpram2ck_shell.sv
-│   │   ├── com_sprom_shell.sv
-│   │   ├── com_sprom_manual.sv
-│   │   └── com_ecc_*_shell.sv
-│   └── model/
-│       └── com_tpram_reg.sv
-└── memory.f
-```
+### Shell类型
 
-`rtl/shell/*.sv`是所有shell的唯一人工维护源，其中`com_*`仅表示通用原始模板。脚本输出到项目使用时，会把`com_`替换为`<subsys_prefix>_`。`rtl/model`提供未集成SRAM PHY时使用的寄存器模型。
+| 项目生成Shell                    | 对外访问方式             | 说明                         |
+| -------------------------------- | ------------------------ | ---------------------------- |
+| `<subsys_prefix>_spram_shell`    | 单端口，`ce_n/we_n/addr` | 同一拍只能执行一种访问       |
+| `<subsys_prefix>_tpram1ck_shell` | 单时钟独立读写端口       | 读写共享A时钟                |
+| `<subsys_prefix>_tpram2ck_shell` | 双时钟独立读写端口       | 写端使用A时钟，读端使用B时钟 |
+| `<subsys_prefix>_sprom_shell`    | 单读端口                 | 使用A时钟的物理ROM shell     |
+| `<subsys_prefix>_sprom_manual`   | 单读端口                 | 需要人工填写内容的ROM模板    |
+| `<subsys_prefix>_ecc_*_shell`    | 对应普通RAM接口          | 在普通shell外增加SECDED保护  |
 
-### Shell分类
+### 参数说明
 
-| 项目生成Shell | 原始模板 | 对外访问方式 | 说明 |
-| --- | --- | --- | --- |
-| `<subsys_prefix>_spram_shell` | `com_spram_shell` | 单端口，`ce_n/we_n/addr` | 同一拍只能执行一种访问 |
-| `<subsys_prefix>_tpram1ck_shell` | `com_tpram1ck_shell` | 单时钟独立读写端口 | 读写共享时钟 |
-| `<subsys_prefix>_tpram2ck_shell` | `com_tpram2ck_shell` | 双时钟独立读写端口 | 读写可位于不同时钟域 |
-| `<subsys_prefix>_sprom_shell` | `com_sprom_shell` | 单读端口 | 物理ROM shell |
-| `<subsys_prefix>_sprom_manual` | `com_sprom_manual` | 单读端口 | 需要人工填写内容的ROM模板 |
-| `<subsys_prefix>_ecc_*_shell` | `com_ecc_*_shell` | 对应普通RAM接口 | 在普通shell外增加SECDED保护 |
+| 参数       | 适用Shell | 含义                                                                     |
+| ---------- | --------- | ------------------------------------------------------------------------ |
+| `DATA_W`   | 全部      | 用户可见数据位宽                                                         |
+| `DEPTH`    | 全部      | memory entry数量                                                         |
+| `STRB_W`   | RAM       | partial write分段数量，要求`DATA_W%STRB_W==0`；每段宽度为`DATA_W/STRB_W` |
+| `MEM_USER` | 全部      | 同一subsystem内区分相同shape的不同实现需求                               |
+| `REQ_PIPE` | ECC RAM   | 请求侧pipeline，范围为0或1；使实际RAM请求延后一拍                        |
+| `RSP_PIPE` | ECC RAM   | 返回侧pipeline，范围为0或1；使读数据和错误结果再延后一拍                 |
+| `ECC_DW`   | ECC RAM   | 单个SECDED分组保护的数据位宽，范围为`[4:DATA_W]`                         |
 
-公共参数：
+`ADDR_W=$clog2(DEPTH)`由shell内部计算，不需要集成者配置。
 
-| 参数 | 含义 |
-| --- | --- |
-| `DATA_W` | 用户数据位宽 |
-| `DEPTH` | memory深度 |
-| `STRB_W` | partial write strobe数量，要求`DATA_W%STRB_W==0` |
-| `MEM_USER` | 同一subsystem内区分相同shape的不同实现需求 |
-| `REQ_PIPE` | ECC shell请求侧pipeline，范围为0或1 |
-| `RSP_PIPE` | ECC shell返回侧pipeline，范围为0或1 |
-| `ECC_DW` | 单个SECDED分组保护的数据位宽 |
+### 普通Shell接口
+
+所有接口均为enable型访问，没有`ready`反压。有效enable在对应时钟上升沿被接受，读数据不附带独立valid，调用方需要按固定读延时自行对齐控制。
+
+`<subsys_prefix>_spram_shell`使用单端口访问：
+
+| 信号                 | 方向   | 含义                                               |
+| -------------------- | ------ | -------------------------------------------------- |
+| `clk`                | input  | 读写共用A时钟                                      |
+| `i_cfg_mem_ctrl`     | input  | SRAM PHY配置，直接透传给wrapper                    |
+| `i_ce_n`             | input  | 低有效chip enable；为1时不访问                     |
+| `i_we_n[STRB_W-1:0]` | input  | 低有效write enable；全1表示读，存在0表示写对应分段 |
+| `i_addr`             | input  | 读写共用地址                                       |
+| `i_wr_data`          | input  | 写数据                                             |
+| `o_rd_data`          | output | 读返回数据                                         |
+
+`<subsys_prefix>_tpram1ck_shell`使用同一A时钟下的独立读写端口：
+
+| 信号                  | 方向   | 含义                          |
+| --------------------- | ------ | ----------------------------- |
+| `clk`                 | input  | 读写共用A时钟                 |
+| `i_cfg_mem_ctrl`      | input  | SRAM PHY配置                  |
+| `i_wr_en[STRB_W-1:0]` | input  | 高有效分段写使能，全0表示不写 |
+| `i_wr_addr/i_wr_data` | input  | 写地址和写数据                |
+| `i_rd_en`             | input  | 高有效读使能                  |
+| `i_rd_addr`           | input  | 读地址                        |
+| `o_rd_data`           | output | 读返回数据                    |
+
+`<subsys_prefix>_tpram2ck_shell`与`tpram1ck`的数据接口相同，但写端使用`wr_clk`作为A时钟，读端使用`rd_clk`作为B时钟。只有该类型需要A/B两个时钟。
+
+`<subsys_prefix>_sprom_shell`只有`clk`、`i_cfg_mem_ctrl`、`i_rd_en`、`i_rd_addr`和`o_rd_data`，所有读取均使用A时钟。
+
+读写同地址时的数据行为可能受SRAM compiler配置影响，调用方不能依赖未在PHY wrapper中明确约定的read-first、write-first或no-change行为。
+
+### 配置接口来源
+
+<img alt="memory configuration sources" src="doc/assets/memory_cfg_source.png" width="800">
+
+`i_cfg_mem_ctrl`宽度由`COM_MEM_CTRL_W`定义，存在于全部shell中。该信号通常来自subsystem内部的CSR寄存器，再由所属module扇出到本module内例化的各个SRAM/ROM shell；shell不解释其bit含义，只原样连接到SRAM/ROM PHY wrapper。使用RTL model时该信号不参与功能。
+
+SRAM shell应随着业务module例化，不建议为了配置集中管理而全部拉到subsys top。相同subsystem内也可以按电压域、频率域、PPA目标或测试策略拆成多组CSR，例如同一个`cpu_subsys`内用`cpu_mem_cfg_csr0/csr1`分别控制不同一组memory。CSR bit可用于承载工艺相关的retention、低功耗、冗余修复或测试配置，具体定义由后端和芯片集成共同确定。
+
+`i_cfg_ecc_ctrl`宽度由`COM_ECC_CTRL_W`定义，只存在于ECC shell中。该信号与`i_cfg_mem_ctrl`采用相同的CSR来源和扇出方式，用于控制ECC纠错和注错。当前低4bit定义为：
+
+| Bit     | 含义                                                           |
+| ------- | -------------------------------------------------------------- |
+| `[0]`   | `correct_n`：0开启纠错，1关闭纠错；关闭纠错不等于关闭CE/UE检测 |
+| `[1]`   | ECC注错使能，正常工作时应为0                                   |
+| `[3:2]` | 注错值，仅在注错使能时使用                                     |
+
+正常功能模式建议连接为`4'b0000`；若宏宽度大于4，其余bit保留并置0。
+
+### ECC错误输出
+
+ECC shell额外输出`o_pls_ecc_err[1:0]`：
+
+| Bit   | 含义                  | 建议处理                                                                     |
+| ----- | --------------------- | ---------------------------------------------------------------------------- |
+| `[0]` | CE，单bit可纠正错误   | 纠错开启时读数据已修正；外部应累计计数或置sticky状态，达到阈值后上报         |
+| `[1]` | UE，多bit不可纠正错误 | 当前读数据不可信；外部应置sticky状态，并按系统要求产生高优先级中断或错误响应 |
+
+`o_pls_ecc_err`是与读返回对齐的脉冲信号，模块内部不保存历史状态，也不提供反压。集成逻辑应在外部增加sticky DFF、计数器或中断汇聚，并保留发生错误的memory来源信息。
+
+ECC读返回及错误脉冲延时为`1+REQ_PIPE+RSP_PIPE`拍。读取`partial_write_flag=1`的row时会绕过ECC检查，因此CE/UE均不产生脉冲。
 
 ### Subsystem隔离与MEM_USER
 
@@ -143,13 +193,13 @@ npu_spram_1024x128_wrapper
 
 相关宏：
 
-| 宏 | 作用 |
-| --- | --- |
-| `COM_RAM_AS_REG` | 强制RAM使用寄存器模型 |
-| `COM_RAM_AS_BBOX` | 将shell内部实现视为black box |
-| `COM_RAM_NFOUND_CHK` | 检查应使用PHY但未匹配的memory |
-| `COM_REPORT_OFF` | 关闭memory shape报告 |
-| `COM_ECC_USE_RTL` | 使用自研SECDED RTL；未定义时使用Synopsys实现 |
+| 宏                   | 作用                                         |
+| -------------------- | -------------------------------------------- |
+| `COM_RAM_AS_REG`     | 强制RAM使用寄存器模型                        |
+| `COM_RAM_AS_BBOX`    | 将shell内部实现视为black box                 |
+| `COM_RAM_NFOUND_CHK` | 检查应使用PHY但未匹配的memory                |
+| `COM_REPORT_OFF`     | 关闭memory shape报告                         |
+| `COM_ECC_USE_RTL`    | 使用自研SECDED RTL；未定义时使用Synopsys实现 |
 
 报告代码由`synopsys translate_off/on`隔离，不参与综合。默认开启报告，定义`COM_REPORT_OFF`后关闭。
 
@@ -182,6 +232,12 @@ wrapper端口使用shell内部统一信号：
 
 ECC shell将`DATA_W`拆分为若干`ECC_DW`分组，每组使用SECDED编码。最后不足一个完整分组时，会单独生成last ECC group。
 
+<img alt="ECC shell integration" src="doc/assets/ecc_shell_integration.png" width="1000">
+
+`REQ_PIPE`位于ECC编码和物理row组包之后、基础RAM shell之前。使能时，请求控制、地址和组包后的写数据经过一级regslice；`REQ_PIPE=0`时直接旁路。
+
+`RSP_PIPE`位于基础RAM shell读数据输出之后、物理row拆包和ECC解码之前。使能时，读回的完整物理row经过一级regslice；`RSP_PIPE=0`时直接旁路。基础RAM同步读固定占用一拍，因此读数据及`o_pls_ecc_err`的有效延时为`1 + REQ_PIPE + RSP_PIPE`拍。
+
 物理RAM row布局为：
 
 ```text
@@ -194,19 +250,26 @@ ECC shell将`DATA_W`拆分为若干`ECC_DW`分组，每组使用SECDED编码。�
 2. Partial write只更新命中的原始数据bit，并置位`partial_write_flag`。
 3. 读取到`partial_write_flag=1`的row时直接返回原始数据，不进行ECC纠错，同时屏蔽CE/UE报告。
 4. ECC物理RAM使用bit write enable，确保任意partial write都能独立更新数据和最高位flag。
-5. `REQ_PIPE/RSP_PIPE`分别控制请求侧和返回侧寄存。
-
-`i_cfg_ecc_ctrl`定义：
-
-| Bit | 含义 |
-| --- | --- |
-| `[0]` | `correct_n`：0开启纠错，1关闭纠错 |
-| `[1]` | ECC注错使能 |
-| `[3:2]` | 注错值 |
 
 ### ROM人工维护
 
 生成`<subsys_prefix>_sprom_manual.sv`后，设计者需要在`USER_EDIT_REQUIRED`区域填写ROM数据。该文件只在不存在时生成，后续执行`init/inst`不会覆盖人工修改。
+
+## 脚本开发者
+
+### Python模块
+
+| 文件                  | 职责                                |
+| --------------------- | ----------------------------------- |
+| `main.py`             | 主入口和工作模式调度                |
+| `config.py`           | CLI参数解析与校验                   |
+| `model.py`            | `MemoryShape`数据模型和公共校验     |
+| `report.py`           | `.lst`解析、去重和实例聚合          |
+| `excel_io.py`         | Excel生成与读取                     |
+| `rtl_gen.py`          | 模块改名、PHY instance生成和RTL输出 |
+| `get_rtl_template.py` | 从原始shell生成Python模板           |
+| `rtl_template.py`     | 自动生成的RTL字符串字典             |
+| `gen_sram_excel.py`   | 旧命令兼容入口                      |
 
 ### RTL模板同步
 
@@ -233,32 +296,16 @@ python3 ./src/get_rtl_template.py --check
 5. 更新`rtl_gen.py`中的端口映射或memory类型列表。
 6. 增加对应单元测试并执行完整生成流程。
 
-## 脚本开发者
-
-### Python模块
-
-| 文件 | 职责 |
-| --- | --- |
-| `main.py` | 主入口和工作模式调度 |
-| `config.py` | CLI、JSON配置及优先级处理 |
-| `model.py` | `MemoryShape`数据模型和公共校验 |
-| `report.py` | `.lst`解析、去重和实例聚合 |
-| `excel_io.py` | Excel生成与读取 |
-| `rtl_gen.py` | 模块改名、PHY instance生成和RTL输出 |
-| `get_rtl_template.py` | 从原始shell生成Python模板 |
-| `rtl_template.py` | 自动生成的RTL字符串字典 |
-| `gen_sram_excel.py` | 旧命令兼容入口 |
-
 ### 工作模式
 
-| Mode | 输入 | 输出 |
-| --- | --- | --- |
-| `init` | `rtl_template.py` | 不含PHY instance的子系统shell |
-| `excel` | `build/*.lst` | memory requirement Excel |
-| `inst` | Excel或`*.lst` | 已注入PHY instance的子系统shell |
-| `rpt_by_run_sim` | 项目filelist | 尚未实现 |
+| Mode             | 输入              | 输出                            |
+| ---------------- | ----------------- | ------------------------------- |
+| `init`           | `rtl_template.py` | 不含PHY instance的子系统shell   |
+| `excel`          | `build/*.lst`     | memory requirement Excel        |
+| `inst`           | Excel或`*.lst`    | 已注入PHY instance的子系统shell |
+| `rpt_by_run_sim` | 项目filelist      | 尚未实现                        |
 
-CLI显式参数优先于JSON配置。`-w/--work_path`指定输入和输出目录；`-x/--excel_name`只接受文件名，文件位于work path下。
+所有配置均通过CLI指定。`-w/--work_path`指定输入和输出目录；`-x/--excel_name`只接受文件名，文件位于work path下。
 
 ### MemoryShape
 
@@ -302,13 +349,13 @@ capacity_KiB, hierachy
 
 ### 配置与错误处理
 
-推荐入口：
+查看全部CLI参数：
 
 ```bash
-python3 ./src/main.py --config ./config/sram_cfg.example.json
+python3 ./src/main.py --help
 ```
 
-命令行参数可以覆盖JSON。非法mode、缺失Excel、非法频率、错误report格式和模板不同步均应明确失败。`rpt_by_run_sim`当前返回未实现错误，不会静默成功。
+非法mode、缺失Excel、非法频率、错误report格式和模板不同步均应明确失败。`rpt_by_run_sim`当前返回未实现错误，不会静默成功。
 
 `gen_sram_excel.py`仅用于兼容旧命令，实际功能由`main.py`及其他模块实现。
 
@@ -328,6 +375,6 @@ python3 ./src/get_rtl_template.py --check
 5. RTL重复生成幂等性。
 6. 空memory类型fallback。
 7. `COM_RAM_NFOUND_CHK`默认及严格模式语义。
-8. JSON配置和CLI覆盖关系。
+8. CLI参数解析与默认值。
 
 新增解析规则、Excel字段、memory类型或RTL生成行为时，应同步增加fixture和回归测试。
