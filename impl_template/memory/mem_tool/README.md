@@ -4,14 +4,18 @@
 
 `mem_tool`用于汇总芯片项目中的SRAM/ROM需求，生成前后端交付使用的Excel，并把后端提供的SRAM PHY wrapper集成到统一memory shell中。
 
+**SRAM前后端交互全流程**
+
 ```text
-生成subsystem专属memory shell
-    → 前端例化memory shell
-    → 仿真生成*.lst
-    → 生成memory requirement Excel
-    → 后端生成SRAM PHY及wrapper
-    → 前端生成集成PHY的shell
-    → 编译检查所有memory shape
+[1] 前端：生成subsystem专属memory shell；cmd: `python3 ./src/main.py -p cpu -m init -w ./build`
+[2] 前端：在RTL中例化memory shell
+[3] 前端：跑仿真生成*.lst；cmd: `python3 ./src/main.py -p cpu -m sim -w ./build -t top_module -f filelist.f`
+[4] 前端：根据*.lst生成memory requirement Excel；cmd: `python3 ./src/main.py -p cpu -m excel -w ./build -x cpu_memory_require.xlsx -xcka 1500 -xckb 1000`
+[5] 后端：根据Excel生成SRAM PHY及wrapper
+[6] 前端：基于PHY wrapper生成集成PHY的shell；cmd: `python3 ./src/main.py -p cpu -m inst -w ./build -x cpu_memory_require.xlsx`
+[7] 前端：检查所有memory shape是否已被PHY覆盖，以下方式任选其一
+    - 增加`COM_RAM_NFOUND_CHK`宏定义，编译阶段直接拦截未覆盖shape
+    - 不加宏定义，仿真后检查*.lst，只允许Info/Message，不允许Warning
 ```
 
 当前支持`spram`、`tpram1ck`、`tpram2ck`和`sprom`，前三类同时提供ECC shell。生成文件默认放在`mem_tool/build/`。
@@ -20,20 +24,10 @@
 
 ### 芯片前端
 
-1. 先根据subsystem名称生成专属shell：
-
-```bash
-python3 ./src/main.py -p cpu -m init -w ./build
-```
-
+1. 先根据subsystem名称生成专属shell：`python3 ./src/main.py -p cpu -m init -w ./build`
 2. 在项目RTL中例化`cpu_*_shell`或`cpu_ecc_*_shell`，正确配置`DATA_W`、`DEPTH`、`STRB_W`和`MEM_USER`。其中`cpu`是示例`subsys_prefix`，实际项目应替换为对应subsystem名称。
 3. 通过项目仿真收集`spram.lst`、`tpram1ck.lst`、`tpram2ck.lst`和`sprom.lst`。
-4. 生成提交给后端的SRAM需求：
-
-```bash
-python3 ./src/main.py -p cpu -m excel -w ./build \
-    -x cpu_memory_require.xlsx -xcka 1500 -xckb 1000
-```
+4. 生成提交给后端的SRAM需求：`python3 ./src/main.py -p cpu -m excel -w ./build -x cpu_memory_require.xlsx -xcka 1500 -xckb 1000`
 
 时钟参数映射：
 
@@ -46,18 +40,11 @@ python3 ./src/main.py -p cpu -m excel -w ./build \
 
 只有`tpram2ck`需要A/B两个时钟，其余memory的全部访问都使用A时钟。未指定`xckb`时，B时钟频率默认等于`xcka`。
 
-5. 后端返回更新后的Excel和PHY wrapper后，生成集成RTL：
-
-```bash
-python3 ./src/main.py -p cpu -m inst -w ./build \
-    -x cpu_memory_require.xlsx
-```
-
+5. 后端返回更新后的Excel和PHY wrapper后，生成集成RTL：`python3 ./src/main.py -p cpu -m inst -w ./build -x cpu_memory_require.xlsx`
 6. 集成后定义`COM_RAM_NFOUND_CHK`重新编译，确认所有应使用SRAM PHY的memory shape均已匹配。
-
-不同subsystem必须使用不同的`subsys_prefix`。即使SRAM尺寸相同，也应形成独立的需求和wrapper，避免频率、电压或其他PPA约束不同却误用同一个实现。
-
-同一subsystem内，如果相同尺寸仍需要不同的SRAM实现，应设置不同的`MEM_USER`。`MEM_USER=0`表示默认需求，非零值用于手工区分特殊PPA或实现要求。
+7. sram_unique要求:
+- 不同subsystem必须使用不同的`subsys_prefix`。即使SRAM尺寸相同，也应形成独立的需求和wrapper，避免频率、电压或其他PPA约束不同却误用同一个实现。
+- 同一subsystem内，如果相同shape仍有`sram_unique`要求，应设置不同的`MEM_USER`。`MEM_USER=0`表示默认需求，非零值用于手工区分特殊PPA、物理位置、电压频率约束或独立macro实现要求。
 
 ### 芯片后端
 
@@ -95,7 +82,7 @@ python3 ./src/main.py -p cpu -m inst -w ./build \
 | ---------- | --------- | ------------------------------------------------------------------------ |
 | `DATA_W`   | 全部      | 用户可见数据位宽                                                         |
 | `DEPTH`    | 全部      | memory entry数量                                                         |
-| `STRB_W`   | RAM       | partial write分段数量，要求`DATA_W%STRB_W==0`；每段宽度为`DATA_W/STRB_W` |
+| `STRB_W`   | RAM       | partial write分段数量，要求`DATA_W%STRB_W==0`；每段宽度为`DATA_W/STRB_W`；ECC shell在`STRB_W>1`时，内部`sram_shell`的`STRB_W=DATA_W+ECC_W+1`，等效转换为bit enable |
 | `MEM_USER` | 全部      | 同一subsystem内区分相同shape的不同实现需求                               |
 | `REQ_PIPE` | ECC RAM   | 请求侧pipeline，范围为0或1；使实际RAM请求延后一拍                        |
 | `RSP_PIPE` | ECC RAM   | 返回侧pipeline，范围为0或1；使读数据和错误结果再延后一拍                 |
