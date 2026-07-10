@@ -1,6 +1,5 @@
-export TC=vadd_oneblk
-export ENV_TC_DIR=${SIM_DIR}/../tc/
-export ENV_DUMP_DIR=./dump/
+TC ?= vadd_oneblk
+ENV_TC_DIR = ${SIM_DIR}/../tc/
 
 RTL_F = ${SIM_DIR}/rtl.f
 ENV_F = ${SIM_DIR}/testbench.f
@@ -41,8 +40,6 @@ help:
 clean:
 	rm ./bin/ -rf; source ./ENV.sh
 
-rtl:
-	cd ./bin/; vcs  $(COM_OPT)	-f $(RTL_F)
 com:
 	cd ./bin/; vcs  $(COM_OPT)	-top top -f $(RTL_F) -f $(ENV_F) -assert svaext
 
@@ -52,7 +49,7 @@ run:
 all: clean com run
 
 verdi:
-	cd ./bin/; verdi -top top -f $(RTL_F) -f $(ENV_F) -ssf run.fsdb -sswr ${SIM_DIR}/wave/signal.rc -sverilog -2009 -full64 &
+	cd ./bin/; verdi -top top -f $(RTL_F) -f $(ENV_F) -ssf run.fsdb -sverilog -2009 -full64 &
 
 #cdns####################################################################################
 CDNS_DEF = +define+ADD_REPORT
