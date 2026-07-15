@@ -23,6 +23,7 @@ from rtl_gen import (
     generate_integrated_shells,
     replace_generated_region,
 )
+from sim_run import run_memory_sim
 
 
 class ReportTests(unittest.TestCase):
@@ -246,6 +247,30 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.default_wr_clk_mhz, 1400)
         self.assertEqual(config.default_rd_clk_mhz, 900)
 
+    def test_sim_config(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            filelist = Path(directory) / "rtl.f"
+            filelist.write_text("// project rtl\n", encoding="utf-8")
+            config = parse_config(
+                [
+                    "-p",
+                    "cpu",
+                    "-m",
+                    "sim",
+                    "-w",
+                    directory,
+                    "-t",
+                    "cpu_top",
+                    "-f",
+                    str(filelist),
+                    "--sim_no_run",
+                ]
+            )
+        self.assertEqual(config.mode, "sim")
+        self.assertEqual(config.top_module, "cpu_top")
+        self.assertEqual(config.filelist, str(filelist))
+        self.assertTrue(config.sim_no_run)
+
     def test_explicit_missing_excel_does_not_fall_back(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             config = ToolConfig(
@@ -258,6 +283,33 @@ class ConfigTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(InputFormatError, "does not exist"):
                 run(config)
+
+
+class SimRunTests(unittest.TestCase):
+    def test_generate_sim_sandbox_without_run(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            work_path = Path(directory)
+            filelist = work_path / "project.f"
+            filelist.write_text("// project rtl\n", encoding="utf-8")
+            outputs = run_memory_sim(
+                work_path,
+                "cpu",
+                "cpu_top",
+                str(filelist),
+                no_run=True,
+            )
+            top_sv = work_path / "sim" / "tb" / "top.sv"
+            rtl_f = work_path / "sim" / "rtl.f"
+            self.assertIn(top_sv, outputs)
+            self.assertIn(rtl_f, outputs)
+            self.assertIn(
+                "cpu_top u_cpu_top();",
+                top_sv.read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                f"-f {filelist.resolve().as_posix()}",
+                rtl_f.read_text(encoding="utf-8"),
+            )
 
 
 if __name__ == "__main__":

@@ -302,6 +302,7 @@ com_tpram2ck_shell #(
 );
 
 //assert---------------------------------------------------------------------
+`ifdef COM_ASSERT_ON
 `COM_PARAM_ASSERT( DATA_W>=4 && DATA_W<=8178, "DATA_W range is [4:8178]" )
 `COM_PARAM_ASSERT( DEPTH>=1, "DEPTH must be larger than 0" )
 `COM_PARAM_ASSERT( STRB_W>=1 && DATA_W%STRB_W==0, "DATA_W must be divisible by STRB_W" )
@@ -309,5 +310,6 @@ com_tpram2ck_shell #(
 `COM_PARAM_ASSERT( LST_ORI_W==0 || LST_ORI_W>=4, "the last ECC word must be at least 4 bits" )
 `COM_PARAM_ASSERT( REQ_PIPE==0 || REQ_PIPE==1, "REQ_PIPE must be 0 or 1" )
 `COM_PARAM_ASSERT( RSP_PIPE==0 || RSP_PIPE==1, "RSP_PIPE must be 0 or 1" )
+`endif
 
 endmodule //end of com_ecc_tpram2ck_shell

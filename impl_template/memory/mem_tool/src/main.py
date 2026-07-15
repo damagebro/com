@@ -9,6 +9,7 @@ from excel_io import parse_memory_excel, write_memory_excel
 from model import MemToolError
 from report import parse_report_directory
 from rtl_gen import generate_initial_shells, generate_integrated_shells
+from sim_run import run_memory_sim
 
 
 def _load_shapes(config: ToolConfig):
@@ -36,16 +37,24 @@ def run(config: ToolConfig) -> list[Path]:
             default_rd_clk_mhz=config.default_rd_clk_mhz,
         )
         return [config.excel_path]
+    if config.mode == "sim":
+        assert config.top_module is not None
+        assert config.filelist is not None
+        return run_memory_sim(
+            config.work_path,
+            config.subsys_prefix,
+            config.top_module,
+            config.filelist,
+            sim_env=config.sim_env,
+            make_target=config.sim_target,
+            no_run=config.sim_no_run,
+        )
     if config.mode == "inst":
         shapes = _load_shapes(config)
         return generate_integrated_shells(
             config.work_path,
             config.subsys_prefix,
             shapes,
-        )
-    if config.mode == "rpt_by_run_sim":
-        raise MemToolError(
-            "rpt_by_run_sim is not implemented; provide existing *.lst files"
         )
     raise MemToolError(f"unsupported mode: {config.mode}")
 

@@ -141,6 +141,7 @@ end
 `endif
 // synopsys translate_on
 //assert---------------------------------------------------------------------
+`ifdef COM_ASSERT_ON
 `COM_PARAM_ASSERT( DEPTH>=1, "DEPTH must be larger than 0" )
 `COM_PARAM_ASSERT( STRB_W>=1 && DATA_W%STRB_W==0, "DATA_W must be divisible by STRB_W" )
 `endif

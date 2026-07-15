@@ -97,6 +97,7 @@ end
 `endif
 // synopsys translate_on
 //assert---------------------------------------------------------------------
+`ifdef COM_ASSERT_ON
 `COM_PARAM_ASSERT( DEPTH>=1, "DEPTH must be larger than 0" )
 `endif
 
