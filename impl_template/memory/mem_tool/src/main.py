@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 from typing import Sequence
 
-from config import ToolConfig, parse_config
+from config import (
+    JsonTemplateConfig,
+    ToolConfig,
+    build_config_template,
+    parse_config,
+)
 from excel_io import parse_memory_excel, write_memory_excel
 from model import MemToolError
 from report import parse_report_directory
@@ -46,7 +52,6 @@ def run(config: ToolConfig) -> list[Path]:
             config.top_module,
             config.filelist,
             sim_env=config.sim_env,
-            make_target=config.sim_target,
             no_run=config.sim_no_run,
         )
     if config.mode == "inst":
@@ -59,16 +64,39 @@ def run(config: ToolConfig) -> list[Path]:
     raise MemToolError(f"unsupported mode: {config.mode}")
 
 
+def write_config_template(config: JsonTemplateConfig) -> list[Path]:
+    content = json.dumps(
+        build_config_template(config.mode),
+        ensure_ascii=False,
+        indent=4,
+    )
+    if config.config_json is None:
+        print(content)
+        return []
+    config.config_json.parent.mkdir(parents=True, exist_ok=True)
+    config.config_json.write_text(content + "\n", encoding="utf-8")
+    return [config.config_json]
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     try:
         config = parse_config(argv)
-        outputs = run(config)
+        if isinstance(config, JsonTemplateConfig):
+            outputs = write_config_template(config)
+            if config.config_json is None:
+                return 0
+            mode = "gen_config_json"
+            work_path = config.config_json.parent if config.config_json else Path("./")
+        else:
+            outputs = run(config)
+            mode = config.mode
+            work_path = config.work_path
     except MemToolError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     print(
-        f"{config.mode} completed: {len(outputs)} output file(s) in "
-        f"{config.work_path}"
+        f"{mode} completed: {len(outputs)} output file(s) in "
+        f"{work_path}"
     )
     return 0
 

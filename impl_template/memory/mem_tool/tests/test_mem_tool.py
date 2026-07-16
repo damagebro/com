@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -11,7 +12,7 @@ MEMORY_ROOT = MEM_TOOL_ROOT.parent
 SRC_PATH = MEM_TOOL_ROOT / "src"
 sys.path.insert(0, str(SRC_PATH))
 
-from config import ToolConfig, parse_config
+from config import JsonTemplateConfig, ToolConfig, build_config_template, parse_config
 from excel_io import parse_memory_excel, write_memory_excel
 from get_rtl_template import OUTPUT_PATH, SHELL_PATH, render_rtl_template
 from main import run
@@ -270,6 +271,76 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.top_module, "cpu_top")
         self.assertEqual(config.filelist, str(filelist))
         self.assertTrue(config.sim_no_run)
+
+    def test_json_sim_config(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            work_path = Path(directory)
+            filelist = work_path / "rtl.f"
+            filelist.write_text("// project rtl\n", encoding="utf-8")
+            config_json = work_path / "sim_config.json"
+            config_json.write_text(
+                json.dumps(
+                    {
+                        "mode": "sim",
+                        "subsys_prefix": "cpu",
+                        "work_path": str(work_path),
+                        "top_module": "cpu_top",
+                        "filelist": "$PROJ_RTL/rtl.f",
+                        "sim_env": {
+                            "PROJ_RTL": str(work_path).replace("\\", "/"),
+                        },
+                        "sim_no_run": True,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            config = parse_config(["-c", str(config_json), "--sim_run"])
+        self.assertEqual(config.mode, "sim")
+        self.assertEqual(config.sim_env, (f"PROJ_RTL={work_path.as_posix()}",))
+        self.assertFalse(config.sim_no_run)
+
+    def test_gen_config_json_command(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            config = parse_config(
+                [
+                    "--gen_config_json",
+                    "-c",
+                    str(Path(directory) / "sim_config.json"),
+                ]
+            )
+        self.assertIsInstance(config, JsonTemplateConfig)
+        self.assertEqual(config.mode, "sim")
+
+    def test_minimal_json_templates(self) -> None:
+        self.assertEqual(
+            build_config_template("init"),
+            {
+                "mode": "init",
+                "subsys_prefix": "cpu",
+                "work_path": "./build",
+            },
+        )
+        self.assertEqual(
+            build_config_template("excel"),
+            {
+                "mode": "excel",
+                "subsys_prefix": "cpu",
+                "work_path": "./build",
+                "excel_name": "cpu_memory_require.xlsx",
+                "clk_a": 1500,
+                "clk_b": 1000,
+            },
+        )
+        self.assertEqual(
+            build_config_template("inst"),
+            {
+                "mode": "inst",
+                "subsys_prefix": "cpu",
+                "work_path": "./build",
+                "excel_name": "cpu_memory_require.xlsx",
+            },
+        )
+        self.assertIn("top_module", build_config_template("sim"))
 
     def test_explicit_missing_excel_does_not_fall_back(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

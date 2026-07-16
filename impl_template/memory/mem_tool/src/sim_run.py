@@ -178,24 +178,25 @@ def _normalize_filelist(
     return expanded_path.resolve().as_posix()
 
 
-def _run_make(sim_dir: Path, target: str, sim_env: dict[str, str]) -> None:
-    command = f"source ./ENV.sh && make {target}"
+def _run_make(sim_dir: Path, sim_env: dict[str, str]) -> None:
     env = os.environ.copy()
     env.update(sim_env)
-    try:
-        result = subprocess.run(
-            ["bash", "-lc", command],
-            cwd=sim_dir,
-            check=False,
-            env=env,
-        )
-    except FileNotFoundError as exc:
-        raise MemToolError(
-            "bash was not found; rerun with --sim_no_run to only generate "
-            "the sim sandbox"
-        ) from exc
-    if result.returncode != 0:
-        raise MemToolError(f"sim make target failed: {target}")
+    for target in ("com", "run"):
+        command = f"source ./ENV.sh && make {target}"
+        try:
+            result = subprocess.run(
+                ["bash", "-lc", command],
+                cwd=sim_dir,
+                check=False,
+                env=env,
+            )
+        except FileNotFoundError as exc:
+            raise MemToolError(
+                "bash was not found; rerun with --sim_no_run to only generate "
+                "the sim sandbox"
+            ) from exc
+        if result.returncode != 0:
+            raise MemToolError(f"sim make target failed: {target}")
 
 
 def run_memory_sim(
@@ -205,7 +206,6 @@ def run_memory_sim(
     filelist: str,
     *,
     sim_env: tuple[str, ...] = (),
-    make_target: str = "all",
     no_run: bool = False,
 ) -> list[Path]:
     env = _parse_env(sim_env)
@@ -226,5 +226,5 @@ def run_memory_sim(
     ]
     outputs.append(_patch_shell_filelist(sim_dir, shell_outputs))
     if not no_run:
-        _run_make(sim_dir, make_target, env)
+        _run_make(sim_dir, env)
     return sorted(set(outputs))

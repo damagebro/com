@@ -30,7 +30,9 @@
 
 `sim`模式会生成`build/sim` sandbox，并把memory shell、model、define复制到sandbox内部。`-f/--filelist`必须使用绝对路径，或使用环境变量加相对路径；后一种写法需用`-e/--sim_env NAME=VALUE`传入环境变量，例如`-f $PROJ_RTL/rtl.f -e PROJ_RTL=C:/proj`。
 
-只有增加`--sim_no_run`时，filelist格式不合法或文件不存在才会降级为warning并继续生成sandbox，便于检查输出目录；默认`sim`会严格检查filelist，检查通过后才继续编译和运行。
+`sim`模式CLI输入较多时，可先生成JSON模板再运行：`python3 ./src/main.py --gen_config_json -c ./build/sim_config.json`，之后执行`python3 ./src/main.py -c ./build/sim_config.json`。JSON中的`sim_env`使用对象形式，例如`"sim_env": {"PROJ_RTL": "C:/proj"}`；命令行显式传入的参数会覆盖JSON配置。若JSON中设置了`"sim_no_run": true`，可用`--sim_run`临时切回编译运行。
+
+只有增加`--sim_no_run`时，filelist格式不合法或文件不存在才会降级为warning并继续生成sandbox，便于检查输出目录；默认`sim`会严格检查filelist，检查通过后依次执行`make com`和`make run`。
 
 4. 生成提交给后端的SRAM需求：`python3 ./src/main.py -p cpu -m excel -w ./build -x cpu_memory_require.xlsx -xcka 1500 -xckb 1000`
 
@@ -297,7 +299,9 @@ python3 ./src/get_rtl_template.py --check
 | `inst`           | Excel或`*.lst`    | 已注入PHY instance的子系统shell |
 | `sim`            | top module和filelist | `build/sim`仿真sandbox及`*.lst` |
 
-所有配置均通过CLI指定。`-w/--work_path`指定输入和输出目录；`-x/--excel_name`只接受文件名，文件位于work path下。`sim`模式使用`-t/--top_module`指定顶层模块，使用`-f/--filelist`指定项目filelist，使用`-e/--sim_env`补充filelist中引用的环境变量。
+配置可通过CLI指定，也可通过`-c/--config_json`读取JSON。`-w/--work_path`指定输入和输出目录；`-x/--excel_name`只接受文件名，文件位于work path下。`sim`模式使用`-t/--top_module`指定顶层模块，使用`-f/--filelist`指定项目filelist，使用`-e/--sim_env`补充filelist中引用的环境变量。
+
+生成JSON模板时，`--gen_config_json`默认生成`sim`配置；也可指定`init/excel/inst/sim`，例如：`python3 ./src/main.py --gen_config_json excel -c ./build/excel_config.json`。
 
 ### MemoryShape
 
