@@ -85,3 +85,18 @@
 - 新增代码规则：端口未使用的派生 `localparam`放到 signal declare 之前；参数参与运行时信号比较时先转换为 `tie_*`线网，便于 lint/覆盖率统一 waive；`STRB_DW`统一命名为 `SUB_DW`。
 - AFIFO 增加 Gray 指针断言：仅在上一拍握手且已退出复位时，用 `$onehot(cur_gray^$past(cur_gray))`检查源时钟域指针恰好变化 1 bit；不对目标域同步后指针做该检查。
 - 根据 `com_define.sv`宏展开，清理 `common/`全部 RTL 断言宏调用末尾的多余分号；property label 的冒号只由宏内部生成。`com_common.f`暂不增量修改，待 common_ip 模块全部整理后统一更新。
+
+### 2026-07-01 至 2026-07-17: memory template 与 mem_tool 开发
+
+- 整理 `impl_template/memory` 结构：`rtl/shell` 保存可人工维护的 shell RTL，`mem_tool/src` 保存生成脚本，`templates/rtl` 保存独立 sim 所需的最小 RTL 副本，`templates/sim` 保存可手工运行的独立仿真模板，`templates/py_sim/gen_tb.py` 用于脚本化生成同结构 sandbox。
+- 新增/调整 `com_ecc_secded`，默认走 Synopsys `DW_ecc`，定义自研宏时使用项目内 SECDED 实现；控制信号改为 `i_correct_n`，低有效关闭纠错。`COM_MEM_CTRL_W/COM_ECC_CTRL_W/COM_SRAM_W` 等项目实现相关宏移到 `impl_define`，不再放入 `com_define.sv`。
+- 按当前 RTL 风格重构 memory shell：`com_spram_shell`、`com_tpram1ck_shell`、`com_tpram2ck_shell`、`com_sprom_shell` 及 ECC 版本统一端口、例化对齐和 report 逻辑；`COM_REPORT_OFF` 控制 report 关闭，report 区域用 `synopsys translate_off/on` 隔离。
+- ECC shell 保持 `{lst_ecc_data,nrm_ecc_data*n,ori_ram_data}` 存储顺序；每个 row 额外记录 partial-write flag，partial write 后不做 ECC decode，避免旧 ECC 与部分写数据不一致导致误报。
+- `COM_RAM_NFOUND_CHK` 语义改为严格检查：未定义时未命中 PHY 默认回退 RTL model；定义后若存在未被 SRAM PHY 实现的 shape，故意例化 `*_not_found` 触发编译失败。
+- Python 脚本重构为 CLI 驱动：`main.py` 统一 `init/sim/excel/inst/all` 模式；配置可来自 CLI 或 JSON，CLI 显式参数覆盖 JSON。`--gen_config_json` 默认生成 `all` 配置，也可指定 `init/excel/inst/sim/all`。
+- JSON 最小配置已定义：`excel/all` 模板包含 `clk_a/clk_b`，对应 CLI 短参数 `-cka/-ckb`；旧 `-xcka/-xckb` 已移除。`all` 模式按 `init -> sim -> excel -> inst` 顺序执行，不包含后端生成 SRAM PHY 和最终 PHY 覆盖检查。
+- `sim` 模式基于 `templates/py_sim + templates/rtl` 生成 `build/sim`，每次安全重建目录，`rtl.f` 分为 `define / implement(stdcell/sram) / project` 三段；生成目录不依赖 `COM_ROOT`、不包含 `com_define.sv`，也不拷贝 `check_sync.py`。
+- `sim_no_run=true` 时只生成 sandbox，filelist 缺失或格式问题降级为 warning；默认运行时严格检查 filelist，随后固定执行 `make com` 和 `make run`，不再支持 `sim_target`。
+- `templates/rtl/check_sync.py` 仅在存在 `COM_ROOT` 时检查内置 RTL 副本是否与源文件同步；没有 `COM_ROOT` 时跳过，保证 mem_tool 独立目录也可运行。
+- README 已按“简介 / 用户指南 / RTL集成说明 / 脚本开发者”重写，补充前后端交互流程、`subsys_prefix/MEM_USER` 隔离规则、cfg_mem/ecc_ctrl 来源、ECC shell 集成、JSON 配置和 sim sandbox 用法。
+- 验证方式以 `python .\src\main.py --gen_config_json ...`、`python .\src\main.py -c ...`、`python .\src\main.py -m sim --sim_no_run` 等命令为主；部分 `unittest` 在 Windows sandbox 下因 `tempfile.TemporaryDirectory()` 清理权限失败，属于当前环境限制，失败后需清理残留 `build/tmp*`。

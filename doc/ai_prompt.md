@@ -77,7 +77,17 @@
    - com_cdc_rstn, com_cdc_rstn_pair;
 3. com_arbiter_wrr, com_ram_arbiter/com_ram_adp_sp/com_ram_adp_rmw,  com_ram_twosp_as_tp
 
-2026/? mem_tool开发:
+2026/7 mem_tool开发:
+1. com_ecc_spram_shell等模块， (1)r_ram_ce_n等信号只在REQ_PIPE generate有效, 挪到generate中去声明。 (2) i_cfg_mem_ctrl和clk信号类似, 直接端口连线透传, 不用u_ram_i_cfg_mem_ctrl额外声明一次。
+2. com_ecc_spram_shell等模块, u_nrm_enc_i_ecc_dec_data按代码风格，应该放到instance例化地方去赋值。
+3. sim环境要求
+- 尽量独立运行， 只依赖mem_tool目录下；
+  - 类似COM_XX_ASSERT, 可以被COM_ASSERT_ON隔离开;
+  - ENV.sh只有SIM_DIR环境变量;
+  - rtl.f的com_sram_shell不是天然就存在， 通过gen_rtl.py生成;
+  - 用户要输入top_module + filelist,  filelist应该是绝对路径，或者环境变量+相对路径，环境变量也作为传参;
+- 探讨是否一定要make com/run才能拿到sram.lst,  不经过com/run, 只用verdi -f filelist.f -top top_module是否能抓取？
+- templates\sim做成完全独立的环境, rtl.f不引用任何内容;  新建一个templates/py_sim/目录, 只有1个gen_tb.py脚本，生成可以和templates\sim一样, gen一个仿真环境;
 
 2026/? 修改axi/dma模块:
 
@@ -85,4 +95,11 @@
 
 2026/? csr_tool开发:
 
-2026/? rtl集成脚本开发 + module_load/vscode_plugin发布方式:
+2026/7/17 rtl集成脚本开发 + module_load/vscode_plugin发布方式:
+* rtl集成脚本开发
+1. 以C:\personal\proj\ai_proj\dmg\com\doc\coding_style.md的集成代码片段为模板, 开始开发rtl集成脚本;
+2. 直接在C:\personal\proj\ai_proj\dmg\py_tools_for_hw\gen_rtl_inst目录下开发， 完全覆盖已有内容;
+3. 脚本输入`rtl abs_path`,  输出`inst.sv`,  inst.sv是集成的代码片段;
+4. 脚本提取rtl文件， module/port/parameter,  parameter包括端口参数列表中的， 也包括module内部用parameter声明的， 不提取locaparam声明;
+5. 脚本支持 verilog95/2001/systemverilog等各种格式， sv支持端口信号是`pack_array, struct/union, package, interface`等;
+
