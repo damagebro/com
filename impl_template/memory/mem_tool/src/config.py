@@ -9,7 +9,7 @@ from typing import Any, Mapping, Sequence
 from model import InputFormatError, parse_int, validate_identifier
 
 
-MODES = ("init", "sim", "inst", "excel")
+MODES = ("init", "sim", "excel", "inst", "all")
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +58,19 @@ def build_config_template(mode: str) -> dict[str, Any]:
                 "excel_name": "cpu_memory_require.xlsx",
             }
         )
+    elif mode == "all":
+        template.update(
+            {
+                "excel_name": "cpu_memory_require.xlsx",
+                "clk_a": 1500,
+                "clk_b": 1000,
+                "top_module": "top_module",
+                "filelist": "$PROJ_RTL/rtl.f",
+                "sim_env": {
+                    "PROJ_RTL": "C:/proj",
+                },
+            }
+        )
     elif mode == "sim":
         template.update(
             {
@@ -66,7 +79,6 @@ def build_config_template(mode: str) -> dict[str, Any]:
                 "sim_env": {
                     "PROJ_RTL": "C:/proj",
                 },
-                "sim_no_run": True,
             }
         )
     return template
@@ -93,11 +105,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--gen_config_json",
         nargs="?",
-        const="sim",
+        const="all",
         default=None,
         choices=MODES,
         metavar="MODE",
-        help="generate a JSON config template; default mode is sim",
+        help="generate a JSON config template; default mode is all",
     )
     parser.add_argument(
         "-x",
@@ -105,7 +117,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
         help="memory requirement workbook filename",
     )
     parser.add_argument(
-        "-xcka",
+        "-cka",
         "--clk_a",
         type=int,
         help=(
@@ -114,7 +126,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "-xckb",
+        "-ckb",
         "--clk_b",
         type=int,
         help="clock B in MHz: tpram2ck reads only",
@@ -229,8 +241,8 @@ def parse_config(argv: Sequence[str] | None = None) -> ToolConfig | JsonTemplate
     if excel_filename:
         if Path(excel_filename).name != excel_filename:
             parser.error("excel_name must be a filename, not a directory path")
-    if mode == "excel" and not excel_filename:
-        parser.error("excel mode requires --excel_name")
+    if mode in ("excel", "all") and not excel_filename:
+        parser.error(f"{mode} mode requires --excel_name")
     top_module = str(data.get("top_module")).strip() if data.get("top_module") else None
     if top_module:
         try:
@@ -250,11 +262,11 @@ def parse_config(argv: Sequence[str] | None = None) -> ToolConfig | JsonTemplate
         except InputFormatError as exc:
             parser.error(str(exc))
     filelist = str(data.get("filelist")).strip() if data.get("filelist") else None
-    if mode == "sim":
+    if mode in ("sim", "all"):
         if top_module is None:
-            parser.error("sim mode requires --top_module")
+            parser.error(f"{mode} mode requires --top_module")
         if filelist is None:
-            parser.error("sim mode requires --filelist")
+            parser.error(f"{mode} mode requires --filelist")
     sim_no_run = data.get("sim_no_run", False)
     if not isinstance(sim_no_run, bool):
         parser.error("sim_no_run must be a boolean")

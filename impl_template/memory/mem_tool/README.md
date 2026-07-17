@@ -10,7 +10,7 @@
 [1] 前端：生成subsystem专属memory shell；cmd: `python3 ./src/main.py -p cpu -m init -w ./build`
 [2] 前端：在RTL中例化memory shell
 [3] 前端：跑仿真生成*.lst；cmd: `python3 ./src/main.py -p cpu -m sim -w ./build -t top_module -f filelist.f`
-[4] 前端：根据*.lst生成memory requirement Excel；cmd: `python3 ./src/main.py -p cpu -m excel -w ./build -x cpu_memory_require.xlsx -xcka 1500 -xckb 1000`
+[4] 前端：根据*.lst生成memory requirement Excel；cmd: `python3 ./src/main.py -p cpu -m excel -w ./build -x cpu_memory_require.xlsx -cka 1500 -ckb 1000`
 [5] 后端：根据Excel生成SRAM PHY及wrapper
 [6] 前端：基于PHY wrapper生成集成PHY的shell；cmd: `python3 ./src/main.py -p cpu -m inst -w ./build -x cpu_memory_require.xlsx`
 [7] 前端：检查所有memory shape是否已被PHY覆盖，以下方式任选其一
@@ -30,22 +30,22 @@
 
 `sim`模式会生成`build/sim` sandbox，并把memory shell、model、define复制到sandbox内部。`-f/--filelist`必须使用绝对路径，或使用环境变量加相对路径；后一种写法需用`-e/--sim_env NAME=VALUE`传入环境变量，例如`-f $PROJ_RTL/rtl.f -e PROJ_RTL=C:/proj`。
 
-`sim`模式CLI输入较多时，可先生成JSON模板再运行：`python3 ./src/main.py --gen_config_json -c ./build/sim_config.json`，之后执行`python3 ./src/main.py -c ./build/sim_config.json`。JSON中的`sim_env`使用对象形式，例如`"sim_env": {"PROJ_RTL": "C:/proj"}`；命令行显式传入的参数会覆盖JSON配置。若JSON中设置了`"sim_no_run": true`，可用`--sim_run`临时切回编译运行。
+需要一步式前端流程时，可先生成`all`模式JSON模板再运行：`python3 ./src/main.py --gen_config_json -c ./build/all_config.json`，之后执行`python3 ./src/main.py -c ./build/all_config.json`。`all`模式会依次运行`init/sim/excel/inst`，不包含后端生成SRAM PHY和检查PHY是否齐备这两步。JSON中的`sim_env`使用对象形式，例如`"sim_env": {"PROJ_RTL": "C:/proj"}`；命令行显式传入的参数会覆盖JSON配置。若只想生成sim sandbox，可增加`--sim_no_run`。
 
 只有增加`--sim_no_run`时，filelist格式不合法或文件不存在才会降级为warning并继续生成sandbox，便于检查输出目录；默认`sim`会严格检查filelist，检查通过后依次执行`make com`和`make run`。
 
-4. 生成提交给后端的SRAM需求：`python3 ./src/main.py -p cpu -m excel -w ./build -x cpu_memory_require.xlsx -xcka 1500 -xckb 1000`
+4. 生成提交给后端的SRAM需求：`python3 ./src/main.py -p cpu -m excel -w ./build -x cpu_memory_require.xlsx -cka 1500 -ckb 1000`
 
 时钟参数映射：
 
 | Memory类型 | 写时钟        | 读时钟        |
 | ---------- | ------------- | ------------- |
-| `spram`    | A时钟：`xcka` | A时钟：`xcka` |
-| `tpram1ck` | A时钟：`xcka` | A时钟：`xcka` |
-| `sprom`    | -             | A时钟：`xcka` |
-| `tpram2ck` | A时钟：`xcka` | B时钟：`xckb` |
+| `spram`    | A时钟：`cka` | A时钟：`cka` |
+| `tpram1ck` | A时钟：`cka` | A时钟：`cka` |
+| `sprom`    | -           | A时钟：`cka` |
+| `tpram2ck` | A时钟：`cka` | B时钟：`ckb` |
 
-只有`tpram2ck`需要A/B两个时钟，其余memory的全部访问都使用A时钟。未指定`xckb`时，B时钟频率默认等于`xcka`。
+只有`tpram2ck`需要A/B两个时钟，其余memory的全部访问都使用A时钟。未指定`ckb`时，B时钟频率默认等于`cka`。
 
 5. 后端返回更新后的Excel和PHY wrapper后，生成集成RTL：`python3 ./src/main.py -p cpu -m inst -w ./build -x cpu_memory_require.xlsx`
 6. 集成后定义`COM_RAM_NFOUND_CHK`重新编译，确认所有应使用SRAM PHY的memory shape均已匹配。
@@ -298,10 +298,62 @@ python3 ./src/get_rtl_template.py --check
 | `excel`          | `build/*.lst`     | memory requirement Excel        |
 | `inst`           | Excel或`*.lst`    | 已注入PHY instance的子系统shell |
 | `sim`            | top module和filelist | `build/sim`仿真sandbox及`*.lst` |
+| `all`            | top module和filelist | 依次执行`init/sim/excel/inst` |
 
 配置可通过CLI指定，也可通过`-c/--config_json`读取JSON。`-w/--work_path`指定输入和输出目录；`-x/--excel_name`只接受文件名，文件位于work path下。`sim`模式使用`-t/--top_module`指定顶层模块，使用`-f/--filelist`指定项目filelist，使用`-e/--sim_env`补充filelist中引用的环境变量。
 
-生成JSON模板时，`--gen_config_json`默认生成`sim`配置；也可指定`init/excel/inst/sim`，例如：`python3 ./src/main.py --gen_config_json excel -c ./build/excel_config.json`。
+生成JSON模板时，`--gen_config_json`默认生成`all`配置；也可指定`init/excel/inst/sim/all`，例如：`python3 ./src/main.py --gen_config_json excel -c ./build/excel_config.json`。
+
+各模式最少配置项：
+
+```json
+{"mode": "init", "subsys_prefix": "cpu", "work_path": "./build"}
+```
+
+```json
+{
+    "mode": "excel",
+    "subsys_prefix": "cpu",
+    "work_path": "./build",
+    "excel_name": "cpu_memory_require.xlsx",
+    "clk_a": 1500,
+    "clk_b": 1000
+}
+```
+
+```json
+{
+    "mode": "inst",
+    "subsys_prefix": "cpu",
+    "work_path": "./build",
+    "excel_name": "cpu_memory_require.xlsx"
+}
+```
+
+```json
+{
+    "mode": "sim",
+    "subsys_prefix": "cpu",
+    "work_path": "./build",
+    "top_module": "top_module",
+    "filelist": "$PROJ_RTL/rtl.f",
+    "sim_env": {"PROJ_RTL": "C:/proj"}
+}
+```
+
+```json
+{
+    "mode": "all",
+    "subsys_prefix": "cpu",
+    "work_path": "./build",
+    "excel_name": "cpu_memory_require.xlsx",
+    "clk_a": 1500,
+    "clk_b": 1000,
+    "top_module": "top_module",
+    "filelist": "$PROJ_RTL/rtl.f",
+    "sim_env": {"PROJ_RTL": "C:/proj"}
+}
+```
 
 ### MemoryShape
 

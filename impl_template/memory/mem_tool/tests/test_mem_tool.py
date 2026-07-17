@@ -237,9 +237,9 @@ class ConfigTests(unittest.TestCase):
                     directory,
                     "-x",
                     "memory.xlsx",
-                    "-xcka",
+                    "-cka",
                     "1400",
-                    "-xckb",
+                    "-ckb",
                     "900",
                 ]
             )
@@ -309,7 +309,7 @@ class ConfigTests(unittest.TestCase):
                 ]
             )
         self.assertIsInstance(config, JsonTemplateConfig)
-        self.assertEqual(config.mode, "sim")
+        self.assertEqual(config.mode, "all")
 
     def test_minimal_json_templates(self) -> None:
         self.assertEqual(
@@ -341,6 +341,22 @@ class ConfigTests(unittest.TestCase):
             },
         )
         self.assertIn("top_module", build_config_template("sim"))
+        self.assertEqual(
+            build_config_template("all"),
+            {
+                "mode": "all",
+                "subsys_prefix": "cpu",
+                "work_path": "./build",
+                "excel_name": "cpu_memory_require.xlsx",
+                "clk_a": 1500,
+                "clk_b": 1000,
+                "top_module": "top_module",
+                "filelist": "$PROJ_RTL/rtl.f",
+                "sim_env": {
+                    "PROJ_RTL": "C:/proj",
+                },
+            },
+        )
 
     def test_explicit_missing_excel_does_not_fall_back(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
