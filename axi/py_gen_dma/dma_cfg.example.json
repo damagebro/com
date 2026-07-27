@@ -1,0 +1,11 @@
+{
+    "prefix": "cpu",
+    "out_dir": "build",
+    "rch_buf_depth": [
+        0,
+        32,
+        0,
+        64,
+        128
+    ]
+}

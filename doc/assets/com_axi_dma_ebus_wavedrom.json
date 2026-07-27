@@ -1,0 +1,86 @@
+{
+  "head": {
+    "text": "com_axi_dma ebus interface",
+    "tick": 0
+  },
+  "signal": [
+    {
+      "name": "clk",
+      "wave": "p........."
+    },
+    [
+      "EBUS write",
+      {
+        "name": "i_rx_ebus_wd_valid",
+        "wave": "11110....."
+      },
+      {
+        "name": "o_rx_ebus_wd_ready",
+        "wave": "11110....."
+      },
+      {
+        "name": "i_rx_ebus_wd_data",
+        "wave": "====x.....",
+        "data": ["WD0", "WD1", "WD2", "WD3"]
+      },
+      {
+        "name": "i_rx_ebus_wa_valid",
+        "wave": "0010......"
+      },
+      {
+        "name": "o_rx_ebus_wa_ready",
+        "wave": "0010......"
+      },
+      {
+        "name": "i_rx_ebus_wa_*",
+        "wave": "x.=x......",
+        "data": ["WA"]
+      },
+      {
+        "name": "o_rx_ebus_wb_valid",
+        "wave": "0.......10",
+        "node": "........b."
+      }
+    ],
+    {},
+    [
+      "EBUS read",
+      {
+        "name": "i_rx_ebus_ra_valid",
+        "wave": "00010....."
+      },
+      {
+        "name": "o_rx_ebus_ra_ready",
+        "wave": "00010....."
+      },
+      {
+        "name": "i_rx_ebus_ra_*",
+        "wave": "x..=x.....",
+        "data": ["RA"]
+      },
+      {
+        "name": "o_rx_ebus_rd_valid",
+        "wave": "0.....1110"
+      },
+      {
+        "name": "i_rx_ebus_rd_ready",
+        "wave": "1........."
+      },
+      {
+        "name": "o_rx_ebus_rd_data",
+        "wave": "x.....===x",
+        "data": ["RD0", "RD1", "RD2"]
+      },
+      {
+        "name": "o_rx_ebus_rd_last",
+        "wave": "0.......10"
+      }
+    ]
+  ],
+  "foot": {
+    "text": "Write data may arrive before, with, or after write address; byte length decides write/read beat count."
+  },
+  "config": {
+    "hscale": 2
+  }
+}

@@ -90,10 +90,24 @@
 - templates\sim做成完全独立的环境, rtl.f不引用任何内容;  新建一个templates/py_sim/目录, 只有1个gen_tb.py脚本，生成可以和templates\sim一样, gen一个仿真环境;
 
 2026/? 修改axi/dma模块:
+1. 配套脚本, 替换sram_shell,  替换com_dma -> <prefix>_dma;
+2. 阅读`C:\personal\proj\ai_proj\dmg\com\axi\`目录下的模块, 先回答模块内容
+- 先更换代码风格, 按照`C:\personal\proj\ai_proj\dmg\com\doc\coding_style.md`;   除了`com_axi_extd_wr/com_axi_extd_rd`的代码尽量不动, 只修改必要的端口信号名;
+- com_dma中的sram, 用新的impl_template重新例化, 和修改相关模块的端口信号名;
+- 在`com/axi/py_gen_dma/目录下`生成脚本, 把`com_dma->${prefix}_dma`, 并把里面的`com_sram_shell->${prefix}_sram_shell`， 替换相关新的prefix, 说明和sram_shell有相关性
+- 在`com/doc/common_rtl_dma_manual.md`, 生成com_dma的微架构框图, 生成文档;
 
-2026/? 配套testbench:
 
-2026/? csr_tool开发:
+2026/7/18 配套testbench:  y
+* gen_tb_xx
+1. axi_vip,  连续/间断发valid,  连续/间断给ready,  同id保序/不同id乱序/乱序深度;
+2. apb_vip,
+3. 简单ahb_vip;
+4. csr_vip;
+5. tb_template;
+
+2026/7 csr_tool开发:
+- 已完成
 
 2026/7/17 rtl集成脚本开发 + module_load/vscode_plugin发布方式:
 * rtl集成脚本开发
@@ -102,4 +116,30 @@
 3. 脚本输入`rtl abs_path`,  输出`inst.sv`,  inst.sv是集成的代码片段;
 4. 脚本提取rtl文件， module/port/parameter,  parameter包括端口参数列表中的， 也包括module内部用parameter声明的， 不提取locaparam声明;
 5. 脚本支持 verilog95/2001/systemverilog等各种格式， sv支持端口信号是`pack_array, struct/union, package, interface`等;
+
+
+2026/? py_tools_for_hw
+1. 抽取dummy_module,  y
+- 把模块挖空; (bbox=input悬空, output tie0;  stub=input/output都悬空);
+- 支持输入top_module, 可选输入filelist, 如果有filelist, 抽取package参数/define 转换为 数值；
+- 反向
+2. gen_tb;  y
+- axi_master/axi_slave
+- apb_master
+- ahb_master
+3. flist展平
+4. git仓库管理
+
+2026/？
+1. amba,
+- axi2apb,
+- axi2ahb
+- axi_monitor
+2. axi_rob
+3. img,  //img_lb, img_gen_win, img_cache;
+4. sram_controller
+5. noc:
+- vldrdy_vldcrdt_1ch
+- vldrdy_vldcrdt_vc
+- switch/router/xbar
 

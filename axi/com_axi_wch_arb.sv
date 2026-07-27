@@ -23,55 +23,55 @@ module com_axi_wch_arb #( parameter
     localparam SW = DW/8           //,
 )
 (
-input  wire                     clk                 ,
-input  wire                     rst_n               ,
-input  wire                     clear               ,
+input  wire clk   ,
+input  wire rst_n ,
+input  wire clear ,
 
-input  wire [WCH-1:0][AW-1:0]   i_rx_axi_awaddr     ,
-input  wire [WCH-1:0][LW-1:0]   i_rx_axi_awlen      ,
-input  wire [WCH-1:0][UW-1:0]   i_rx_axi_awuser     ,
-input  wire [WCH-1:0]           i_rx_axi_awvalid    ,
-output wire [WCH-1:0]           o_rx_axi_awready    ,
-input  wire [WCH-1:0][DW-1:0]   i_rx_axi_wdata      ,
-input  wire [WCH-1:0][DW/8-1:0] i_rx_axi_wstrb      ,
-input  wire [WCH-1:0]           i_rx_axi_wlast      ,
-input  wire [WCH-1:0]           i_rx_axi_wvalid     ,
-output wire [WCH-1:0]           o_rx_axi_wready     ,
-output wire [WCH-1:0][1:0]      o_rx_axi_bresp      ,
-output wire [WCH-1:0]           o_rx_axi_bvalid     , //pure comb_logic, together with i_tx_axi_bvalid
-input  wire [WCH-1:0]           i_rx_axi_bready     ,
+input  wire [WCH-1:0][AW-1:0]   i_rx_axi_awaddr  ,
+input  wire [WCH-1:0][LW-1:0]   i_rx_axi_awlen   ,
+input  wire [WCH-1:0][UW-1:0]   i_rx_axi_awuser  ,
+input  wire [WCH-1:0]           i_rx_axi_awvalid ,
+output wire [WCH-1:0]           o_rx_axi_awready ,
+input  wire [WCH-1:0][DW-1:0]   i_rx_axi_wdata   ,
+input  wire [WCH-1:0][DW/8-1:0] i_rx_axi_wstrb   ,
+input  wire [WCH-1:0]           i_rx_axi_wlast   ,
+input  wire [WCH-1:0]           i_rx_axi_wvalid  ,
+output wire [WCH-1:0]           o_rx_axi_wready  ,
+output wire [WCH-1:0][1:0]      o_rx_axi_bresp   ,
+output wire [WCH-1:0]           o_rx_axi_bvalid  , //pure comb_logic, together with i_tx_axi_bvalid
+input  wire [WCH-1:0]           i_rx_axi_bready  ,
 
-output wire [IW-1:0]            o_tx_axi_awid       ,
-output wire [AW-1:0]            o_tx_axi_awaddr     ,
-output wire [LW-1:0]            o_tx_axi_awlen      ,
-output wire [UW-1:0]            o_tx_axi_awuser     ,
-output wire                     o_tx_axi_awvalid    , //pure comb_logic, together with i_rx_axi_awvalid
-input  wire                     i_tx_axi_awready    ,
-output wire [DW-1:0]            o_tx_axi_wdata      ,
-output wire [DW/8-1:0]          o_tx_axi_wstrb      ,
-output wire                     o_tx_axi_wlast      , //pure comb_logic, together with i_rx_axi_wvalid
-output wire                     o_tx_axi_wvalid     , //allow "wa_before_wd"; not allow "wa_with_wd+wa_after_wd";
-input  wire                     i_tx_axi_wready     ,
-input  wire [1:0]               i_tx_axi_bresp      ,
-input  wire [IW-1:0]            i_tx_axi_bid        ,
-input  wire                     i_tx_axi_bvalid     ,
-output wire                     o_tx_axi_bready     //,
+output wire [IW-1:0]   o_tx_axi_awid    ,
+output wire [AW-1:0]   o_tx_axi_awaddr  ,
+output wire [LW-1:0]   o_tx_axi_awlen   ,
+output wire [UW-1:0]   o_tx_axi_awuser  ,
+output wire            o_tx_axi_awvalid , //pure comb_logic, together with i_rx_axi_awvalid
+input  wire            i_tx_axi_awready ,
+output wire [DW-1:0]   o_tx_axi_wdata   ,
+output wire [DW/8-1:0] o_tx_axi_wstrb   ,
+output wire            o_tx_axi_wlast   , //pure comb_logic, together with i_rx_axi_wvalid
+output wire            o_tx_axi_wvalid  , //allow "wa_before_wd"; not allow "wa_with_wd+wa_after_wd";
+input  wire            i_tx_axi_wready  ,
+input  wire [1:0]      i_tx_axi_bresp   ,
+input  wire [IW-1:0]   i_tx_axi_bid     ,
+input  wire            i_tx_axi_bvalid  ,
+output wire            o_tx_axi_bready   //,
 );
 //localparam-----------------------------------------------------------------
 localparam WCH_L2 = $clog2(WCH>2?WCH:2);
 localparam WA2WD_DEPTH = 4;
 //signal declare-------------------------------------------------------------
-wire [WCH-1:0]       u_arb_i_req_vld  ;
-wire [WCH-1:0]       u_arb_o_req_rdy  ;
-wire [WCH_L2-1:0]    u_arb_o_gnt_idx  ;
-wire                 u_arb_o_gnt_vld  ;
-wire                 u_arb_i_gnt_rdy  ;
-wire                 u_wa2wd_i_wr_en    ;
-wire [WCH_L2-1:0]    u_wa2wd_i_wr_data  ;
-wire                 u_wa2wd_o_wr_full  ;
-wire                 u_wa2wd_i_rd_en    ;
-wire [WCH_L2-1:0]    u_wa2wd_o_rd_data  ;
-wire                 u_wa2wd_o_rd_empty ;
+wire  [WCH-1:0]    u_arb_i_req_vld    ;
+wire  [WCH-1:0]    u_arb_o_req_rdy    ;
+wire  [WCH_L2-1:0] u_arb_o_gnt_idx    ;
+wire               u_arb_o_gnt_vld    ;
+wire               u_arb_i_gnt_rdy    ;
+wire               u_wa2wd_i_wr_en    ;
+wire  [WCH_L2-1:0] u_wa2wd_i_wr_data  ;
+wire               u_wa2wd_o_wr_full  ;
+wire               u_wa2wd_i_rd_en    ;
+wire  [WCH_L2-1:0] u_wa2wd_o_rd_data  ;
+wire               u_wa2wd_o_rd_empty ;
 //statement------------------------------------------------------------------
 
 //output---
@@ -99,17 +99,17 @@ assign o_tx_axi_bready = i_rx_axi_bready[tmp_bid];
 assign u_arb_i_req_vld = i_rx_axi_awvalid;
 assign u_arb_i_gnt_rdy = i_tx_axi_awready;
 com_arbiter_rr #(
-    .REQ_N    ( WCH )  //2
+    .REQ_N ( WCH )  //2
 )zr_com_arbiter_rr(
-    .clk                 ( clk                  ), //i
-    .rst_n               ( rst_n                ), //i
-    .clear               ( clear                ), //i
-    .i_req_vld           ( u_arb_i_req_vld      ), //i
-    .o_req_rdy           ( u_arb_o_req_rdy      ), //o
-    .o_gnt_onehot        (                      ), //o
-    .o_gnt_idx           ( u_arb_o_gnt_idx      ), //o
-    .o_gnt_vld           ( u_arb_o_gnt_vld      ), //o
-    .i_gnt_rdy           ( u_arb_i_gnt_rdy      )  //i
+    .clk          ( clk             ),   //i
+    .rst_n        ( rst_n           ),   //i
+    .clear        ( clear           ),   //i
+    .i_req_vld    ( u_arb_i_req_vld ),   //i
+    .o_req_rdy    ( u_arb_o_req_rdy ),   //o
+    .o_gnt_onehot (                 ),   //o
+    .o_gnt_idx    ( u_arb_o_gnt_idx ),   //o
+    .o_gnt_vld    ( u_arb_o_gnt_vld ),   //o
+    .i_gnt_rdy    ( u_arb_i_gnt_rdy )  //i
 );
 
 //wd channel----
@@ -117,21 +117,21 @@ assign u_wa2wd_i_wr_en   = o_tx_axi_awvalid && i_tx_axi_awready;
 assign u_wa2wd_i_wr_data = u_arb_o_gnt_idx;
 assign u_wa2wd_i_rd_en   = o_tx_axi_wvalid && i_tx_axi_wready && o_tx_axi_wlast;
 com_sync_fifo_reg #(
-    .DW         ( WCH_L2         ), //8
-    .DEPTH      ( WA2WD_DEPTH    )  //4
+    .DW    ( WCH_L2      ),   //8
+    .DEPTH ( WA2WD_DEPTH )  //4
 )r_com_sync_fifo_reg_wa2wd
 (
-    .clk                  ( clk                  ), //i
-    .rst_n                ( rst_n                ), //i
-    .clear                ( clear                ), //i
+    .clk   ( clk   ),   //i
+    .rst_n ( rst_n ),   //i
+    .clear ( clear ),   //i
 
-    .wr_en                ( u_wa2wd_i_wr_en      ), //i
-    .wr_data              ( u_wa2wd_i_wr_data    ), //i
-    .wr_full              ( u_wa2wd_o_wr_full    ), //o
-    .rd_en                ( u_wa2wd_i_rd_en      ), //i
-    .rd_data              ( u_wa2wd_o_rd_data    ), //o
-    .rd_empty             ( u_wa2wd_o_rd_empty   ), //o
-    .water_level          (                      )  //o
+    .i_wr_en       ( u_wa2wd_i_wr_en    ),   //i
+    .i_wr_data     ( u_wa2wd_i_wr_data  ),   //i
+    .o_wr_full     ( u_wa2wd_o_wr_full  ),   //o
+    .i_rd_en       ( u_wa2wd_i_rd_en    ),   //i
+    .o_rd_data     ( u_wa2wd_o_rd_data  ),   //o
+    .o_rd_empty    ( u_wa2wd_o_rd_empty ),   //o
+    .o_water_level (                    )  //o
 );
 
 endmodule //end of com_axi_wch_arb
