@@ -1,0 +1,102 @@
+{
+  "head": {
+    "text": "com_axi_dma ebus write split example (DW=256bit)",
+    "tick": 0
+  },
+  "signal": [
+    {
+      "name": "clk",
+      "wave": "p..........."
+    },
+    [
+      "EBUS write request",
+      {
+        "name": "ebus_wa_hs",
+        "wave": "010........."
+      },
+      {
+        "name": "ebus_addr",
+        "wave": "x=x.........",
+        "data": ["1B"]
+      },
+      {
+        "name": "ebus_bytelen",
+        "wave": "x=x.........",
+        "data": ["1025B"]
+      },
+      {
+        "name": "cfg_max_blen_m1",
+        "wave": "=...........",
+        "data": ["15"]
+      }
+    ],
+    {},
+    [
+      "AXI AW split",
+      {
+        "name": "axi_aw_hs",
+        "wave": "0.1110......"
+      },
+      {
+        "name": "axi_awaddr",
+        "wave": "x.===x......",
+        "data": ["1B", "512B", "1024B"]
+      },
+      {
+        "name": "axi_awlen",
+        "wave": "x.===x......",
+        "data": ["15", "15", "0"]
+      },
+      {
+        "name": "split_last_flag",
+        "wave": "x.===x......",
+        "data": ["0", "0", "1"]
+      }
+    ],
+    {},
+    [
+      "AXI W compressed",
+      {
+        "name": "axi_w_hs",
+        "wave": "0..1.1.1.10."
+      },
+      {
+        "name": "axi_wdata",
+        "wave": "x..=.=.=.=x.",
+        "data": ["B0 first", "B1..B15", "B16..B31", "B32 last"]
+      },
+      {
+        "name": "axi_wstrb",
+        "wave": "x..=.=.=.=x.",
+        "data": ["ffff_fffe", "ffff_ffff", "ffff_ffff", "0000_0003"]
+      },
+      {
+        "name": "axi_wlast",
+        "wave": "0....1.1.10."
+      }
+    ],
+    {},
+    [
+      "B response merge",
+      {
+        "name": "axi_bvalid",
+        "wave": "0.......1110"
+      },
+      {
+        "name": "b_split_last",
+        "wave": "x.......===x",
+        "data": ["0", "0", "1"]
+      },
+      {
+        "name": "ebus_bvalid",
+        "wave": "0.........10"
+      }
+    ]
+  ],
+  "foot": {
+    "text": "Compressed view: middle full-strobe W beats are omitted; only the first, representative full beats, and the final partial beat are shown."
+  },
+  "config": {
+    "hscale": 2
+  }
+}

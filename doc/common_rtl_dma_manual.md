@@ -32,6 +32,22 @@
 
   ![com_axi_dma ebus 接口时序](assets/com_axi_dma_ebus_wavedrom.png)
 
+* write burst 拆分例子
+    1. 条件：`DW=256bit`，即每个 AXI beat 为 32B；`BOUND_BYTES=512B`；`ebus_addr=1B`；`ebus_bytelen=1025B`；`cfg_max_blen_m1=15`，即单个 AXI burst 最多 16 beat。
+    2. RTL 内部先计算 `ebus_bytelen_modify = ebus_bytelen + ebus_addr[4:0] = 1025 + 1 = 1026B`。这个值包含首个 32B beat 中低地址无效的 1B，实际有效数据仍是 1025B。
+    3. 单个 AXI burst 最多覆盖 `16*32B=512B`，同时不能跨 512B 边界，因此本例拆成 3 次 AXI write burst。
+
+  | split | `axi_awaddr` | `axi_awlen` | beat_num | modified_byte | valid_byte | `axi_wstrb` 说明                         |
+  | ----- | ------------ | ----------- | -------- | ------------- | ---------- | -------------------------------------- |
+  | 0     | `1B`         | `15`        | `16`     | `512B`        | `511B`     | first beat `32'hffff_fffe`，其余 beat 全 1 |
+  | 1     | `512B`       | `15`        | `16`     | `512B`        | `512B`     | 所有 beat 全 1                            |
+  | 2     | `1024B`      | `0`         | `1`      | `2B`          | `2B`       | last beat `32'h0000_0003`              |
+
+    4. write data 共 33 个 AXI beat，其中多数中间 beat 的 `axi_wstrb` 都是全 1，时序图中只保留首拍、代表性的全 1 区间和最后一拍。
+    5. 每个 AXI split 都会返回一次 `axi_bvalid`。内部 `wa2wb_fifo` 记录 split 是否为最后一次，前两次 B response 只在内部消耗，第三次 B response 才合并成一次 `ebus_bvalid`。
+
+  ![com_axi_dma write burst 拆分例子](assets/com_axi_dma_wr_split_wavedrom.png)
+
 * 参数
 
 | param_name                     | default_value | description                              |
@@ -76,6 +92,6 @@
 
 * 生成脚本
     1. 脚本位于 `axi/py_gen_dma/gen_dma.py`，用于把公共 `com_axi_dma` 生成项目或 subsystem 私有 DMA。
-    2. 示例：`python axi/py_gen_dma/gen_dma.py -p cpu -o build`。
-    3. 默认替换关系：`com_axi_dma/com_dma -> cpu_dma`，`com_spram_shell -> cpu_spram_shell`，`com_sram_shell -> cpu_sram_shell`。
+    2. 示例：`python axi/py_gen_dma/gen_dma.py -c cpu_dma_cfg.json`。
+    3. 默认替换关系：`com_axi_dma -> cpu_axi_dma`，`com_spram_shell -> cpu_spram_shell`。
     4. DMA read buffer SRAM shell 与 `impl_template/memory/mem_tool` 生成结果强相关，二者必须使用相同 prefix，否则 filelist 中找不到对应 shell。
