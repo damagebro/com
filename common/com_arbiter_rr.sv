@@ -31,6 +31,8 @@ input  wire                     i_gnt_rdy           //,
 //localparam-----------------------------------------------------------------
 //signal declare-------------------------------------------------------------
 reg  [REQ_N-1:0]        r_avl_bitmap;
+reg  [REQ_N-1:0]        r_lock_req;
+reg                     r_lock_flag;
 
 //instance signal--
 wire [REQ_N-1:0]        u_gnt_i_req_val;
@@ -47,7 +49,7 @@ assign o_gnt_vld = !u_gnt_o_res_none_flag;
 //body---
 wire [REQ_N-1:0] masked_req = i_req_vld & r_avl_bitmap;
 wire masked_req_none_flag = !(|masked_req);
-wire [REQ_N-1:0] select_req = masked_req_none_flag ? i_req_vld : masked_req;
+wire [REQ_N-1:0] select_req = r_lock_flag ? r_lock_req : masked_req_none_flag ? i_req_vld : masked_req;
 wire gnt_hs = o_gnt_vld && i_gnt_rdy;
 wire [REQ_N_L2-1:0] tie_req_num_m1 = REQ_N[REQ_N_L2-1:0] - 1'b1;
 wire [REQ_N_L2-1:0] nxt_gnt_idx = o_gnt_idx>=tie_req_num_m1 ? '0 : (o_gnt_idx + 1'b1);
@@ -60,6 +62,18 @@ always @(posedge clk or negedge rst_n) begin
         r_avl_bitmap <= '1;
     else if( gnt_hs )
         r_avl_bitmap <= nxt_bitmap;
+end
+always @(posedge clk or negedge rst_n) begin
+    if( !rst_n )
+        r_lock_flag <= 1'b0;
+    else if( clear || gnt_hs )
+        r_lock_flag <= 1'b0;
+    else if( o_gnt_vld && !i_gnt_rdy && !r_lock_flag )
+        r_lock_flag <= 1'b1;
+end
+always @(posedge clk) begin
+    if( o_gnt_vld && !i_gnt_rdy && !r_lock_flag )
+        r_lock_req <= select_req;
 end
 
 //instance----

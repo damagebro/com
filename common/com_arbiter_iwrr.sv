@@ -33,15 +33,20 @@ reg  [REQ_N-1:0]        r_avl_bitmap;
 reg  [3:0]              r_subround;
 reg                     r_req_active;
 reg  [REQ_N-1:0][3:0]   r_cfg_weight;
+reg  [REQ_N-1:0]        r_lock_req;
+reg  [3:0]              r_lock_subround;
+reg                     r_lock_flag;
 
 reg  [REQ_N-1:0]        w_cur_req;
 reg  [3:0]              w_step_subround;
 reg  [REQ_N-1:0]        w_step_req;
-reg  [REQ_N-1:0]        w_select_req;
-reg  [3:0]              w_select_subround;
+reg  [REQ_N-1:0]        w_select_req_t;
+reg  [3:0]              w_select_subround_t;
 
 wire                    gnt_hs;
 wire [REQ_N-1:0][3:0]   arb_weight;
+wire [REQ_N-1:0]        select_req;
+wire [3:0]              select_subround;
 wire [REQ_N-1:0]        nxt_gnt_bitmap_t;
 wire [REQ_N-1:0]        nxt_gnt_bitmap;
 
@@ -90,14 +95,17 @@ end
 //Select between the current and next sub-round.
 always @* begin
     if( |w_cur_req ) begin
-        w_select_req = w_cur_req;
-        w_select_subround = r_subround;
+        w_select_req_t = w_cur_req;
+        w_select_subround_t = r_subround;
     end
     else begin
-        w_select_req = w_step_req;
-        w_select_subround = w_step_subround;
+        w_select_req_t = w_step_req;
+        w_select_subround_t = w_step_subround;
     end
 end
+
+assign select_req = r_lock_flag ? r_lock_req : w_select_req_t;
+assign select_subround = r_lock_flag ? r_lock_subround : w_select_subround_t;
 
 always @(posedge clk or negedge rst_n) begin
     if( !rst_n )
@@ -116,6 +124,22 @@ end
 
 always @(posedge clk or negedge rst_n) begin
     if( !rst_n )
+        r_lock_flag <= 1'b0;
+    else if( clear || gnt_hs )
+        r_lock_flag <= 1'b0;
+    else if( o_gnt_vld && !i_gnt_rdy && !r_lock_flag )
+        r_lock_flag <= 1'b1;
+end
+
+always @(posedge clk) begin
+    if( o_gnt_vld && !i_gnt_rdy && !r_lock_flag ) begin
+        r_lock_req      <= w_select_req_t;
+        r_lock_subround <= w_select_subround_t;
+    end
+end
+
+always @(posedge clk or negedge rst_n) begin
+    if( !rst_n )
         r_avl_bitmap <= '1;
     else if( clear )
         r_avl_bitmap <= '1;
@@ -129,11 +153,11 @@ always @(posedge clk or negedge rst_n) begin
     else if( clear )
         r_subround <= '0;
     else if( gnt_hs )
-        r_subround <= w_select_subround;
+        r_subround <= select_subround;
 end
 
 //instance----
-assign u_gnt_i_req_val = w_select_req;
+assign u_gnt_i_req_val = select_req;
 com_find_lsb_first_one #(
     .N                    ( REQ_N                         )  //8
 )u_com_find_lsb_first_one_gnt

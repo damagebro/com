@@ -35,12 +35,15 @@ reg  [REQ_N_L2-1:0]     r_owner_idx;
 reg  [3:0]              r_quota_m1;
 reg                     r_req_active;
 reg  [REQ_N-1:0][3:0]   r_cfg_weight;
+reg  [REQ_N-1:0]        r_lock_req;
+reg                     r_lock_flag;
 
 wire [REQ_N-1:0]        owner_onehot;
 wire                    owner_req_vld;
 wire                    owner_keep;
 wire [REQ_N-1:0]        masked_req;
 wire                    masked_req_none_flag;
+wire [REQ_N-1:0]        select_req_t;
 wire [REQ_N-1:0]        select_req;
 wire                    gnt_hs;
 wire [REQ_N-1:0][3:0]   arb_weight;
@@ -70,8 +73,9 @@ assign owner_keep = r_owner_vld && owner_req_vld;
 //Keep the current owner until its quota is consumed or its request drops.
 assign masked_req = i_req_vld & r_avl_bitmap;
 assign masked_req_none_flag = !(|masked_req);
-assign select_req = owner_keep ? owner_onehot :
-                    (masked_req_none_flag ? i_req_vld : masked_req);
+assign select_req_t = owner_keep ? owner_onehot :
+                      (masked_req_none_flag ? i_req_vld : masked_req);
+assign select_req = r_lock_flag ? r_lock_req : select_req_t;
 assign gnt_hs = o_gnt_vld && i_gnt_rdy;
 assign arb_weight = r_req_active ? r_cfg_weight : i_cfg_weight;
 assign select_weight = arb_weight[o_gnt_idx];
@@ -94,6 +98,20 @@ always @(posedge clk or negedge rst_n) begin
         r_cfg_weight <= '0;
     else if( !r_req_active )
         r_cfg_weight <= i_cfg_weight;
+end
+
+always @(posedge clk or negedge rst_n) begin
+    if( !rst_n )
+        r_lock_flag <= 1'b0;
+    else if( clear || gnt_hs )
+        r_lock_flag <= 1'b0;
+    else if( o_gnt_vld && !i_gnt_rdy && !r_lock_flag )
+        r_lock_flag <= 1'b1;
+end
+
+always @(posedge clk) begin
+    if( o_gnt_vld && !i_gnt_rdy && !r_lock_flag )
+        r_lock_req <= select_req_t;
 end
 
 always @(posedge clk or negedge rst_n) begin
