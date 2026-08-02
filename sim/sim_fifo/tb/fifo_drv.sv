@@ -38,26 +38,26 @@ endtask
 
 task automatic drive_idle;
 begin
-    vif.clear     = 1'b0;
-    vif.i_wr_en   = 1'b0;
-    vif.i_wr_data = '0;
-    vif.i_rd_en   = 1'b0;
+    vif.drv_cb.clear     <= 1'b0;
+    vif.drv_cb.i_wr_en   <= 1'b0;
+    vif.drv_cb.i_wr_data <= '0;
+    vif.drv_cb.i_rd_en   <= 1'b0;
 end
 endtask
 
 task automatic check_status;
 begin
-    if( vif.o_wr_full !== (scb_count==DEPTH) ) begin
+    if( vif.drv_cb.o_wr_full !== (scb_count==DEPTH) ) begin
         $fatal(1, "CASE%0d full mismatch: dut=%0b exp=%0b count=%0d",
-               CASE_ID, vif.o_wr_full, (scb_count==DEPTH), scb_count);
+               CASE_ID, vif.drv_cb.o_wr_full, (scb_count==DEPTH), scb_count);
     end
-    if( vif.o_rd_empty !== (scb_count==0) ) begin
+    if( vif.drv_cb.o_rd_empty !== (scb_count==0) ) begin
         $fatal(1, "CASE%0d empty mismatch: dut=%0b exp=%0b count=%0d",
-               CASE_ID, vif.o_rd_empty, (scb_count==0), scb_count);
+               CASE_ID, vif.drv_cb.o_rd_empty, (scb_count==0), scb_count);
     end
-    if( vif.o_water_level !== CW'(DEPTH-scb_count) ) begin
+    if( vif.drv_cb.o_water_level !== CW'(DEPTH-scb_count) ) begin
         $fatal(1, "CASE%0d water_level mismatch: dut=%0d exp=%0d count=%0d",
-               CASE_ID, vif.o_water_level, (DEPTH-scb_count), scb_count);
+               CASE_ID, vif.drv_cb.o_water_level, (DEPTH-scb_count), scb_count);
     end
 end
 endtask
@@ -68,12 +68,10 @@ begin
     data_cnt   = 32'h1;
     scb_reset();
     drive_idle();
-    vif.rst_n = 1'b0;
-    repeat(5) @(posedge vif.clk);
-    @(negedge vif.clk);
-    vif.rst_n = 1'b1;
-    repeat(2) @(posedge vif.clk);
-    #1;
+    vif.drv_cb.rst_n <= 1'b0;
+    repeat(5) @(vif.drv_cb);
+    vif.drv_cb.rst_n <= 1'b1;
+    repeat(2) @(vif.drv_cb);
     check_status();
 end
 endtask
@@ -90,7 +88,7 @@ task automatic run_cycle(input integer cyc);
     logic [DW-1:0] wr_data_cmd;
     logic [DW-1:0] wr_data_fire;
 begin
-    @(negedge vif.clk);
+    @(vif.drv_cb);
 
     clear_cmd = (cyc==CYCLE_N/2);
     wr_cmd    = 1'b0;
@@ -109,14 +107,14 @@ begin
         wr_cmd = want_wr && ((scb_count < DEPTH) || (ALLOW_FULL_BYP && rd_cmd));
     end
     wr_data_cmd  = data_cnt[DW-1:0] ^ (CASE_ID << 8);
-    vif.clear     = clear_cmd;
-    vif.i_wr_en   = wr_cmd;
-    vif.i_rd_en   = rd_cmd;
-    vif.i_wr_data = wr_data_cmd;
+    vif.drv_cb.clear     <= clear_cmd;
+    vif.drv_cb.i_wr_en   <= wr_cmd;
+    vif.drv_cb.i_rd_en   <= rd_cmd;
+    vif.drv_cb.i_wr_data <= wr_data_cmd;
 
-    if( rd_cmd && (vif.o_rd_data !== scb_mem[scb_rd_ptr]) ) begin
+    if( rd_cmd && (vif.drv_cb.o_rd_data !== scb_mem[scb_rd_ptr]) ) begin
         $fatal(1, "CASE%0d data mismatch cycle=%0d dut=0x%0h exp=0x%0h count=%0d",
-               CASE_ID, cyc, vif.o_rd_data, scb_mem[scb_rd_ptr], scb_count);
+               CASE_ID, cyc, vif.drv_cb.o_rd_data, scb_mem[scb_rd_ptr], scb_count);
     end
 
     clear_fire  = clear_cmd;
@@ -124,8 +122,7 @@ begin
     rd_fire     = rd_cmd;
     wr_data_fire = wr_data_cmd;
 
-    @(posedge vif.clk);
-    #1;
+    @(vif.drv_cb);
     drive_idle();
     if( clear_fire ) begin
         scb_reset();
@@ -142,7 +139,6 @@ begin
         scb_count = scb_count + wr_fire - rd_fire;
     end
 
-    #1;
     check_status();
 end
 endtask
@@ -153,9 +149,9 @@ begin
     for( integer cyc=0; cyc<CYCLE_N; cyc=cyc+1 ) begin
         run_cycle(cyc);
     end
-    @(negedge vif.clk);
+    @(vif.drv_cb);
     drive_idle();
-    repeat(5) @(posedge vif.clk);
+    repeat(5) @(vif.drv_cb);
     $display("CASE%0d PASS dut_type=%0d depth=%0d dw=%0d", CASE_ID, DUT_TYPE, DEPTH, DW);
 end
 endtask
