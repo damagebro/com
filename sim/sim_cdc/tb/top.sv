@@ -48,9 +48,9 @@ initial begin
     i_rd_en = 1'b0;
     src_req_pulse = 1'b0;
     repeat(5) @(posedge wr_clk);
-    wr_rst_n = 1'b1;
+    wr_rst_n <= 1'b1;
     repeat(3) @(posedge rd_clk);
-    rd_rst_n = 1'b1;
+    rd_rst_n <= 1'b1;
 
     repeat(2) @(posedge wr_clk);
     for( int i=0; i<12; i++ ) begin

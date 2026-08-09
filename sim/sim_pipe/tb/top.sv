@@ -36,7 +36,7 @@ initial begin
     i_rx_vld = 1'b0;
     i_tx_rdy = 1'b0;
     repeat(5) @(posedge clk);
-    rst_n = 1'b1;
+    rst_n <= 1'b1;
     repeat(2) @(posedge clk);
     for( int i=0; i<12; i++ ) begin
         @(posedge clk);

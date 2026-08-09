@@ -21,18 +21,18 @@ initial begin
     i_rx_vld = 1'b0;
     i_tx_rdy = 3'b000;
     repeat(5) @(posedge clk);
-    rst_n = 1'b1;
+    rst_n <= 1'b1;
     @(posedge clk);
-    i_rx_vld = 1'b1;
-    i_tx_rdy = 3'b001;
+    i_rx_vld <= 1'b1;
+    i_tx_rdy <= 3'b001;
     @(posedge clk);
-    i_tx_rdy = 3'b101;
+    i_tx_rdy <= 3'b101;
     @(posedge clk);
-    i_tx_rdy = 3'b111;
+    i_tx_rdy <= 3'b111;
     @(posedge clk);
     if( !o_rx_rdy )
         $fatal(1, "simo should finish all outputs");
-    i_rx_vld = 1'b0;
+    i_rx_vld <= 1'b0;
     repeat(5) @(posedge clk);
     $display("SIM_SIMO PASS");
     $finish;

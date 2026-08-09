@@ -39,7 +39,7 @@ initial begin
     cfg_weight[3] = 4'd3;
     gnt_rdy = 1'b0;
     repeat(5) @(posedge clk);
-    rst_n = 1'b1;
+    rst_n <= 1'b1;
 
     @(posedge clk);
     req_vld <= 4'b1010;
