@@ -55,7 +55,8 @@ reg               r_ram_rd_empty;
 reg  [RAM_CW-1:0] r_ram_water_level;
 reg  [RAM_CW-1:0] r_ram_otf_cnt;
 reg               r_rd_hold_vld;
-reg  [RAM_AW-1:0] r_rd_hold_addr;
+reg               r_ibuf_vld;
+reg  [DW-1:0]     r_ibuf_data;
 reg               r_wr_full;
 reg  [TOL_CW-1:0] r_tol_water_level;
 reg  [RAM_RD_DELAY-1:0] r_ram_rd_vld_pipe;
@@ -68,11 +69,17 @@ wire [TOL_CW-1:0] tol_water_level_nxt;
 wire              direct_order_avl;
 wire              out_direct_wr_en;
 wire              ram_wr_req;
-wire              ram_wr_space_avl;
+wire              rd_resv_req;
+wire              ibuf_first_push;
+wire              ibuf_refill;
+wire              ibuf_push_en;
+wire              ibuf_drain_en;
+wire              port_ram_wr_en;
 wire              ram_wr_en;
 wire              rd_resv_en;
 wire              rd_issue_req;
-wire [RAM_AW-1:0] rd_issue_addr;
+wire              ram_wr_bank_conflict;
+wire              rd_hold_issue_en;
 wire              ram_rd_conflict;
 wire              ram_rd_en;
 wire              ram_rd_ack;
@@ -95,6 +102,7 @@ wire [RAM_AW:0]   ram_wr_addr_ext;
 wire [RAM_AW:0]   ram_rd_addr_ext;
 wire [RAM_ONE_AW-1:0] ram_wr_bank_addr;
 wire [RAM_ONE_AW-1:0] ram_rd_bank_addr;
+wire [DW-1:0]     ram_wr_data;
 
 //instance signal--
 wire              u_out_i_wr_fast_en;
@@ -123,17 +131,23 @@ assign wr_full_nxt = tol_water_level_nxt=='0;
 assign ram_rd_ack = r_ram_rd_vld_pipe[RAM_RD_DELAY-1];
 assign ram_rd_ack_data = r_ram_rd_bank_pipe[RAM_RD_DELAY-1] ? i_ram_rd_data[1] : i_ram_rd_data[0];
 
-assign direct_order_avl = r_ram_rd_empty && !r_rd_hold_vld;
+assign direct_order_avl = r_ram_rd_empty && !r_rd_hold_vld && !r_ibuf_vld;
 assign out_direct_wr_en = wr_hs && direct_order_avl && !u_out_o_wr_full;
 assign ram_wr_req = wr_hs && !out_direct_wr_en;
-assign rd_resv_en = !r_ram_rd_empty && !u_out_o_wr_full;
-assign ram_wr_space_avl = !r_ram_wr_full || rd_resv_en;
-assign ram_wr_en = ram_wr_req && ram_wr_space_avl;
+assign rd_resv_req = !r_ram_rd_empty && !u_out_o_wr_full;
+assign ibuf_first_push = ram_wr_req && !r_ibuf_vld && r_ram_wr_full;
+assign ibuf_refill = ram_wr_req && r_ibuf_vld && !r_ram_wr_full;
+assign ibuf_push_en = ibuf_first_push || ibuf_refill;
+assign ibuf_drain_en = r_ibuf_vld;
+assign port_ram_wr_en = ram_wr_req && !r_ram_wr_full && !ibuf_push_en;
+assign ram_wr_en = ibuf_drain_en || port_ram_wr_en;
+assign ram_wr_bank_conflict = ram_wr_en && (r_ram_wr_addr[0]==r_ram_rd_addr[0]);
+assign rd_hold_issue_en = r_rd_hold_vld && !ram_wr_bank_conflict;
+assign rd_resv_en = rd_resv_req && (!r_rd_hold_vld || rd_hold_issue_en);
 assign rd_issue_req = r_rd_hold_vld || rd_resv_en;
-assign rd_issue_addr = r_rd_hold_vld ? r_rd_hold_addr : r_ram_rd_addr;
-assign ram_rd_conflict = ram_wr_en && rd_issue_req && (r_ram_wr_addr[0]==rd_issue_addr[0]);
+assign ram_rd_conflict = rd_issue_req && ram_wr_bank_conflict;
 assign ram_rd_en = rd_issue_req && !ram_rd_conflict;
-assign wr_path_miss = wr_hs && !(out_direct_wr_en || ram_wr_en);
+assign wr_path_miss = wr_hs && !(out_direct_wr_en || port_ram_wr_en || ibuf_push_en);
 
 assign ram_wr_addr_p1 = {1'b0,r_ram_wr_addr} + 1'b1;
 assign ram_rd_addr_p1 = {1'b0,r_ram_rd_addr} + 1'b1;
@@ -143,14 +157,15 @@ assign ram_water_level_nxt = r_ram_water_level - RAM_CW'(ram_wr_en) + RAM_CW'(rd
 assign ram_otf_cnt_nxt = r_ram_otf_cnt + RAM_CW'(ram_rd_en) - RAM_CW'(ram_rd_ack);
 
 assign ram_wr_addr_ext = {1'b0,r_ram_wr_addr};
-assign ram_rd_addr_ext = {1'b0,rd_issue_addr};
+assign ram_rd_addr_ext = {1'b0,r_ram_rd_addr};
 assign ram_wr_bank_addr = ram_wr_addr_ext[RAM_ONE_AW:1];
 assign ram_rd_bank_addr = ram_rd_addr_ext[RAM_ONE_AW:1];
+assign ram_wr_data = r_ibuf_vld ? r_ibuf_data : i_wr_data;
 
 assign bank0_ram_wr_en = ram_wr_en && (r_ram_wr_addr[0]==1'b0);
 assign bank1_ram_wr_en = ram_wr_en && (r_ram_wr_addr[0]==1'b1);
-assign bank0_ram_rd_en = ram_rd_en && (rd_issue_addr[0]==1'b0);
-assign bank1_ram_rd_en = ram_rd_en && (rd_issue_addr[0]==1'b1);
+assign bank0_ram_rd_en = ram_rd_en && (r_ram_rd_addr[0]==1'b0);
+assign bank1_ram_rd_en = ram_rd_en && (r_ram_rd_addr[0]==1'b1);
 assign bank0_wr_en = bank0_ram_wr_en;
 assign bank1_wr_en = bank1_ram_wr_en;
 
@@ -160,8 +175,8 @@ assign o_ram_we_n[0] = !bank0_wr_en;
 assign o_ram_we_n[1] = !bank1_wr_en;
 assign o_ram_addr[0] = bank0_ram_wr_en ? ram_wr_bank_addr : ram_rd_bank_addr;
 assign o_ram_addr[1] = bank1_ram_wr_en ? ram_wr_bank_addr : ram_rd_bank_addr;
-assign o_ram_wr_data[0] = i_wr_data;
-assign o_ram_wr_data[1] = i_wr_data;
+assign o_ram_wr_data[0] = ram_wr_data;
+assign o_ram_wr_data[1] = ram_wr_data;
 
 //ram_wr_addr
 always @(posedge clk or negedge rst_n) begin
@@ -179,7 +194,7 @@ always @(posedge clk or negedge rst_n) begin
         r_ram_rd_addr <= '0;
     else if( clear )
         r_ram_rd_addr <= '0;
-    else if( rd_resv_en )
+    else if( ram_rd_en )
         r_ram_rd_addr <= ram_rd_addr_nxt;
 end
 
@@ -224,16 +239,27 @@ always @(posedge clk or negedge rst_n) begin
         r_rd_hold_vld <= 1'b0;
     else if( clear )
         r_rd_hold_vld <= 1'b0;
-    else if( rd_resv_en )
-        r_rd_hold_vld <= r_rd_hold_vld || ram_rd_conflict;
+    else if( ram_rd_conflict )
+        r_rd_hold_vld <= 1'b1;
     else if( ram_rd_en )
-        r_rd_hold_vld <= 1'b0;
+        r_rd_hold_vld <= r_rd_hold_vld && rd_resv_en;
+end
+
+//ibuf
+always @(posedge clk or negedge rst_n) begin
+    if( !rst_n )
+        r_ibuf_vld <= 1'b0;
+    else if( clear )
+        r_ibuf_vld <= 1'b0;
+    else if( ibuf_push_en )
+        r_ibuf_vld <= 1'b1;
+    else if( ibuf_drain_en )
+        r_ibuf_vld <= 1'b0;
 end
 
 always @(posedge clk) begin
-    if( rd_resv_en && (r_rd_hold_vld || ram_rd_conflict) ) begin
-        r_rd_hold_addr <= r_ram_rd_addr;
-    end
+    if( ibuf_push_en )
+        r_ibuf_data <= i_wr_data;
 end
 
 //ram_otf_cnt
@@ -260,7 +286,7 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 always @(posedge clk) begin
-    r_ram_rd_bank_pipe[0] <= rd_issue_addr[0];
+    r_ram_rd_bank_pipe[0] <= r_ram_rd_addr[0];
     for(int i=1; i<RAM_RD_DELAY; i++) begin
         r_ram_rd_bank_pipe[i] <= r_ram_rd_bank_pipe[i-1];
     end
