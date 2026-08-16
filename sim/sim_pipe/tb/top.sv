@@ -126,4 +126,11 @@ com_pipe_regslice #(
     .i_tx_rdy  ( i_tx_rdy            )
 );
 
+`ifdef DUMP_FST
+initial begin
+    $dumpfile("run.fst");
+    $dumpvars(0, top);
+end
+`endif
+
 endmodule

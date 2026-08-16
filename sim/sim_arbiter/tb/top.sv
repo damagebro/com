@@ -104,4 +104,11 @@ com_arbiter_iwrr #(
     .i_gnt_rdy    ( gnt_rdy         )
 );
 
+`ifdef DUMP_FST
+initial begin
+    $dumpfile("run.fst");
+    $dumpvars(0, top);
+end
+`endif
+
 endmodule

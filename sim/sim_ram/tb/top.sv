@@ -225,4 +225,11 @@ for( genvar gi=0; gi<2; gi++ ) begin:gen_sp2_bank
     );
 end
 
+`ifdef DUMP_FST
+initial begin
+    $dumpfile("run.fst");
+    $dumpvars(0, top);
+end
+`endif
+
 endmodule

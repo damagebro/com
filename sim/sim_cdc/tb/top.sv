@@ -153,4 +153,11 @@ com_cdc_rstn_pair #(
     .o_tx_dst_rst_n ( pair_o_dst_rst_n )
 );
 
+`ifdef DUMP_FST
+initial begin
+    $dumpfile("run.fst");
+    $dumpvars(0, top);
+end
+`endif
+
 endmodule
