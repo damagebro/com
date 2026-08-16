@@ -7,7 +7,7 @@
 *  Description:
 *  - Synchronous FIFO with two 1-port SRAM banks.
 *  - SRAM read/write same-bank conflict is resolved by write priority.
-*  - Read reserve and physical SRAM read are decoupled by rd_hold.
+*  - out_fifo prefill and physical SRAM read are decoupled by rd_hold.
 *
 *  Modify:
 *  2026/06/02, rewrite with two 1-port SRAM banks and 2w1r output FIFO.
@@ -69,14 +69,14 @@ wire [TOL_CW-1:0] tol_water_level_nxt;
 wire              direct_order_avl;
 wire              out_direct_wr_en;
 wire              ram_wr_req;
-wire              rd_resv_req;
+wire              rd_prefill_req;
 wire              ibuf_first_push;
 wire              ibuf_refill;
 wire              ibuf_push_en;
 wire              ibuf_drain_en;
 wire              port_ram_wr_en;
 wire              ram_wr_en;
-wire              rd_resv_en;
+wire              rd_prefill_en;
 wire              rd_issue_req;
 wire              ram_wr_bank_conflict;
 wire              rd_hold_issue_en;
@@ -134,7 +134,7 @@ assign ram_rd_ack_data = r_ram_rd_bank_pipe[RAM_RD_DELAY-1] ? i_ram_rd_data[1] :
 assign direct_order_avl = r_ram_rd_empty && !r_rd_hold_vld && !r_ibuf_vld;
 assign out_direct_wr_en = wr_hs && direct_order_avl && !u_out_o_wr_full;
 assign ram_wr_req = wr_hs && !out_direct_wr_en;
-assign rd_resv_req = !r_ram_rd_empty && !u_out_o_wr_full;
+assign rd_prefill_req = !r_ram_rd_empty && !u_out_o_wr_full;
 assign ibuf_first_push = ram_wr_req && !r_ibuf_vld && r_ram_wr_full;
 assign ibuf_refill = ram_wr_req && r_ibuf_vld && !r_ram_wr_full;
 assign ibuf_push_en = ibuf_first_push || ibuf_refill;
@@ -143,8 +143,8 @@ assign port_ram_wr_en = ram_wr_req && !r_ram_wr_full && !ibuf_push_en;
 assign ram_wr_en = ibuf_drain_en || port_ram_wr_en;
 assign ram_wr_bank_conflict = ram_wr_en && (r_ram_wr_addr[0]==r_ram_rd_addr[0]);
 assign rd_hold_issue_en = r_rd_hold_vld && !ram_wr_bank_conflict;
-assign rd_resv_en = rd_resv_req && (!r_rd_hold_vld || rd_hold_issue_en);
-assign rd_issue_req = r_rd_hold_vld || rd_resv_en;
+assign rd_prefill_en = rd_prefill_req && (!r_rd_hold_vld || rd_hold_issue_en);
+assign rd_issue_req = r_rd_hold_vld || rd_prefill_en;
 assign ram_rd_conflict = rd_issue_req && ram_wr_bank_conflict;
 assign ram_rd_en = rd_issue_req && !ram_rd_conflict;
 assign wr_path_miss = wr_hs && !(out_direct_wr_en || port_ram_wr_en || ibuf_push_en);
@@ -153,7 +153,7 @@ assign ram_wr_addr_p1 = {1'b0,r_ram_wr_addr} + 1'b1;
 assign ram_rd_addr_p1 = {1'b0,r_ram_rd_addr} + 1'b1;
 assign ram_wr_addr_nxt = ram_wr_addr_p1==RAM_DEPTH[RAM_AW:0] ? '0 : ram_wr_addr_p1[RAM_AW-1:0];
 assign ram_rd_addr_nxt = ram_rd_addr_p1==RAM_DEPTH[RAM_AW:0] ? '0 : ram_rd_addr_p1[RAM_AW-1:0];
-assign ram_water_level_nxt = r_ram_water_level - RAM_CW'(ram_wr_en) + RAM_CW'(rd_resv_en);
+assign ram_water_level_nxt = r_ram_water_level - RAM_CW'(ram_wr_en) + RAM_CW'(rd_prefill_en);
 assign ram_otf_cnt_nxt = r_ram_otf_cnt + RAM_CW'(ram_rd_en) - RAM_CW'(ram_rd_ack);
 
 assign ram_wr_addr_ext = {1'b0,r_ram_wr_addr};
@@ -210,7 +210,7 @@ always @(posedge clk or negedge rst_n) begin
         r_ram_rd_empty <= 1'b1;
         r_ram_water_level <= RAM_DEPTH[RAM_CW-1:0];
     end
-    else if( ram_wr_en || rd_resv_en ) begin
+    else if( ram_wr_en || rd_prefill_en ) begin
         r_ram_wr_full <= ram_water_level_nxt=='0;
         r_ram_rd_empty <= ram_water_level_nxt==RAM_DEPTH[RAM_CW-1:0];
         r_ram_water_level <= ram_water_level_nxt;
@@ -239,10 +239,10 @@ always @(posedge clk or negedge rst_n) begin
         r_rd_hold_vld <= 1'b0;
     else if( clear )
         r_rd_hold_vld <= 1'b0;
-    else if( ram_rd_conflict )
+    else if( ram_rd_conflict || (r_rd_hold_vld&&rd_prefill_en) )
         r_rd_hold_vld <= 1'b1;
     else if( ram_rd_en )
-        r_rd_hold_vld <= r_rd_hold_vld && rd_resv_en;
+        r_rd_hold_vld <= 1'b0;
 end
 
 //ibuf
@@ -293,7 +293,7 @@ always @(posedge clk) begin
 end
 
 //instance----
-assign u_out_i_wr_fast_en = out_direct_wr_en || rd_resv_en;
+assign u_out_i_wr_fast_en = out_direct_wr_en || rd_prefill_en;
 assign u_out_i_wr_fast_data_vld = out_direct_wr_en;
 assign u_out_i_wr_fast_data = i_wr_data;
 assign u_out_i_wr_slow_en = ram_rd_ack;

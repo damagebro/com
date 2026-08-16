@@ -133,13 +133,6 @@ assign ram_rd_en = !ram_wr_req && !r_rd_req_hi && (r_ram_used_cnt!='0) &&
                    !u_out_o_wr_full && (!r_ram_rd_ack || out_ram_hi_wr_en);
 assign rd_req_hi_en = r_rd_req_hi && !u_out_o_wr_full;
 
-assign u_out_i_wr_fast_en = ram_rd_en || rd_req_hi_en || pack_drain_en || out_direct_wr_en;
-assign u_out_i_wr_fast_data_vld = pack_drain_en || out_direct_wr_en;
-assign u_out_i_wr_fast_data = pack_drain_en ? r_pack_data : i_wr_data;
-assign u_out_i_wr_slow_en = out_ram_hi_wr_en || out_ram_lo_wr_en;
-assign u_out_i_wr_slow_data = out_ram_hi_wr_en ? r_ram_rd_data_hi : i_ram_rd_data[DW-1:0];
-assign u_out_i_rd_en = rd_hs;
-
 assign ram_ack_ilgl = ram_rd_data_vld && (r_ram_rd_ack || !u_out_o_wr_slow_avl_flag);
 assign ram_ack_high_ilgl = r_ram_rd_ack && !r_rd_req_hi && !u_out_o_wr_slow_avl_flag;
 assign ram_otf_underflow_ilgl = (out_ram_lo_wr_en || out_ram_hi_wr_en) && (r_ram_otf_cnt=='0);
@@ -281,6 +274,13 @@ always @(posedge clk) begin
 end
 
 //instance----
+assign u_out_i_wr_fast_en = ram_rd_en || rd_req_hi_en || pack_drain_en || out_direct_wr_en;
+assign u_out_i_wr_fast_data_vld = pack_drain_en || out_direct_wr_en;
+assign u_out_i_wr_fast_data = pack_drain_en ? r_pack_data : i_wr_data;
+assign u_out_i_wr_slow_en = out_ram_hi_wr_en || out_ram_lo_wr_en;
+assign u_out_i_wr_slow_data = out_ram_hi_wr_en ? r_ram_rd_data_hi : i_ram_rd_data[DW-1:0];
+assign u_out_i_rd_en = rd_hs;
+
 com_sync_fifo_reg_2w1r #(
     .DW                   ( DW                       ), //8
     .DEPTH                ( OUT_DEPTH                )  //4
