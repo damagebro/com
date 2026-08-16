@@ -120,7 +120,7 @@ assign rd_hs = i_rd_en && !o_rd_empty;
 assign tol_water_level_nxt = r_tol_water_level - TOL_CW'(wr_hs) + TOL_CW'(rd_hs);
 assign wr_full_nxt = tol_water_level_nxt=='0;
 
-assign direct_order_avl = (r_ram_used_cnt=='0) && !r_rd_req_hi;
+assign direct_order_avl = (r_ram_used_cnt=='0) && !r_rd_req_hi && !u_out_o_wr_slow_avl_flag;
 assign out_direct_wr_en = wr_hs && !r_pack_vld && direct_order_avl && !u_out_o_wr_full;
 assign pack_drain_en = r_pack_vld && direct_order_avl && !u_out_o_wr_full;
 assign pack_store_en = wr_hs && !out_direct_wr_en && (!r_pack_vld || pack_drain_en);

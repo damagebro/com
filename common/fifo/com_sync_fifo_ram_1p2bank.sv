@@ -131,7 +131,7 @@ assign wr_full_nxt = tol_water_level_nxt=='0;
 assign ram_rd_ack = r_ram_rd_vld_pipe[RAM_RD_DELAY-1];
 assign ram_rd_ack_data = r_ram_rd_bank_pipe[RAM_RD_DELAY-1] ? i_ram_rd_data[1] : i_ram_rd_data[0];
 
-assign direct_order_avl = r_ram_rd_empty && !r_rd_hold_vld && !r_ibuf_vld;
+assign direct_order_avl = r_ram_rd_empty && !r_rd_hold_vld && !r_ibuf_vld && !u_out_o_wr_slow_avl_flag;
 assign out_direct_wr_en = wr_hs && direct_order_avl && !u_out_o_wr_full;
 assign ram_wr_req = wr_hs && !out_direct_wr_en;
 assign rd_prefill_req = !r_ram_rd_empty && !u_out_o_wr_full;
