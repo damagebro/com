@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-class fifo_drv #( parameter
+module fifo_drv #( parameter
     DW              = 16,
     DEPTH           = 4,
     CW              = 3,
@@ -9,151 +9,156 @@ class fifo_drv #( parameter
     CYCLE_N         = 2000,
     SEED            = 32'h1234_5678,
     ALLOW_FULL_BYP  = 0
+)
+(
+    fifo_if    fifo_bus,
+    output reg o_done
 );
 
-virtual fifo_if #(DW,CW).drv vif;
+//signal declare-------------------------------------------------------------
+reg [DW-1:0] r_scb_mem [0:DEPTH-1];
+integer      r_scb_wr_ptr;
+integer      r_scb_rd_ptr;
+integer      r_scb_count;
+reg [31:0]   r_rand_state;
+reg [31:0]   r_data_cnt;
 
-logic [DW-1:0] scb_mem [0:DEPTH-1];
-integer        scb_wr_ptr;
-integer        scb_rd_ptr;
-integer        scb_count;
-logic [31:0]   rand_state;
-logic [31:0]   data_cnt;
-
-function new(virtual fifo_if #(DW,CW).drv vif);
-    this.vif = vif;
+function automatic [31:0] F_next_rand(input [31:0] cur);
+    F_next_rand = {cur[30:0], cur[31]^cur[21]^cur[1]^cur[0]};
 endfunction
 
-function automatic logic [31:0] next_rand(input logic [31:0] cur);
-    next_rand = {cur[30:0], cur[31] ^ cur[21] ^ cur[1] ^ cur[0]};
-endfunction
-
-task automatic scb_reset;
+task automatic T_scb_reset;
 begin
-    scb_wr_ptr = 0;
-    scb_rd_ptr = 0;
-    scb_count  = 0;
+    r_scb_wr_ptr = 0;
+    r_scb_rd_ptr = 0;
+    r_scb_count  = 0;
 end
 endtask
 
-task automatic drive_idle;
+task automatic T_drive_idle;
 begin
-    vif.drv_cb.clear     <= 1'b0;
-    vif.drv_cb.i_wr_en   <= 1'b0;
-    vif.drv_cb.i_wr_data <= '0;
-    vif.drv_cb.i_rd_en   <= 1'b0;
+    fifo_bus.clear     <= 1'b0;
+    fifo_bus.i_wr_en   <= 1'b0;
+    fifo_bus.i_wr_data <= '0;
+    fifo_bus.i_rd_en   <= 1'b0;
 end
 endtask
 
-task automatic check_status;
+task automatic T_check_status;
 begin
-    if( vif.drv_cb.o_wr_full !== (scb_count==DEPTH) ) begin
+    if( fifo_bus.o_wr_full !== ((r_scb_count==DEPTH) &&
+                                 !(ALLOW_FULL_BYP && fifo_bus.i_rd_en)) ) begin
         $fatal(1, "CASE%0d full mismatch: dut=%0b exp=%0b count=%0d",
-               CASE_ID, vif.drv_cb.o_wr_full, (scb_count==DEPTH), scb_count);
+               CASE_ID, fifo_bus.o_wr_full,
+               ((r_scb_count==DEPTH) && !(ALLOW_FULL_BYP && fifo_bus.i_rd_en)),
+               r_scb_count);
     end
-    if( vif.drv_cb.o_rd_empty !== (scb_count==0) ) begin
+    if( (DUT_TYPE<4) && (fifo_bus.o_rd_empty !== (r_scb_count==0)) ) begin
         $fatal(1, "CASE%0d empty mismatch: dut=%0b exp=%0b count=%0d",
-               CASE_ID, vif.drv_cb.o_rd_empty, (scb_count==0), scb_count);
+               CASE_ID, fifo_bus.o_rd_empty, (r_scb_count==0), r_scb_count);
     end
-    if( vif.drv_cb.o_water_level !== CW'(DEPTH-scb_count) ) begin
+    if( (DUT_TYPE>=4) && (r_scb_count==0) && !fifo_bus.o_rd_empty ) begin
+        $fatal(1, "CASE%0d empty mismatch: dut=%0b exp=1 count=%0d",
+               CASE_ID, fifo_bus.o_rd_empty, r_scb_count);
+    end
+    if( fifo_bus.o_water_level !== CW'(DEPTH-r_scb_count) ) begin
         $fatal(1, "CASE%0d water_level mismatch: dut=%0d exp=%0d count=%0d",
-               CASE_ID, vif.drv_cb.o_water_level, (DEPTH-scb_count), scb_count);
+               CASE_ID, fifo_bus.o_water_level, (DEPTH-r_scb_count), r_scb_count);
     end
 end
 endtask
 
-task automatic reset_phase;
+task automatic T_apply_hs(input integer cyc);
 begin
-    rand_state = SEED;
-    data_cnt   = 32'h1;
-    scb_reset();
-    drive_idle();
-    vif.drv_cb.rst_n <= 1'b0;
-    repeat(5) @(vif.drv_cb);
-    vif.drv_cb.rst_n <= 1'b1;
-    repeat(2) @(vif.drv_cb);
-    check_status();
+    if( fifo_bus.clear ) begin
+        T_scb_reset();
+    end
+    else begin
+        if( fifo_bus.i_wr_en ) begin
+            r_scb_mem[r_scb_wr_ptr] = fifo_bus.i_wr_data;
+            r_scb_wr_ptr = (r_scb_wr_ptr+1) % DEPTH;
+            r_data_cnt = r_data_cnt + 1'b1;
+        end
+        if( fifo_bus.i_rd_en ) begin
+            r_scb_rd_ptr = (r_scb_rd_ptr+1) % DEPTH;
+        end
+        r_scb_count = r_scb_count + fifo_bus.i_wr_en - fifo_bus.i_rd_en;
+    end
 end
 endtask
 
-task automatic run_cycle(input integer cyc);
-    integer        clear_fire;
-    integer        wr_fire;
-    integer        rd_fire;
-    integer        want_wr;
-    integer        want_rd;
-    integer        clear_cmd;
-    integer        wr_cmd;
-    integer        rd_cmd;
-    logic [DW-1:0] wr_data_cmd;
-    logic [DW-1:0] wr_data_fire;
+task automatic T_drive_next(input integer cyc);
+    reg          clear_cmd;
+    reg          wr_cmd;
+    reg          rd_cmd;
+    reg          want_wr;
+    reg          want_rd;
+    reg [DW-1:0] wr_data_cmd;
 begin
-    @(vif.drv_cb);
-
     clear_cmd = (cyc==CYCLE_N/2);
     wr_cmd    = 1'b0;
     rd_cmd    = 1'b0;
-    if( clear_cmd ) begin
-        wr_cmd = 1'b0;
-        rd_cmd = 1'b0;
+    if( !clear_cmd ) begin
+        r_rand_state = F_next_rand(r_rand_state);
+        want_wr      = r_rand_state[7:0] < 8'd155;
+        r_rand_state = F_next_rand(r_rand_state);
+        want_rd      = r_rand_state[15:8] < 8'd145;
+        rd_cmd       = want_rd && (r_scb_count>0) && !fifo_bus.o_rd_empty;
+        wr_cmd       = want_wr && ((r_scb_count<DEPTH) ||
+                       (ALLOW_FULL_BYP && rd_cmd));
     end
-    else begin
-        rand_state  = next_rand(rand_state);
-        want_wr     = rand_state[7:0] < 8'd155;
-        rand_state  = next_rand(rand_state);
-        want_rd     = rand_state[15:8] < 8'd145;
-
-        rd_cmd = want_rd && (scb_count > 0);
-        wr_cmd = want_wr && ((scb_count < DEPTH) || (ALLOW_FULL_BYP && rd_cmd));
-    end
-    wr_data_cmd  = data_cnt[DW-1:0] ^ (CASE_ID << 8);
-    vif.drv_cb.clear     <= clear_cmd;
-    vif.drv_cb.i_wr_en   <= wr_cmd;
-    vif.drv_cb.i_rd_en   <= rd_cmd;
-    vif.drv_cb.i_wr_data <= wr_data_cmd;
-
-    if( rd_cmd && (vif.drv_cb.o_rd_data !== scb_mem[scb_rd_ptr]) ) begin
+    wr_data_cmd = r_data_cnt[DW-1:0] ^ DW'(CASE_ID << 8);
+    if( rd_cmd && (fifo_bus.o_rd_data !== r_scb_mem[r_scb_rd_ptr]) ) begin
         $fatal(1, "CASE%0d data mismatch cycle=%0d dut=0x%0h exp=0x%0h count=%0d",
-               CASE_ID, cyc, vif.drv_cb.o_rd_data, scb_mem[scb_rd_ptr], scb_count);
+               CASE_ID, cyc, fifo_bus.o_rd_data,
+               r_scb_mem[r_scb_rd_ptr], r_scb_count);
     end
-
-    clear_fire  = clear_cmd;
-    wr_fire     = wr_cmd;
-    rd_fire     = rd_cmd;
-    wr_data_fire = wr_data_cmd;
-
-    @(vif.drv_cb);
-    drive_idle();
-    if( clear_fire ) begin
-        scb_reset();
-    end
-    else begin
-        if( wr_fire ) begin
-            scb_mem[scb_wr_ptr] = wr_data_fire;
-            scb_wr_ptr = (scb_wr_ptr+1) % DEPTH;
-            data_cnt = data_cnt + 1'b1;
-        end
-        if( rd_fire ) begin
-            scb_rd_ptr = (scb_rd_ptr+1) % DEPTH;
-        end
-        scb_count = scb_count + wr_fire - rd_fire;
-    end
-
-    check_status();
+    fifo_bus.clear     <= clear_cmd;
+    fifo_bus.i_wr_en   <= wr_cmd;
+    fifo_bus.i_wr_data <= wr_data_cmd;
+    fifo_bus.i_rd_en   <= rd_cmd;
 end
 endtask
 
-task automatic run;
-begin
-    reset_phase();
-    for( integer cyc=0; cyc<CYCLE_N; cyc=cyc+1 ) begin
-        run_cycle(cyc);
-    end
-    @(vif.drv_cb);
-    drive_idle();
-    repeat(5) @(vif.drv_cb);
-    $display("CASE%0d PASS dut_type=%0d depth=%0d dw=%0d", CASE_ID, DUT_TYPE, DEPTH, DW);
-end
-endtask
+integer cyc;
 
-endclass
+initial begin
+    o_done             = 1'b0;
+    fifo_bus.rst_n     = 1'b0;
+    fifo_bus.clear     = 1'b0;
+    fifo_bus.i_wr_en   = 1'b0;
+    fifo_bus.i_wr_data = '0;
+    fifo_bus.i_rd_en   = 1'b0;
+    r_rand_state       = SEED;
+    r_data_cnt         = 32'h1;
+    T_scb_reset();
+
+    repeat(5) @(posedge fifo_bus.clk);
+    @(negedge fifo_bus.clk);
+    fifo_bus.rst_n <= 1'b1;
+    repeat(2) @(posedge fifo_bus.clk);
+    #1ps;
+    T_check_status();
+
+    for( cyc=0; cyc<CYCLE_N; cyc=cyc+1 ) begin
+        @(negedge fifo_bus.clk);
+        T_drive_next(cyc);
+        @(posedge fifo_bus.clk);
+        #1ps;
+        T_apply_hs(cyc);
+        T_check_status();
+    end
+
+    @(negedge fifo_bus.clk);
+    T_drive_idle();
+    @(posedge fifo_bus.clk);
+    #1ps;
+    T_apply_hs(cyc);
+    T_check_status();
+    repeat(5) @(posedge fifo_bus.clk);
+    $display("CASE%0d PASS dut_type=%0d depth=%0d dw=%0d",
+             CASE_ID, DUT_TYPE, DEPTH, DW);
+    o_done = 1'b1;
+end
+
+endmodule

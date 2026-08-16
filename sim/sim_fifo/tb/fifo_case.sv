@@ -1,39 +1,34 @@
 `timescale 1ns/1ps
 
-program automatic fifo_case_prog #( parameter
-    DW              = 16,
-    DEPTH           = 4,
-    CW              = 3,
-    CASE_ID         = 0,
-    DUT_TYPE        = 0,
-    CYCLE_N         = 2000,
-    SEED            = 32'h1234_5678,
-    ALLOW_FULL_BYP  = 0
+module fifo_ram_rd_delay #( parameter
+    DW    = 16,
+    DELAY = 1
 )
 (
-fifo_if #(DW,CW).drv fifo_bus,
-output logic          o_done
+input  logic          clk,
+input  logic [DW-1:0] i_data,
+output logic [DW-1:0] o_data
 );
 
-fifo_drv #(
-    .DW             ( DW             ),
-    .DEPTH          ( DEPTH          ),
-    .CW             ( CW             ),
-    .CASE_ID        ( CASE_ID        ),
-    .DUT_TYPE       ( DUT_TYPE       ),
-    .CYCLE_N        ( CYCLE_N        ),
-    .SEED           ( SEED           ),
-    .ALLOW_FULL_BYP ( ALLOW_FULL_BYP )
-)drv;
-
-initial begin
-    o_done = 1'b0;
-    drv = new(fifo_bus);
-    drv.run();
-    o_done = 1'b1;
+generate
+if( DELAY==1 ) begin:gen_direct
+    always_comb o_data = i_data;
 end
+else begin:gen_delay
+    logic [DW-1:0] r_data_pipe [0:DELAY-2];
 
-endprogram
+    always_ff @(posedge clk) begin
+        r_data_pipe[0] <= i_data;
+        for( int i=1; i<DELAY-1; i=i+1 ) begin
+            r_data_pipe[i] <= r_data_pipe[i-1];
+        end
+    end
+
+    always_comb o_data = r_data_pipe[DELAY-2];
+end
+endgenerate
+
+endmodule
 
 module fifo_basic_case #( parameter
     DUT_TYPE = 0,
@@ -150,6 +145,7 @@ else if( DUT_TYPE==4 ) begin:gen_fifo_ram_1p1bank
     wire [RAM_ONE_AW-1:0]      u_ram_i_addr;
     wire [RAM_ONE_DW-1:0]      u_ram_i_wr_data;
     wire [RAM_ONE_DW-1:0]      u_ram_o_rd_data;
+    wire [RAM_ONE_DW-1:0]      u_ram_o_rd_data_raw;
 
     com_sync_fifo_ram_1p1bank #(
         .DW           ( DW           ),
@@ -189,7 +185,17 @@ else if( DUT_TYPE==4 ) begin:gen_fifo_ram_1p1bank
         .i_we_n         ( u_ram_i_we_n          ),
         .i_addr         ( u_ram_i_addr          ),
         .i_wr_data      ( u_ram_i_wr_data       ),
-        .o_rd_data      ( u_ram_o_rd_data       )
+        .o_rd_data      ( u_ram_o_rd_data_raw   )
+    );
+
+    fifo_ram_rd_delay #(
+        .DW    ( RAM_ONE_DW    ),
+        .DELAY ( RAM_RD_DELAY  )
+    )u_ram_rd_delay
+    (
+        .clk    ( fifo_bus.clk         ),
+        .i_data ( u_ram_o_rd_data_raw  ),
+        .o_data ( u_ram_o_rd_data      )
     );
 end
 else if( DUT_TYPE==5 ) begin:gen_fifo_ram_1p2bank
@@ -198,6 +204,7 @@ else if( DUT_TYPE==5 ) begin:gen_fifo_ram_1p2bank
     wire [1:0][RAM_ONE_AW-1:0] u_ram_i_addr;
     wire [1:0][DW-1:0]         u_ram_i_wr_data;
     wire [1:0][DW-1:0]         u_ram_o_rd_data;
+    wire [1:0][DW-1:0]         u_ram_o_rd_data_raw;
 
     com_sync_fifo_ram_1p2bank #(
         .DW           ( DW           ),
@@ -238,7 +245,17 @@ else if( DUT_TYPE==5 ) begin:gen_fifo_ram_1p2bank
             .i_we_n         ( u_ram_i_we_n[gi]       ),
             .i_addr         ( u_ram_i_addr[gi]       ),
             .i_wr_data      ( u_ram_i_wr_data[gi]    ),
-            .o_rd_data      ( u_ram_o_rd_data[gi]    )
+            .o_rd_data      ( u_ram_o_rd_data_raw[gi] )
+        );
+
+        fifo_ram_rd_delay #(
+            .DW    ( DW            ),
+            .DELAY ( RAM_RD_DELAY  )
+        )u_ram_rd_delay
+        (
+            .clk    ( fifo_bus.clk             ),
+            .i_data ( u_ram_o_rd_data_raw[gi]  ),
+            .o_data ( u_ram_o_rd_data[gi]      )
         );
     end
 end
@@ -249,6 +266,7 @@ else begin:gen_fifo_ram_2p1ck
     wire              u_ram_i_rd_en;
     wire [RAM_AW-1:0] u_ram_i_rd_addr;
     wire [DW-1:0]     u_ram_o_rd_data;
+    wire [DW-1:0]     u_ram_o_rd_data_raw;
 
     com_sync_fifo_ram_2p1ck #(
         .DW           ( DW           ),
@@ -290,12 +308,22 @@ else begin:gen_fifo_ram_2p1ck
         .i_wr_data      ( u_ram_i_wr_data       ),
         .i_rd_en        ( u_ram_i_rd_en         ),
         .i_rd_addr      ( u_ram_i_rd_addr       ),
-        .o_rd_data      ( u_ram_o_rd_data       )
+        .o_rd_data      ( u_ram_o_rd_data_raw   )
+    );
+
+    fifo_ram_rd_delay #(
+        .DW    ( DW            ),
+        .DELAY ( RAM_RD_DELAY  )
+    )u_ram_rd_delay
+    (
+        .clk    ( fifo_bus.clk         ),
+        .i_data ( u_ram_o_rd_data_raw  ),
+        .o_data ( u_ram_o_rd_data      )
     );
 end
 endgenerate
 
-fifo_case_prog #(
+fifo_drv #(
     .DW             ( DW             ),
     .DEPTH          ( DEPTH          ),
     .CW             ( CW             ),

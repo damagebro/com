@@ -32,19 +32,4 @@ output o_rd_empty,
 output o_water_level
 );
 
-clocking drv_cb @(posedge clk);
-    default input #1step output #0;
-    output rst_n;
-    output clear;
-    output i_wr_en;
-    output i_wr_data;
-    input  o_wr_full;
-    output i_rd_en;
-    input  o_rd_data;
-    input  o_rd_empty;
-    input  o_water_level;
-endclocking
-
-modport drv(clocking drv_cb);
-
 endinterface

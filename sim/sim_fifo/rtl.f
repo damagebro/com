@@ -2,6 +2,7 @@
 //define
 //--------------------------------------
 +define+COM_MEM_CTRL_W=4
++define+COM_ASSERT_ON
 ${COM_PATH}/com_define.sv
 
 //--------------------------------------
