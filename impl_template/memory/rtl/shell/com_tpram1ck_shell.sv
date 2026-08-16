@@ -107,6 +107,7 @@ else begin:gen_ram_as_cell
     end
 end
 endgenerate
+`endif
 
 //report---------------------------------------------------------------------
 // synopsys translate_off

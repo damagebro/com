@@ -87,16 +87,16 @@
 
     6. Q：情景4：8 次 `port.i_rd_en`，2 次 `port.i_wr_en`；第一次写在 t1，第二次写在 t5。
 
-       | cycle | port                | out_fifo                                     | out_wl | ram_otf_cnt | sram_req                 | sram_ack                   | result              |
-       | ----- | ------------------- | -------------------------------------------- | ------ | ----------- | ------------------------ | -------------------------- | ------------------- |
-       | t0    | `i_rd_en`           | `i_rd_en`                                    | 0->1   | 0           | `rd_en=0`, `req_hi=0`    | `ack_vld=0`, `ack_hi=0`    | free slot           |
-       | t1    | `i_rd_en`,`i_wr_en` | `i_rd_en`, `wr_fast_mis`                     | 1->1   | 0->2        | `rd_en=1`, `req_hi=0->1` | `ack_vld=0`, `ack_hi=0`    | rd req, pack        |
-       | t2    | `i_rd_en`           | `i_rd_en`, `wr_fast_mis`                     | 1->1   | 2           | `rd_en=0`, `req_hi=1->0` | `ack_vld=0`, `ack_hi=0`    | high resv           |
-       | t3    | `i_rd_en`           | `i_rd_en`, `wr_fast_mis`, `i_wr_slow_en`     | 1->1   | 2->3        | `rd_en=1`, `req_hi=0->1` | `ack_vld=1`, `ack_hi=0->1` | low fill, rd req    |
-       | t4    | `i_rd_en`           | `i_rd_en`, `wr_fast_mis`, `i_wr_slow_en`     | 1->1   | 3->2        | `rd_en=0`, `req_hi=1->0` | `ack_vld=0`, `ack_hi=1->0` | high fill/resv      |
-       | t5    | `i_rd_en`,`i_wr_en` | `i_rd_en`, `wr_fast_hit`, `i_wr_slow_en`     | 1->1   | 2->1        | `rd_en=0`, `req_hi=0`    | `ack_vld=1`, `ack_hi=0->1` | low fill, drain     |
-       | t6    | `i_rd_en`           | `i_rd_en`, `wr_fast_hit`, `i_wr_slow_en`     | 1->1   | 1->0        | `rd_en=0`, `req_hi=0`    | `ack_vld=0`, `ack_hi=1->0` | high fill, drain    |
-       | t7    | `i_rd_en`           | `i_rd_en`                                    | 1->2   | 0           | `rd_en=0`, `req_hi=0`    | `ack_vld=0`, `ack_hi=0`    | free slot           |
+       | cycle | port                | out_fifo                                 | out_wl | ram_otf_cnt | sram_req                 | sram_ack                   | result           |
+       | ----- | ------------------- | ---------------------------------------- | ------ | ----------- | ------------------------ | -------------------------- | ---------------- |
+       | t0    | `i_rd_en`           | `i_rd_en`                                | 0->1   | 0           | `rd_en=0`, `req_hi=0`    | `ack_vld=0`, `ack_hi=0`    | free slot        |
+       | t1    | `i_rd_en`,`i_wr_en` | `i_rd_en`, `wr_fast_mis`                 | 1->1   | 0->2        | `rd_en=1`, `req_hi=0->1` | `ack_vld=0`, `ack_hi=0`    | rd req, pack     |
+       | t2    | `i_rd_en`           | `i_rd_en`, `wr_fast_mis`                 | 1->1   | 2           | `rd_en=0`, `req_hi=1->0` | `ack_vld=0`, `ack_hi=0`    | high resv        |
+       | t3    | `i_rd_en`           | `i_rd_en`, `wr_fast_mis`, `i_wr_slow_en` | 1->1   | 2->3        | `rd_en=1`, `req_hi=0->1` | `ack_vld=1`, `ack_hi=0->1` | low fill, rd req |
+       | t4    | `i_rd_en`           | `i_rd_en`, `wr_fast_mis`, `i_wr_slow_en` | 1->1   | 3->2        | `rd_en=0`, `req_hi=1->0` | `ack_vld=0`, `ack_hi=1->0` | high fill/resv   |
+       | t5    | `i_rd_en`,`i_wr_en` | `i_rd_en`, `wr_fast_hit`, `i_wr_slow_en` | 1->1   | 2->1        | `rd_en=0`, `req_hi=0`    | `ack_vld=1`, `ack_hi=0->1` | low fill, drain  |
+       | t6    | `i_rd_en`           | `i_rd_en`, `wr_fast_hit`, `i_wr_slow_en` | 1->1   | 1->0        | `rd_en=0`, `req_hi=0`    | `ack_vld=0`, `ack_hi=1->0` | high fill, drain |
+       | t7    | `i_rd_en`           | `i_rd_en`                                | 1->2   | 0           | `rd_en=0`, `req_hi=0`    | `ack_vld=0`, `ack_hi=0`    | free slot        |
 
        A：t1 写进 pack；t2 占 high。t5/t6 利用 2w1r 同拍 slow fill 和 pack drain，新写数据留 pack。
 
@@ -107,41 +107,58 @@
 * 概述
     1. 使用 2 个单口 SRAM bank 作为 FIFO 主存储体，每个 bank 数据位宽为 `DW`，逻辑地址按 ping/pong bank 交替分布。
     2. 和 1p1bank 相比，1p2bank 不需要 `2*DW` 宽 SRAM，也没有 high half 返回路径；代价是同 bank 读写冲突时一次 SRAM read 只会返回 1 笔数据。
-    3. 新方向去掉 ibuf：冲突写数据直接写 SRAM，不再经历 `port -> ibuf -> SRAM` 的额外 data move，用更深 out_fifo 吸收 read hold。
+    3. 普通同 bank 冲突保持 write-priority，不使用 ibuf；仅在 SRAM full 时首次 push ibuf，避免新写覆盖尚未读出的旧数据。
     4. out_fifo 最小深度同样统一为 `OUT_DEPTH >= RAM_RD_DELAY + 3`，覆盖 SRAM latency 与同 bank write-priority read hold。
 
 * 模块框图
     1. 框图见本节开头图片。
     2. write path：port write 优先 direct 到 out_fifo；如果 RAM FIFO 非空或 out_fifo 无 direct 条件，则写入 SRAM tail。
-    3. read reserve path：out_fifo 出现空位且 RAM FIFO 有数据时，先发 `wr_fast_mis` 预留返回位置。
-    4. read issue path：若本拍 SRAM read 与 port write 同 bank 冲突，则写优先，read 进入 `rd_hold`；下一拍优先 issue hold read。
+    3. read prefill path：out_fifo 出现空位且 RAM FIFO 有数据时，`rd_prefill` 先发 `wr_fast_mis` 预留返回位置。
+    4. read issue path：普通同 bank 冲突时写优先，read 进入 `rd_hold`；SRAM full 时读优先，新写进入 ibuf。
     5. return/fill path：`RAM_RD_DELAY` 后 SRAM ack 通过 out_fifo slow 口填入已预留 entry。
     6. bypass path：当 RAM FIFO 为空且没有 hold read 时，port write 可通过 out_fifo fast hit 直接写出。
 
 * 设计细节
     1. `out_fifo` 继续使用 `com_sync_fifo_reg_2w1r`；fast hit 给 port direct write，fast miss 给 SRAM read 返回预留 entry，slow write 填 SRAM ack 数据。
     2. `r_ram_wr_addr/r_ram_rd_addr` 分别表示 SRAM FIFO tail/head，按 `DW` 粒度递增，`addr[0]` 选择 ping/pong bank。
-    3. `rd_hold_vld/rd_hold_addr` 记录已经完成 fast miss 预留、但还没真正发起 SRAM read 的 pending read。
+    3. `rd_hold_vld` 记录已经完成 `rd_prefill`、但因 bank 冲突还没真正发起的 SRAM read；再次冲突时 `r_ram_rd_addr` 保持不变并暂停新的 prefill，hold 请求成功发出且 out_fifo 仍有空间时，可同拍 prefill 下一笔并保持 `rd_hold_vld=1`。
     4. `ram_otf_cnt` 表示已经发出 SRAM read、但还没 slow fill 完成的 entry 数量，主要用于检查 outstanding/underflow。
     5. `direct_order_avl` 表示 RAM FIFO 为空且没有 `rd_hold`，此时 port write 才能 direct 到 out_fifo。
-    6. 同 bank SRAM 读写冲突时写优先，read 最多 hold 1 拍；该 1 拍不靠 ibuf 吸收，靠 out_fifo 深度吸收。
+    6. 普通同 bank SRAM 读写冲突时写优先，read 进入 hold；已有 hold 再次遇到同 bank write 时暂停新的 `rd_prefill`，并保持 `r_ram_rd_addr` 不变。
     7. 参数约束：`RAM_DEPTH>=2` 且为偶数；`RAM_RD_DELAY` 固定且至少 1；`OUT_DEPTH >= RAM_RD_DELAY + 3`。
     8. 2w1r out_fifo 仍然必要：SRAM ack slow fill 和 port direct fast hit 可能同拍发生，不能退化为普通 1w FIFO。
 
 * 讨论记录
-    1. Q：为什么去掉 ibuf？
-       A：冲突写数据直接进入 SRAM，少一次 `port -> ibuf -> SRAM` 搬运，功耗和控制复杂度更低。
+    1. Q：为什么只在 SRAM full 时启用 ibuf？
+       A：普通冲突写直接进入 SRAM，只有可能覆盖旧数据的 full-address collision 才经过 `port -> ibuf -> SRAM` 两次 data move，降低常规场景动态功耗。
     2. Q：`OUT_DEPTH=3`、`RAM_RD_DELAY=1` 时，为什么同 bank 冲突会导致读断流？
        假设：t0 前 out_fifo full 且有 3 笔可读数据；ping/pong SRAM 各 1 笔；t1 有一次 port write，且与当前 read 同 bank 冲突。
 
-       | cycle | port                | out_fifo                    | out_wl | sram_req                     | sram_ack       | result              |
-       | ----- | ------------------- | --------------------------- | ------ | ---------------------------- | -------------- | ------------------- |
-       | t0    | `i_rd_en`           | `i_rd_en`                   | 0->1   | `rd_en=0`, `rd_hold=0`       | `ack_vld=0`    | free slot           |
-       | t1    | `i_rd_en`,`i_wr_en` | `i_rd_en`, `wr_fast_mis`    | 1->1   | `wr_en=ping`, `rd_hold=ping` | `ack_vld=0`    | wr wins, reserve d0 |
-       | t2    | `i_rd_en`           | `i_rd_en`, `wr_fast_mis`    | 1->1   | `rd_en=ping`, `rd_hold=pong` | `ack_vld=0`    | read d0, reserve d1 |
-       | t3    | `i_rd_en`           | `rd_empty`, `i_wr_slow_en`, `wr_fast_mis` | 1->0 | `rd_en=pong`, `rd_hold=ping` | `ack_vld=ping` | rd break, fill d0   |
+       | cycle | port                | out_fifo                                  | out_wl | sram_req                     | sram_ack       | result              |
+       | ----- | ------------------- | ----------------------------------------- | ------ | ---------------------------- | -------------- | ------------------- |
+       | t0    | `i_rd_en`           | `i_rd_en`                                 | 0->1   | `rd_en=0`, `rd_hold=0`       | `ack_vld=0`    | free slot           |
+       | t1    | `i_rd_en`,`i_wr_en` | `i_rd_en`, `wr_fast_mis`                  | 1->1   | `wr_en=ping`, `rd_hold=ping` | `ack_vld=0`    | wr wins, prefill d0 |
+       | t2    | `i_rd_en`           | `i_rd_en`, `wr_fast_mis`                  | 1->1   | `rd_en=ping`, `rd_hold=pong` | `ack_vld=0`    | read d0, prefill d1 |
+       | t3    | `i_rd_en`           | `rd_empty`, `i_wr_slow_en`, `wr_fast_mis` | 1->0   | `rd_en=pong`, `rd_hold=ping` | `ack_vld=ping` | rd break, fill d0   |
 
         A：t0/t1/t2 已经读完 3 笔可读数据；t3 的 slow fill 不能给 t3 同拍 read 使用，所以 `OUT_DEPTH=3` 会断流。`OUT_DEPTH=4` 才能覆盖这 1 拍 read hold。
+
+    3. Q：SRAM full + out_fifo还有一个空位;  此时port.i_wr_en让sram读写命中同一bank时如何处理？
+
+   | cycle | port                      | sram_req                   | sram_ack       | ibuf_vld | tol_wl |
+   | ----- | ------------------------- | -------------------------- | -------------- | -------- | ------ |
+   | t0    | `i_wr_en=ibuf`,           | `rd_en=ping`               |                | 0->1     | 1->0   |
+   | t1    | `i_rd_en`                 | ,           , `wr_en=ping` | `ack_vld=ping` | 1->0     | 0->1   |
+   | t2    | `i_rd_en`, `i_wr_en=ibuf` | `rd_en=pong`,              |                | 0->1     | 1->1   |
+   | t3    | `i_rd_en`, `i_wr_en=ibuf` | `rd_en=ping`, `wr_en=pong` | `ack_vld=pong` | 1->1     | 1->1   |
+   | t4    | `i_wr_en=ibuf`            | `rd_en=pong`, `wr_en=ping` | `ack_vld=ping` | 1->1     | 1->0   |
+   | t5    |                           | ,           , `wr_en=pong` | `ack_vld=pong` | 1->0     | 0      |
+
+        A：`i_wr_en=ibuf` 表示该拍 write 已握手，但数据先写入 ibuf，不直接写 SRAM。t0 的 out_fifo 空位允许发起 `rd_en=ping` 和 `rd_prefill`；由于 RAM full 时读写 pointer 指向同一位置，新写若直接落 RAM 会覆盖尚未读出的旧数据，因此本拍保留 SRAM read，并把 write 放入 ibuf。
+
+        t1 的 out_fifo 已被 t0 的 `rd_prefill` 预留满，不能继续发起 SRAM read；本拍只接收 t0 的 `ack_vld=ping`，同时 port read 释放 out_fifo 空间，ibuf 数据写回刚释放的 ping entry。t2/t3 的 port read 与 `rd_prefill` 同拍发生，out_fifo 可用空间保持不变，因此 SRAM read 可以继续流水。
+
+        ibuf 已有数据时，优先把旧数据 drain 到 SRAM；若同拍又有 port write，新数据 refill ibuf，所以 t3/t4 的 `ibuf_vld` 保持 `1->1`。t4 没有 port read，最后一个总 FIFO 空位被 write 消耗，`tol_wl` 变为 0；t5 排空最后一笔 ibuf 数据。该路径中每笔冲突写只经历 `port -> ibuf -> SRAM` 两次 data move。
 
 ### com_async_fifo_reg
 
