@@ -67,7 +67,7 @@ wire                       out_direct_wr_en;
 wire                       ram_wr_req;
 wire                       ram_wr_space_avl;
 wire                       ram_wr_en;
-wire                       rd_resv_en;
+wire                       rd_prefill_en;
 wire                       ram_rd_en;
 wire                       ram_rd_ack;
 wire [RAM_AW-0:0]          ram_wr_addr_p1;
@@ -78,6 +78,7 @@ wire [RAM_CW-1:0]          ram_water_level_nxt;
 wire [RAM_CW-1:0]          ram_otf_cnt_nxt;
 wire                       wr_path_miss;
 wire                       ram_otf_underflow_ilgl;
+wire                       ram_otf_status_mismatch_ilgl;
 
 //instance signal--
 wire                       u_out_i_wr_fast_en;
@@ -111,13 +112,13 @@ assign rd_hs = i_rd_en && !o_rd_empty;
 assign tol_water_level_nxt = r_tol_water_level - TOL_CW'(wr_hs) + TOL_CW'(rd_hs);
 assign wr_full_nxt = tol_water_level_nxt=='0;
 
-assign direct_order_avl = r_ram_rd_empty && (r_ram_otf_cnt=='0);
+assign direct_order_avl = r_ram_rd_empty && !u_out_o_wr_slow_avl_flag;
 assign out_direct_wr_en = wr_hs && direct_order_avl && !u_out_o_wr_full;
 assign ram_wr_req = wr_hs && !out_direct_wr_en;
-assign rd_resv_en = !r_ram_rd_empty && !u_out_o_wr_full;
-assign ram_wr_space_avl = !r_ram_wr_full || rd_resv_en;
+assign rd_prefill_en = !r_ram_rd_empty && !u_out_o_wr_full;
+assign ram_wr_space_avl = !r_ram_wr_full || rd_prefill_en;
 assign ram_wr_en = ram_wr_req && ram_wr_space_avl;
-assign ram_rd_en = rd_resv_en;
+assign ram_rd_en = rd_prefill_en;
 assign ram_rd_ack = r_ram_rd_vld_pipe[RAM_RD_DELAY-1];
 
 assign ram_wr_addr_p1 = {1'b0,r_ram_wr_addr} + 1'b1;
@@ -126,11 +127,14 @@ assign ram_wr_addr_nxt = ram_wr_addr_p1==RAM_DEPTH[RAM_AW:0] ? '0 :
                          ram_wr_addr_p1[RAM_AW-1:0];
 assign ram_rd_addr_nxt = ram_rd_addr_p1==RAM_DEPTH[RAM_AW:0] ? '0 :
                          ram_rd_addr_p1[RAM_AW-1:0];
-assign ram_water_level_nxt = r_ram_water_level - RAM_CW'(ram_wr_en) + RAM_CW'(rd_resv_en);
+assign ram_water_level_nxt = r_ram_water_level - RAM_CW'(ram_wr_en) +
+                             RAM_CW'(rd_prefill_en);
 assign ram_otf_cnt_nxt = r_ram_otf_cnt + RAM_CW'(ram_rd_en) - RAM_CW'(ram_rd_ack);
 
 assign wr_path_miss = wr_hs && !(out_direct_wr_en || ram_wr_en);
 assign ram_otf_underflow_ilgl = ram_rd_ack && (r_ram_otf_cnt=='0);
+assign ram_otf_status_mismatch_ilgl = (r_ram_otf_cnt=='0) ==
+                                      u_out_o_wr_slow_avl_flag;
 
 //ram_wr_addr
 always @(posedge clk or negedge rst_n) begin
@@ -164,7 +168,7 @@ always @(posedge clk or negedge rst_n) begin
         r_ram_rd_empty <= 1'b1;
         r_ram_water_level <= RAM_DEPTH[RAM_CW-1:0];
     end
-    else if( ram_wr_en || rd_resv_en ) begin
+    else if( ram_wr_en || rd_prefill_en ) begin
         r_ram_wr_full <= ram_water_level_nxt=='0;
         r_ram_rd_empty <= ram_water_level_nxt==RAM_DEPTH[RAM_CW-1:0];
         r_ram_water_level <= ram_water_level_nxt;
@@ -211,7 +215,7 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 //instance----
-assign u_out_i_wr_fast_en = out_direct_wr_en || rd_resv_en;
+assign u_out_i_wr_fast_en = out_direct_wr_en || rd_prefill_en;
 assign u_out_i_wr_fast_data_vld = out_direct_wr_en;
 assign u_out_i_wr_fast_data = i_wr_data;
 assign u_out_i_wr_slow_en = ram_rd_ack;
@@ -251,5 +255,6 @@ com_sync_fifo_reg_2w1r #(
 `COM_SIGNAL_ASSERT_LITE( a2, ram_rd_ack,u_out_o_wr_slow_avl_flag, "ram read ack without out fifo slow slot" )
 `COM_SIGNAL_ASSERT_LITE( a3, wr_path_miss,1'b0, "fifo ram write path unavailable" )
 `COM_SIGNAL_ASSERT_LITE( a4, ram_otf_underflow_ilgl,1'b0, "ram outstanding read underflow" )
+`COM_SIGNAL_ASSERT_LITE( a5, ram_otf_status_mismatch_ilgl,1'b0, "ram outstanding status mismatch" )
 
 endmodule //end of com_sync_fifo_ram_2p1ck

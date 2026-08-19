@@ -85,6 +85,7 @@ wire              ram_rd_en;
 wire              ram_rd_ack;
 wire [DW-1:0]     ram_rd_ack_data;
 wire              wr_path_miss;
+wire              ram_otf_underflow_ilgl;
 wire [RAM_AW-0:0] ram_wr_addr_p1;
 wire [RAM_AW-0:0] ram_rd_addr_p1;
 wire [RAM_AW-1:0] ram_wr_addr_nxt;
@@ -148,6 +149,7 @@ assign rd_issue_req = r_rd_hold_vld || rd_prefill_en;
 assign ram_rd_conflict = rd_issue_req && ram_wr_bank_conflict;
 assign ram_rd_en = rd_issue_req && !ram_rd_conflict;
 assign wr_path_miss = wr_hs && !(out_direct_wr_en || port_ram_wr_en || ibuf_push_en);
+assign ram_otf_underflow_ilgl = ram_rd_ack && (r_ram_otf_cnt=='0);
 
 assign ram_wr_addr_p1 = {1'b0,r_ram_wr_addr} + 1'b1;
 assign ram_rd_addr_p1 = {1'b0,r_ram_rd_addr} + 1'b1;
@@ -332,5 +334,6 @@ com_sync_fifo_reg_2w1r #(
 `COM_SIGNAL_ASSERT_LITE( a1, i_rd_en,!o_rd_empty, "fifo read when empty" )
 `COM_SIGNAL_ASSERT_LITE( a2, ram_rd_ack,u_out_o_wr_slow_avl_flag, "ram read ack without out fifo slow slot" )
 `COM_SIGNAL_ASSERT_LITE( a3, wr_path_miss,1'b0, "fifo ram write path unavailable" )
+`COM_SIGNAL_ASSERT_LITE( a4, ram_otf_underflow_ilgl,1'b0, "ram outstanding read underflow" )
 
 endmodule //end of com_sync_fifo_ram_1p2bank
