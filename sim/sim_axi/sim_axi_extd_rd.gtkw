@@ -1,0 +1,40 @@
+[*]
+[timestart] 0
+@28
+top_extd_rd.clk
+top_extd_rd.axi_bus.rst_n
+top_extd_rd.axi_bus.clear
+@800200
+-EBUS read
+@22
+top_extd_rd.axi_bus.ra_user.ra_user[0][1:0]
+top_extd_rd.axi_bus.ra_addr.ra_addr[0][15:0]
+top_extd_rd.axi_bus.ra_bytelen.ra_bytelen[0][15:0]
+@28
+top_extd_rd.axi_bus.ra_valid[0]
+top_extd_rd.axi_bus.ra_ready[0]
+@22
+top_extd_rd.axi_bus.rd_data.rd_data[0][31:0]
+@28
+top_extd_rd.axi_bus.rd_last[0]
+top_extd_rd.axi_bus.rd_valid[0]
+top_extd_rd.axi_bus.rd_ready[0]
+@1000200
+-EBUS read
+@800200
+-AXI read
+@22
+top_extd_rd.axi_bus.axi_araddr[15:0]
+top_extd_rd.axi_bus.axi_arlen[3:0]
+top_extd_rd.axi_bus.axi_aruser[1:0]
+@28
+top_extd_rd.axi_bus.axi_arvalid
+top_extd_rd.axi_bus.axi_arready
+@22
+top_extd_rd.axi_bus.axi_rdata[31:0]
+@28
+top_extd_rd.axi_bus.axi_rlast
+top_extd_rd.axi_bus.axi_rvalid
+top_extd_rd.axi_bus.axi_rready
+@1000200
+-AXI read

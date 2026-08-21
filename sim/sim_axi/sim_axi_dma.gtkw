@@ -1,0 +1,85 @@
+[*]
+[timestart] 0
+@28
+top_dma.clk
+top_dma.axi_bus.rst_n
+top_dma.axi_bus.clear
+@800200
+-EBUS write
+@22
+top_dma.axi_bus.wa_user.wa_user[0][1:0]
+top_dma.axi_bus.wa_addr.wa_addr[0][15:0]
+top_dma.axi_bus.wa_bytelen.wa_bytelen[0][15:0]
+@28
+top_dma.axi_bus.wa_valid[0]
+top_dma.axi_bus.wa_ready[0]
+@22
+top_dma.axi_bus.wd_data.wd_data[0][31:0]
+@28
+top_dma.axi_bus.wd_valid[0]
+top_dma.axi_bus.wd_ready[0]
+top_dma.axi_bus.wb_valid[0]
+@1000200
+-EBUS write
+@800200
+-AXI write
+@22
+top_dma.axi_bus.axi_awid[0:0]
+top_dma.axi_bus.axi_awaddr[15:0]
+top_dma.axi_bus.axi_awlen[3:0]
+top_dma.axi_bus.axi_awuser[1:0]
+@28
+top_dma.axi_bus.axi_awvalid
+top_dma.axi_bus.axi_awready
+@22
+top_dma.axi_bus.axi_wdata[31:0]
+top_dma.axi_bus.axi_wstrb[3:0]
+@28
+top_dma.axi_bus.axi_wlast
+top_dma.axi_bus.axi_wvalid
+top_dma.axi_bus.axi_wready
+@22
+top_dma.axi_bus.axi_bid[0:0]
+top_dma.axi_bus.axi_bresp[1:0]
+@28
+top_dma.axi_bus.axi_bvalid
+top_dma.axi_bus.axi_bready
+@1000200
+-AXI write
+@800200
+-EBUS read
+@22
+top_dma.axi_bus.ra_user.ra_user[0][1:0]
+top_dma.axi_bus.ra_addr.ra_addr[0][15:0]
+top_dma.axi_bus.ra_bytelen.ra_bytelen[0][15:0]
+@28
+top_dma.axi_bus.ra_valid[0]
+top_dma.axi_bus.ra_ready[0]
+@22
+top_dma.axi_bus.rd_data.rd_data[0][31:0]
+@28
+top_dma.axi_bus.rd_last[0]
+top_dma.axi_bus.rd_valid[0]
+top_dma.axi_bus.rd_ready[0]
+@1000200
+-EBUS read
+@800200
+-AXI read
+@22
+top_dma.axi_bus.axi_arid[0:0]
+top_dma.axi_bus.axi_araddr[15:0]
+top_dma.axi_bus.axi_arlen[3:0]
+top_dma.axi_bus.axi_aruser[1:0]
+@28
+top_dma.axi_bus.axi_arvalid
+top_dma.axi_bus.axi_arready
+@22
+top_dma.axi_bus.axi_rid[0:0]
+top_dma.axi_bus.axi_rdata[31:0]
+top_dma.axi_bus.axi_rresp[1:0]
+@28
+top_dma.axi_bus.axi_rlast
+top_dma.axi_bus.axi_rvalid
+top_dma.axi_bus.axi_rready
+@1000200
+-AXI read

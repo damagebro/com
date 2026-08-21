@@ -12,8 +12,8 @@ program automatic axi_case_prog #( parameter
     UW        = 2
 )
 (
-axi_if #(WCH,RCH,AW,DW,EBUS_LW,LW,IW,UW).drv axi_bus,
-output logic                                      o_done
+axi_if.drv  axi_bus,
+output logic o_done
 );
 
 axi_drv #(CASE_KIND,WCH,RCH,AW,DW,EBUS_LW,LW,IW,UW) drv;

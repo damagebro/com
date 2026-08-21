@@ -14,9 +14,9 @@ wire case2_done;
 wire case3_done;
 wire case4_done;
 wire case5_done;
-wire [3:0] case6_done;
-wire [3:0] case7_done;
-wire [3:0] case8_done;
+wire [7:0] case6_done;
+wire [7:0] case7_done;
+wire [7:0] case8_done;
 
 if( CASE_SEL<0 || CASE_SEL==0 ) begin:gen_case0_enable
 fifo_basic_case #(
@@ -121,7 +121,7 @@ else begin:gen_case5_disable
     assign case5_done = 1'b1;
 end
 
-for( genvar gi=0; gi<4; gi=gi+1 ) begin:gen_case6_fifo_ram_1p1bank
+for( genvar gi=0; gi<8; gi=gi+1 ) begin:gen_case6_fifo_ram_1p1bank
     localparam RAM_DELAY = gi+1;
     localparam OUT_DEPTH = RAM_DELAY+3;
 
@@ -146,7 +146,7 @@ for( genvar gi=0; gi<4; gi=gi+1 ) begin:gen_case6_fifo_ram_1p1bank
     end
 end
 
-for( genvar gi=0; gi<4; gi=gi+1 ) begin:gen_case7_fifo_ram_1p2bank
+for( genvar gi=0; gi<8; gi=gi+1 ) begin:gen_case7_fifo_ram_1p2bank
     localparam RAM_DELAY = gi+1;
     localparam OUT_DEPTH = RAM_DELAY+3;
 
@@ -171,7 +171,7 @@ for( genvar gi=0; gi<4; gi=gi+1 ) begin:gen_case7_fifo_ram_1p2bank
     end
 end
 
-for( genvar gi=0; gi<4; gi=gi+1 ) begin:gen_case8_fifo_ram_2p1ck
+for( genvar gi=0; gi<8; gi=gi+1 ) begin:gen_case8_fifo_ram_2p1ck
     localparam RAM_DELAY = gi+1;
     localparam OUT_DEPTH = RAM_DELAY+2;
 
@@ -198,9 +198,9 @@ end
 
 initial begin
     if( !(CASE_SEL==-1 || (CASE_SEL>=0 && CASE_SEL<=5) ||
-          (CASE_SEL>=10 && CASE_SEL<=13) ||
-          (CASE_SEL>=20 && CASE_SEL<=23) ||
-          (CASE_SEL>=30 && CASE_SEL<=33)) ) begin
+          (CASE_SEL>=10 && CASE_SEL<=17) ||
+          (CASE_SEL>=20 && CASE_SEL<=27) ||
+          (CASE_SEL>=30 && CASE_SEL<=37)) ) begin
         $fatal(1, "invalid FIFO_CASE_SEL=%0d", CASE_SEL);
     end
 end

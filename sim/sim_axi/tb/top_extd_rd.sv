@@ -102,4 +102,11 @@ com_axi_extd_rd #(
     .o_tx_axi_rready       ( axi_bus.axi_rready         )
 );
 
+`ifdef DUMP_FST
+initial begin
+    $dumpfile("run.fst");
+    $dumpvars(0, top_extd_rd);
+end
+`endif
+
 endmodule
