@@ -1,4 +1,5 @@
-TC ?= sim_pipe
+TC ?= sim_afifo
+CASE ?= -1
 
 ENV_TC_DIR = ${SIM_DIR}/tc/
 RTL_F = ${SIM_DIR}/rtl.f
@@ -16,8 +17,9 @@ help:
 	@echo "make vlt_com   # compile with Verilator"
 	@echo "make vlt_run   # run Verilator binary"
 	@echo "make vlt_wave  # open with WSL GTKWave"
-	@echo "make vlt_gtk_wave"
-	@echo "make run TC=${TC}"
+	@echo "make vlt CASE=1  # run one case; CASE=-1 runs all cases"
+	@echo "case0/1: depth=5, write fast and read slow"
+	@echo "case2/3: depth=8, write slow and read fast"
 	@echo "#cdns#################"
 	@echo "make sim"
 	@echo "make cdns_com"
@@ -27,7 +29,7 @@ clean:
 	rm -rf $(TEMP_DIR)*
 
 #snps####################################################################################
-SNPS_DEF = +define+DUMP_FSDB
+SNPS_DEF = +define+DUMP_FSDB +define+AFIFO_CASE_SEL=$(CASE)
 SNPS_LINT_OPT = +lint=TFIPC-L,PCWM,CAWM,CDUB
 COM_OPT = -l $(TEMP_DIR)compile.log -Mdir=$(TEMP_DIR)csrc -full64 -sverilog \
           -timescale=1ns/100ps \
@@ -46,17 +48,18 @@ all: clean com run
 
 verdi:
 	cd $(TEMP_DIR); verdi -top top -f $(RTL_F) -f $(ENV_F) \
-		-ssf run.fsdb -sswr $(SIM_DIR)/wave/sim_pipe.rc \
+		-ssf run.fsdb -sswr $(SIM_DIR)/wave/sim_afifo.rc \
 		-sverilog -2009 -full64 &
 
 #cdns####################################################################################
-CDNS_DEF = +define+ADD_REPORT
+CDNS_DEF = +define+ADD_REPORT +define+AFIFO_CASE_SEL=$(CASE)
 CDNS_OPT = -64bit -sv -access rwc -timescale 1ns/100ps -vlog_ext +.h $(CDNS_DEF) \
            -loadpli1 debpli:novas_pli_boot -xmlibdirname ./xcelium.d -l ./xrun.log
 
 sim:
 	mkdir -p $(TEMP_DIR)
-	cd $(TEMP_DIR); xrun $(CDNS_OPT) -top top -f $(RTL_F) -f $(ENV_F) $(SIM_RUN_OPT) -gui &
+	cd $(TEMP_DIR); xrun $(CDNS_OPT) -top top -f $(RTL_F) -f $(ENV_F) \
+		$(SIM_RUN_OPT) -gui &
 
 cdns_com:
 	mkdir -p $(TEMP_DIR)
@@ -66,9 +69,10 @@ cdns_com:
 VLT_F = $(TEMP_DIR)filelist.f
 VLT_SIMV = $(TEMP_DIR)obj_dir/simv_$(TC)
 VLT_FST = $(TEMP_DIR)run.fst
-VLT_OPT = --binary --timing --assert --trace-fst --trace-structs -Wno-fatal -Wno-INITIALDLY \
--Wno-TIMESCALEMOD -Wno-WIDTHEXPAND \
--DDUMP_FST --top-module top --Mdir $(TEMP_DIR)obj_dir -o simv_$(TC)
+VLT_OPT = --binary --timing --assert --trace-fst --trace-structs -Wno-fatal \
+-Wno-INITIALDLY -Wno-TIMESCALEMOD -Wno-WIDTHEXPAND \
+-DDUMP_FST -DAFIFO_CASE_SEL=$(CASE) \
+--top-module top --Mdir $(TEMP_DIR)obj_dir -o simv_$(TC)
 
 vlt_f:
 	mkdir -p $(TEMP_DIR)
@@ -93,5 +97,5 @@ vlt_wave: vlt_gtk_wave
 
 vlt_gtk_wave:
 	test -f $(VLT_FST)
-	gtkwave $(VLT_FST) -a $(SIM_DIR)/wave/sim_pipe.gtkw \
+	gtkwave $(VLT_FST) -a $(SIM_DIR)/wave/sim_afifo.gtkw \
 		> $(TEMP_DIR)gtkwave.log 2>&1 &

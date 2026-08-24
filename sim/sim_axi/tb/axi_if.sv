@@ -122,6 +122,4 @@ clocking drv_cb @(posedge clk);
     input  axi_rready;
 endclocking
 
-modport drv(clocking drv_cb);
-
 endinterface

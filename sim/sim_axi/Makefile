@@ -51,7 +51,8 @@ all: clean com run
 
 verdi:
 	cd $(TEMP_DIR); verdi -top $(TOP) -f $(RTL_F) -f $(ENV_F) $(TOP_SV) \
-		-ssf run.fsdb -sverilog -2009 -full64 &
+		-ssf run.fsdb -sswr $(SIM_DIR)/wave/sim_axi_$(TARGET).rc \
+		-sverilog -2009 -full64 &
 
 #cdns####################################################################################
 CDNS_DEF = +define+ADD_REPORT
@@ -99,5 +100,5 @@ vlt_wave: vlt_gtk_wave
 
 vlt_gtk_wave:
 	test -f $(VLT_FST)
-	gtkwave $(VLT_FST) -a $(SIM_DIR)/sim_axi_$(TARGET).gtkw \
+	gtkwave $(VLT_FST) -a $(SIM_DIR)/wave/sim_axi_$(TARGET).gtkw \
 		> $(TEMP_DIR)gtkwave.log 2>&1 &

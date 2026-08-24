@@ -1,0 +1,23 @@
+# Generated from wave/sim_pipe.gtkw.
+# Load with: verdi ... -sswr wave/sim_pipe.rc
+
+addGroup "com_pipe_vld_single"
+addSignal -h 15 /top/clk
+addSignal -h 15 /top/rst_n
+addSignal -h 15 /top/vld_clear
+addSignal -h 15 /top/vld_i_rx_vld
+addSignal -h 15 /top/vld_o_rx_rdy
+addSignal -h 15 /top/vld_o_rx_pipe_upen
+addSignal -h 15 /top/vld_o_tx_vld
+addSignal -h 15 /top/vld_i_tx_rdy
+
+addGroup "com_pipe_rdy"
+addSignal -h 15 /top/clk
+addSignal -h 15 /top/rst_n
+addSignal -h 15 /top/rdy_clear
+addSignal -h 15 /top/rdy_i_rx_vld
+addSignal -h 15 /top/rdy_o_rx_rdy
+addSignal -h 15 /top/rdy_o_tx_vld
+addSignal -h 15 -UNSIGNED -HEX /top/rdy_i_rx_dat[7:0]
+addSignal -h 15 -UNSIGNED -HEX /top/rdy_o_tx_dat[7:0]
+addSignal -h 15 /top/rdy_i_tx_rdy

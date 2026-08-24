@@ -12,9 +12,9 @@ class axi_drv #( parameter
     UW        = 2
 );
 
-virtual axi_if #(WCH,RCH,AW,DW,EBUS_LW,LW,IW,UW).drv vif;
+virtual axi_if #(WCH,RCH,AW,DW,EBUS_LW,LW,IW,UW) vif;
 
-function new(virtual axi_if #(WCH,RCH,AW,DW,EBUS_LW,LW,IW,UW).drv vif);
+function new(virtual axi_if #(WCH,RCH,AW,DW,EBUS_LW,LW,IW,UW) vif);
     this.vif = vif;
 endfunction
 

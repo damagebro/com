@@ -69,11 +69,11 @@ initial begin
     $finish;
 end
 
-ram_case_prog #(
+ram_drv #(
     .AW     ( AW     ),
     .DW     ( DW     ),
     .STRB_W ( STRB_W )
-)u_case
+)u_ram_drv
 (
     .ram_bus ( ram_bus   ),
     .o_done  ( test_done )

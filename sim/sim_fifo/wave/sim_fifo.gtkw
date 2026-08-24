@@ -180,3 +180,4 @@ top.gen_case8_fifo_ram_2p1ck[0].gen_enable.u_case.fifo_bus.o_rd_empty
 top.gen_case8_fifo_ram_2p1ck[0].gen_enable.u_case.fifo_bus.o_water_level[3:0]
 @1000200
 -com_sync_fifo_ram_2p1ck RAM_RD_DELAY=1
+

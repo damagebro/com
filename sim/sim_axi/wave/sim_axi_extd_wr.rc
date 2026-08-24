@@ -1,0 +1,33 @@
+# Generated from wave/sim_axi_extd_wr.gtkw.
+# Load with: verdi ... -sswr wave/sim_axi_extd_wr.rc
+
+addGroup "common"
+addSignal -h 15 /top_extd_wr/clk
+addSignal -h 15 /top_extd_wr/axi_bus/rst_n
+addSignal -h 15 /top_extd_wr/axi_bus/clear
+
+addGroup "EBUS write"
+addSignal -h 15 -UNSIGNED -HEX /top_extd_wr/axi_bus/wa_user[0][1:0]
+addSignal -h 15 -UNSIGNED -HEX /top_extd_wr/axi_bus/wa_addr[0][15:0]
+addSignal -h 15 -UNSIGNED -HEX /top_extd_wr/axi_bus/wa_bytelen[0][15:0]
+addSignal -h 15 /top_extd_wr/axi_bus/wa_valid[0]
+addSignal -h 15 /top_extd_wr/axi_bus/wa_ready[0]
+addSignal -h 15 -UNSIGNED -HEX /top_extd_wr/axi_bus/wd_data[0][31:0]
+addSignal -h 15 /top_extd_wr/axi_bus/wd_valid[0]
+addSignal -h 15 /top_extd_wr/axi_bus/wd_ready[0]
+addSignal -h 15 /top_extd_wr/axi_bus/wb_valid[0]
+
+addGroup "AXI write"
+addSignal -h 15 -UNSIGNED -HEX /top_extd_wr/axi_bus/axi_awaddr[15:0]
+addSignal -h 15 -UNSIGNED -HEX /top_extd_wr/axi_bus/axi_awlen[3:0]
+addSignal -h 15 -UNSIGNED -HEX /top_extd_wr/axi_bus/axi_awuser[1:0]
+addSignal -h 15 /top_extd_wr/axi_bus/axi_awvalid
+addSignal -h 15 /top_extd_wr/axi_bus/axi_awready
+addSignal -h 15 -UNSIGNED -HEX /top_extd_wr/axi_bus/axi_wdata[31:0]
+addSignal -h 15 -UNSIGNED -HEX /top_extd_wr/axi_bus/axi_wstrb[3:0]
+addSignal -h 15 /top_extd_wr/axi_bus/axi_wlast
+addSignal -h 15 /top_extd_wr/axi_bus/axi_wvalid
+addSignal -h 15 /top_extd_wr/axi_bus/axi_wready
+addSignal -h 15 /top_extd_wr/axi_bus/axi_bvalid
+addSignal -h 15 /top_extd_wr/axi_bus/axi_bready
+

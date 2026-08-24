@@ -1,0 +1,29 @@
+# Generated from wave/sim_afifo.gtkw.
+# Load with: verdi ... -sswr wave/sim_afifo.rc
+
+addGroup "com_async_fifo_reg DEPTH=5"
+addSignal -h 15 /top/gen_case0_enable/u_case/wr_clk
+addSignal -h 15 /top/gen_case0_enable/u_case/afifo_bus/wr_rst_n
+addSignal -h 15 /top/gen_case0_enable/u_case/afifo_bus/i_wr_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case0_enable/u_case/afifo_bus/i_wr_data[7:0]
+addSignal -h 15 /top/gen_case0_enable/u_case/afifo_bus/o_wr_full
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case0_enable/u_case/afifo_bus/o_water_level[2:0]
+addSignal -h 15 /top/gen_case0_enable/u_case/rd_clk
+addSignal -h 15 /top/gen_case0_enable/u_case/afifo_bus/rd_rst_n
+addSignal -h 15 /top/gen_case0_enable/u_case/afifo_bus/i_rd_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case0_enable/u_case/afifo_bus/o_rd_data[7:0]
+addSignal -h 15 /top/gen_case0_enable/u_case/afifo_bus/o_rd_empty
+
+addGroup "com_async_fifo_reg_exactwl DEPTH=5"
+addSignal -h 15 /top/gen_case1_enable/u_case/wr_clk
+addSignal -h 15 /top/gen_case1_enable/u_case/afifo_bus/wr_rst_n
+addSignal -h 15 /top/gen_case1_enable/u_case/afifo_bus/i_wr_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case1_enable/u_case/afifo_bus/i_wr_data[7:0]
+addSignal -h 15 /top/gen_case1_enable/u_case/afifo_bus/o_wr_full
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case1_enable/u_case/afifo_bus/o_water_level[2:0]
+addSignal -h 15 /top/gen_case1_enable/u_case/rd_clk
+addSignal -h 15 /top/gen_case1_enable/u_case/afifo_bus/rd_rst_n
+addSignal -h 15 /top/gen_case1_enable/u_case/afifo_bus/i_rd_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case1_enable/u_case/afifo_bus/o_rd_data[7:0]
+addSignal -h 15 /top/gen_case1_enable/u_case/afifo_bus/o_rd_empty
+

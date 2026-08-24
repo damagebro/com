@@ -62,6 +62,4 @@ clocking drv_cb @(posedge clk);
     output sp2_rd_vld;
 endclocking
 
-modport drv(clocking drv_cb);
-
 endinterface

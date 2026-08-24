@@ -1,0 +1,47 @@
+[*]
+[timestart] 0
+@800200
+-com_async_fifo_reg DEPTH=5
+@28
+top.gen_case0_enable.u_case.wr_clk
+top.gen_case0_enable.u_case.afifo_bus.wr_rst_n
+top.gen_case0_enable.u_case.afifo_bus.i_wr_en
+@22
+top.gen_case0_enable.u_case.afifo_bus.i_wr_data[7:0]
+@28
+top.gen_case0_enable.u_case.afifo_bus.o_wr_full
+@22
+top.gen_case0_enable.u_case.afifo_bus.o_water_level[2:0]
+@28
+top.gen_case0_enable.u_case.rd_clk
+top.gen_case0_enable.u_case.afifo_bus.rd_rst_n
+top.gen_case0_enable.u_case.afifo_bus.i_rd_en
+@22
+top.gen_case0_enable.u_case.afifo_bus.o_rd_data[7:0]
+@28
+top.gen_case0_enable.u_case.afifo_bus.o_rd_empty
+@1000200
+-com_async_fifo_reg DEPTH=5
+@800200
+-com_async_fifo_reg_exactwl DEPTH=5
+@28
+top.gen_case1_enable.u_case.wr_clk
+top.gen_case1_enable.u_case.afifo_bus.wr_rst_n
+top.gen_case1_enable.u_case.afifo_bus.i_wr_en
+@22
+top.gen_case1_enable.u_case.afifo_bus.i_wr_data[7:0]
+@28
+top.gen_case1_enable.u_case.afifo_bus.o_wr_full
+@22
+top.gen_case1_enable.u_case.afifo_bus.o_water_level[2:0]
+@28
+top.gen_case1_enable.u_case.rd_clk
+top.gen_case1_enable.u_case.afifo_bus.rd_rst_n
+top.gen_case1_enable.u_case.afifo_bus.i_rd_en
+@22
+top.gen_case1_enable.u_case.afifo_bus.o_rd_data[7:0]
+@28
+top.gen_case1_enable.u_case.afifo_bus.o_rd_empty
+@1000200
+-com_async_fifo_reg_exactwl DEPTH=5
+

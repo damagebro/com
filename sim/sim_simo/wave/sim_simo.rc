@@ -1,0 +1,17 @@
+# Generated from wave/sim_simo.gtkw.
+# Load with: verdi ... -sswr wave/sim_simo.rc
+
+addGroup "com_simo_no_delay"
+addSignal -h 15 /top/clk
+addSignal -h 15 /top/rst_n
+addSignal -h 15 /top/clear
+addSignal -h 15 /top/i_rx_vld
+addSignal -h 15 /top/o_rx_rdy
+addSignal -h 15 /top/o_tx_vld[2:0]
+addSignal -h 15 /top/i_tx_rdy[2:0]
+addSignal -h 15 /top/o_tx_vld[0]
+addSignal -h 15 /top/i_tx_rdy[0]
+addSignal -h 15 /top/o_tx_vld[1]
+addSignal -h 15 /top/i_tx_rdy[1]
+addSignal -h 15 /top/o_tx_vld[2]
+addSignal -h 15 /top/i_tx_rdy[2]

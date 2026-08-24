@@ -1,6 +1,7 @@
 //--------------------------------------
 //define
 //--------------------------------------
++define+COM_ASSERT_ON
 ${COM_PATH}/com_define.sv
 
 //--------------------------------------
@@ -9,8 +10,7 @@ ${COM_PATH}/com_define.sv
 ${COM_PATH}/impl_template/stdcell/com_cdc_sig.sv
 
 //--------------------------------------
-//common
+//project
 //--------------------------------------
-${COM_PATH}/common/cdc/com_cdc_handshake.sv
-${COM_PATH}/common/cdc/com_cdc_rstn.sv
-${COM_PATH}/common/cdc/com_cdc_rstn_pair.sv
+${COM_PATH}/common/fifo/com_async_fifo_reg.sv
+${COM_PATH}/common/fifo/com_async_fifo_reg_exactwl.sv

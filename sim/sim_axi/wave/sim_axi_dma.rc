@@ -1,0 +1,61 @@
+# Generated from wave/sim_axi_dma.gtkw.
+# Load with: verdi ... -sswr wave/sim_axi_dma.rc
+
+addGroup "common"
+addSignal -h 15 /top_dma/clk
+addSignal -h 15 /top_dma/axi_bus/rst_n
+addSignal -h 15 /top_dma/axi_bus/clear
+
+addGroup "EBUS write"
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/wa_user[0][1:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/wa_addr[0][15:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/wa_bytelen[0][15:0]
+addSignal -h 15 /top_dma/axi_bus/wa_valid[0]
+addSignal -h 15 /top_dma/axi_bus/wa_ready[0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/wd_data[0][31:0]
+addSignal -h 15 /top_dma/axi_bus/wd_valid[0]
+addSignal -h 15 /top_dma/axi_bus/wd_ready[0]
+addSignal -h 15 /top_dma/axi_bus/wb_valid[0]
+
+addGroup "AXI write"
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_awid[0:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_awaddr[15:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_awlen[3:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_awuser[1:0]
+addSignal -h 15 /top_dma/axi_bus/axi_awvalid
+addSignal -h 15 /top_dma/axi_bus/axi_awready
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_wdata[31:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_wstrb[3:0]
+addSignal -h 15 /top_dma/axi_bus/axi_wlast
+addSignal -h 15 /top_dma/axi_bus/axi_wvalid
+addSignal -h 15 /top_dma/axi_bus/axi_wready
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_bid[0:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_bresp[1:0]
+addSignal -h 15 /top_dma/axi_bus/axi_bvalid
+addSignal -h 15 /top_dma/axi_bus/axi_bready
+
+addGroup "EBUS read"
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/ra_user[0][1:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/ra_addr[0][15:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/ra_bytelen[0][15:0]
+addSignal -h 15 /top_dma/axi_bus/ra_valid[0]
+addSignal -h 15 /top_dma/axi_bus/ra_ready[0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/rd_data[0][31:0]
+addSignal -h 15 /top_dma/axi_bus/rd_last[0]
+addSignal -h 15 /top_dma/axi_bus/rd_valid[0]
+addSignal -h 15 /top_dma/axi_bus/rd_ready[0]
+
+addGroup "AXI read"
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_arid[0:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_araddr[15:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_arlen[3:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_aruser[1:0]
+addSignal -h 15 /top_dma/axi_bus/axi_arvalid
+addSignal -h 15 /top_dma/axi_bus/axi_arready
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_rid[0:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_rdata[31:0]
+addSignal -h 15 -UNSIGNED -HEX /top_dma/axi_bus/axi_rresp[1:0]
+addSignal -h 15 /top_dma/axi_bus/axi_rlast
+addSignal -h 15 /top_dma/axi_bus/axi_rvalid
+addSignal -h 15 /top_dma/axi_bus/axi_rready
+

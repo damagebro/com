@@ -1,0 +1,20 @@
+[*]
+[timestart] 0
+@800200
+-com_simo_no_delay
+@28
+top.clk
+top.rst_n
+top.clear
+top.i_rx_vld
+top.o_rx_rdy
+top.o_tx_vld[2:0]
+top.i_tx_rdy[2:0]
+top.o_tx_vld[0]
+top.i_tx_rdy[0]
+top.o_tx_vld[1]
+top.i_tx_rdy[1]
+top.o_tx_vld[2]
+top.i_tx_rdy[2]
+@1000200
+-com_simo_no_delay

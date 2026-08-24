@@ -1,0 +1,19 @@
+# Generated from wave/sim_cdc.gtkw.
+# Load with: verdi ... -sswr wave/sim_cdc.rc
+
+addGroup "common"
+addSignal -h 15 /top/wr_clk
+addSignal -h 15 /top/wr_rst_n
+addSignal -h 15 /top/rd_clk
+addSignal -h 15 /top/rd_rst_n
+
+addGroup "com_cdc_handshake"
+addSignal -h 15 /top/src_req_pulse
+addSignal -h 15 /top/src_ack_pulse
+addSignal -h 15 /top/src_busy_level
+addSignal -h 15 /top/dst_req_pulse
+
+addGroup "reset_sync"
+addSignal -h 15 /top/rstn_o_dst_rst_n
+addSignal -h 15 /top/pair_o_src_rst_n
+addSignal -h 15 /top/pair_o_dst_rst_n

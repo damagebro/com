@@ -18,6 +18,27 @@ logic [DW-1:0] o_rd_data;
 logic          o_rd_empty;
 logic [CW-1:0] o_water_level;
 
+clocking drv_cb @(posedge clk);
+    default input #0 output #0;
+    output rst_n;
+    output clear;
+    output i_wr_en;
+    output i_wr_data;
+    input  o_wr_full;
+    output i_rd_en;
+    input  o_rd_data;
+    input  o_rd_empty;
+    input  o_water_level;
+endclocking
+
+clocking mon_cb @(posedge clk);
+    default input #1step;
+    input o_wr_full;
+    input o_rd_data;
+    input o_rd_empty;
+    input o_water_level;
+endclocking
+
 modport dut
 (
 input  clk,

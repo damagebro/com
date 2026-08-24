@@ -1,0 +1,111 @@
+# Generated from wave/sim_fifo.gtkw.
+# Load with: verdi ... -sswr wave/sim_fifo.rc
+
+addGroup "com_sync_fifo_reg depth=4"
+addSignal -h 15 /top/gen_case0_enable/u_case0_fifo_reg_d4/clk
+addSignal -h 15 /top/gen_case0_enable/u_case0_fifo_reg_d4/fifo_bus/rst_n
+addSignal -h 15 /top/gen_case0_enable/u_case0_fifo_reg_d4/fifo_bus/clear
+addSignal -h 15 /top/gen_case0_enable/u_case0_fifo_reg_d4/fifo_bus/i_wr_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case0_enable/u_case0_fifo_reg_d4/fifo_bus/i_wr_data[15:0]
+addSignal -h 15 /top/gen_case0_enable/u_case0_fifo_reg_d4/fifo_bus/o_wr_full
+addSignal -h 15 /top/gen_case0_enable/u_case0_fifo_reg_d4/fifo_bus/i_rd_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case0_enable/u_case0_fifo_reg_d4/fifo_bus/o_rd_data[15:0]
+addSignal -h 15 /top/gen_case0_enable/u_case0_fifo_reg_d4/fifo_bus/o_rd_empty
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case0_enable/u_case0_fifo_reg_d4/fifo_bus/o_water_level[2:0]
+
+addGroup "com_sync_fifo_reg depth=5"
+addSignal -h 15 /top/gen_case1_enable/u_case1_fifo_reg_d5/clk
+addSignal -h 15 /top/gen_case1_enable/u_case1_fifo_reg_d5/fifo_bus/rst_n
+addSignal -h 15 /top/gen_case1_enable/u_case1_fifo_reg_d5/fifo_bus/clear
+addSignal -h 15 /top/gen_case1_enable/u_case1_fifo_reg_d5/fifo_bus/i_wr_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case1_enable/u_case1_fifo_reg_d5/fifo_bus/i_wr_data[16:0]
+addSignal -h 15 /top/gen_case1_enable/u_case1_fifo_reg_d5/fifo_bus/o_wr_full
+addSignal -h 15 /top/gen_case1_enable/u_case1_fifo_reg_d5/fifo_bus/i_rd_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case1_enable/u_case1_fifo_reg_d5/fifo_bus/o_rd_data[16:0]
+addSignal -h 15 /top/gen_case1_enable/u_case1_fifo_reg_d5/fifo_bus/o_rd_empty
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case1_enable/u_case1_fifo_reg_d5/fifo_bus/o_water_level[2:0]
+
+addGroup "com_sync_fifo_reg_v2 depth=4"
+addSignal -h 15 /top/gen_case2_enable/u_case2_fifo_reg_v2_d4/clk
+addSignal -h 15 /top/gen_case2_enable/u_case2_fifo_reg_v2_d4/fifo_bus/rst_n
+addSignal -h 15 /top/gen_case2_enable/u_case2_fifo_reg_v2_d4/fifo_bus/clear
+addSignal -h 15 /top/gen_case2_enable/u_case2_fifo_reg_v2_d4/fifo_bus/i_wr_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case2_enable/u_case2_fifo_reg_v2_d4/fifo_bus/i_wr_data[15:0]
+addSignal -h 15 /top/gen_case2_enable/u_case2_fifo_reg_v2_d4/fifo_bus/o_wr_full
+addSignal -h 15 /top/gen_case2_enable/u_case2_fifo_reg_v2_d4/fifo_bus/i_rd_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case2_enable/u_case2_fifo_reg_v2_d4/fifo_bus/o_rd_data[15:0]
+addSignal -h 15 /top/gen_case2_enable/u_case2_fifo_reg_v2_d4/fifo_bus/o_rd_empty
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case2_enable/u_case2_fifo_reg_v2_d4/fifo_bus/o_water_level[2:0]
+
+addGroup "com_sync_fifo_reg_v2 depth=5"
+addSignal -h 15 /top/gen_case3_enable/u_case3_fifo_reg_v2_d5/clk
+addSignal -h 15 /top/gen_case3_enable/u_case3_fifo_reg_v2_d5/fifo_bus/rst_n
+addSignal -h 15 /top/gen_case3_enable/u_case3_fifo_reg_v2_d5/fifo_bus/clear
+addSignal -h 15 /top/gen_case3_enable/u_case3_fifo_reg_v2_d5/fifo_bus/i_wr_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case3_enable/u_case3_fifo_reg_v2_d5/fifo_bus/i_wr_data[16:0]
+addSignal -h 15 /top/gen_case3_enable/u_case3_fifo_reg_v2_d5/fifo_bus/o_wr_full
+addSignal -h 15 /top/gen_case3_enable/u_case3_fifo_reg_v2_d5/fifo_bus/i_rd_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case3_enable/u_case3_fifo_reg_v2_d5/fifo_bus/o_rd_data[16:0]
+addSignal -h 15 /top/gen_case3_enable/u_case3_fifo_reg_v2_d5/fifo_bus/o_rd_empty
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case3_enable/u_case3_fifo_reg_v2_d5/fifo_bus/o_water_level[2:0]
+
+addGroup "com_sync_fifo_reg_pfetch"
+addSignal -h 15 /top/gen_case4_enable/u_case4_fifo_reg_pfetch_d4/clk
+addSignal -h 15 /top/gen_case4_enable/u_case4_fifo_reg_pfetch_d4/fifo_bus/rst_n
+addSignal -h 15 /top/gen_case4_enable/u_case4_fifo_reg_pfetch_d4/fifo_bus/clear
+addSignal -h 15 /top/gen_case4_enable/u_case4_fifo_reg_pfetch_d4/fifo_bus/i_wr_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case4_enable/u_case4_fifo_reg_pfetch_d4/fifo_bus/i_wr_data[15:0]
+addSignal -h 15 /top/gen_case4_enable/u_case4_fifo_reg_pfetch_d4/fifo_bus/o_wr_full
+addSignal -h 15 /top/gen_case4_enable/u_case4_fifo_reg_pfetch_d4/fifo_bus/i_rd_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case4_enable/u_case4_fifo_reg_pfetch_d4/fifo_bus/o_rd_data[15:0]
+addSignal -h 15 /top/gen_case4_enable/u_case4_fifo_reg_pfetch_d4/fifo_bus/o_rd_empty
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case4_enable/u_case4_fifo_reg_pfetch_d4/fifo_bus/o_water_level[2:0]
+
+addGroup "com_sync_fifo_reg_fullbyp"
+addSignal -h 15 /top/gen_case5_enable/u_case5_fifo_reg_fullbyp_d4/clk
+addSignal -h 15 /top/gen_case5_enable/u_case5_fifo_reg_fullbyp_d4/fifo_bus/rst_n
+addSignal -h 15 /top/gen_case5_enable/u_case5_fifo_reg_fullbyp_d4/fifo_bus/clear
+addSignal -h 15 /top/gen_case5_enable/u_case5_fifo_reg_fullbyp_d4/fifo_bus/i_wr_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case5_enable/u_case5_fifo_reg_fullbyp_d4/fifo_bus/i_wr_data[15:0]
+addSignal -h 15 /top/gen_case5_enable/u_case5_fifo_reg_fullbyp_d4/fifo_bus/o_wr_full
+addSignal -h 15 /top/gen_case5_enable/u_case5_fifo_reg_fullbyp_d4/fifo_bus/i_rd_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case5_enable/u_case5_fifo_reg_fullbyp_d4/fifo_bus/o_rd_data[15:0]
+addSignal -h 15 /top/gen_case5_enable/u_case5_fifo_reg_fullbyp_d4/fifo_bus/o_rd_empty
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case5_enable/u_case5_fifo_reg_fullbyp_d4/fifo_bus/o_water_level[2:0]
+
+addGroup "com_sync_fifo_ram_1p1bank RAM_RD_DELAY=1"
+addSignal -h 15 /top/gen_case6_fifo_ram_1p1bank[0]/gen_enable/u_case/clk
+addSignal -h 15 /top/gen_case6_fifo_ram_1p1bank[0]/gen_enable/u_case/fifo_bus/rst_n
+addSignal -h 15 /top/gen_case6_fifo_ram_1p1bank[0]/gen_enable/u_case/fifo_bus/clear
+addSignal -h 15 /top/gen_case6_fifo_ram_1p1bank[0]/gen_enable/u_case/fifo_bus/i_wr_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case6_fifo_ram_1p1bank[0]/gen_enable/u_case/fifo_bus/i_wr_data[15:0]
+addSignal -h 15 /top/gen_case6_fifo_ram_1p1bank[0]/gen_enable/u_case/fifo_bus/o_wr_full
+addSignal -h 15 /top/gen_case6_fifo_ram_1p1bank[0]/gen_enable/u_case/fifo_bus/i_rd_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case6_fifo_ram_1p1bank[0]/gen_enable/u_case/fifo_bus/o_rd_data[15:0]
+addSignal -h 15 /top/gen_case6_fifo_ram_1p1bank[0]/gen_enable/u_case/fifo_bus/o_rd_empty
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case6_fifo_ram_1p1bank[0]/gen_enable/u_case/fifo_bus/o_water_level[3:0]
+
+addGroup "com_sync_fifo_ram_1p2bank RAM_RD_DELAY=1"
+addSignal -h 15 /top/gen_case7_fifo_ram_1p2bank[0]/gen_enable/u_case/clk
+addSignal -h 15 /top/gen_case7_fifo_ram_1p2bank[0]/gen_enable/u_case/fifo_bus/rst_n
+addSignal -h 15 /top/gen_case7_fifo_ram_1p2bank[0]/gen_enable/u_case/fifo_bus/clear
+addSignal -h 15 /top/gen_case7_fifo_ram_1p2bank[0]/gen_enable/u_case/fifo_bus/i_wr_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case7_fifo_ram_1p2bank[0]/gen_enable/u_case/fifo_bus/i_wr_data[15:0]
+addSignal -h 15 /top/gen_case7_fifo_ram_1p2bank[0]/gen_enable/u_case/fifo_bus/o_wr_full
+addSignal -h 15 /top/gen_case7_fifo_ram_1p2bank[0]/gen_enable/u_case/fifo_bus/i_rd_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case7_fifo_ram_1p2bank[0]/gen_enable/u_case/fifo_bus/o_rd_data[15:0]
+addSignal -h 15 /top/gen_case7_fifo_ram_1p2bank[0]/gen_enable/u_case/fifo_bus/o_rd_empty
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case7_fifo_ram_1p2bank[0]/gen_enable/u_case/fifo_bus/o_water_level[3:0]
+
+addGroup "com_sync_fifo_ram_2p1ck RAM_RD_DELAY=1"
+addSignal -h 15 /top/gen_case8_fifo_ram_2p1ck[0]/gen_enable/u_case/clk
+addSignal -h 15 /top/gen_case8_fifo_ram_2p1ck[0]/gen_enable/u_case/fifo_bus/rst_n
+addSignal -h 15 /top/gen_case8_fifo_ram_2p1ck[0]/gen_enable/u_case/fifo_bus/clear
+addSignal -h 15 /top/gen_case8_fifo_ram_2p1ck[0]/gen_enable/u_case/fifo_bus/i_wr_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case8_fifo_ram_2p1ck[0]/gen_enable/u_case/fifo_bus/i_wr_data[15:0]
+addSignal -h 15 /top/gen_case8_fifo_ram_2p1ck[0]/gen_enable/u_case/fifo_bus/o_wr_full
+addSignal -h 15 /top/gen_case8_fifo_ram_2p1ck[0]/gen_enable/u_case/fifo_bus/i_rd_en
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case8_fifo_ram_2p1ck[0]/gen_enable/u_case/fifo_bus/o_rd_data[15:0]
+addSignal -h 15 /top/gen_case8_fifo_ram_2p1ck[0]/gen_enable/u_case/fifo_bus/o_rd_empty
+addSignal -h 15 -UNSIGNED -HEX /top/gen_case8_fifo_ram_2p1ck[0]/gen_enable/u_case/fifo_bus/o_water_level[3:0]
+

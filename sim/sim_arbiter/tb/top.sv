@@ -24,6 +24,27 @@ wire [REQ_N-1:0] iwrr_gnt_onehot;
 wire [REQ_N_L2-1:0] iwrr_gnt_idx;
 wire iwrr_gnt_vld;
 
+clocking drv_cb @(posedge clk);
+    default input #1step output #0;
+    output rst_n;
+    output clear;
+    output req_vld;
+    output cfg_weight;
+    output gnt_rdy;
+    input  rr_req_rdy;
+    input  rr_gnt_onehot;
+    input  rr_gnt_idx;
+    input  rr_gnt_vld;
+    input  wrr_req_rdy;
+    input  wrr_gnt_onehot;
+    input  wrr_gnt_idx;
+    input  wrr_gnt_vld;
+    input  iwrr_req_rdy;
+    input  iwrr_gnt_onehot;
+    input  iwrr_gnt_idx;
+    input  iwrr_gnt_vld;
+endclocking
+
 initial begin
     clk = 1'b0;
     forever #5 clk = ~clk;
@@ -38,21 +59,21 @@ initial begin
     cfg_weight[2] = 4'd1;
     cfg_weight[3] = 4'd3;
     gnt_rdy = 1'b0;
-    repeat(5) @(posedge clk);
-    rst_n <= 1'b1;
+    repeat(5) @(drv_cb);
+    drv_cb.rst_n <= 1'b1;
 
-    @(posedge clk);
-    req_vld <= 4'b1010;
-    repeat(3) @(posedge clk);
-    if( rr_gnt_idx !== 2'd1 )
+    @(drv_cb);
+    drv_cb.req_vld <= 4'b1010;
+    repeat(3) @(drv_cb);
+    if( drv_cb.rr_gnt_idx !== 2'd1 )
         $fatal(1, "rr lock mismatch before ready");
-    gnt_rdy <= 1'b1;
-    repeat(12) @(posedge clk);
-    req_vld <= 4'b1111;
-    repeat(24) @(posedge clk);
-    req_vld <= '0;
-    gnt_rdy <= 1'b0;
-    repeat(5) @(posedge clk);
+    drv_cb.gnt_rdy <= 1'b1;
+    repeat(12) @(drv_cb);
+    drv_cb.req_vld <= 4'b1111;
+    repeat(24) @(drv_cb);
+    drv_cb.req_vld <= '0;
+    drv_cb.gnt_rdy <= 1'b0;
+    repeat(5) @(drv_cb);
     $display("SIM_ARBITER PASS");
     $finish;
 end

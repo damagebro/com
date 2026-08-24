@@ -218,6 +218,6 @@ endfunction
 `COM_SIGNAL_ASSERT( a0, wr_clk,wr_rst_n,i_wr_en,!o_wr_full , "async fifo write when full" )
 `COM_SIGNAL_ASSERT( a1, rd_clk,rd_rst_n,i_rd_en,!o_rd_empty, "async fifo read when empty" )
 `COM_SIGNAL_ASSERT( a2, wr_clk,wr_rst_n,$past(wr_rst_n)&&$past(ckwr_wr_hs),$onehot(r_ckwr_wr_ptr_gray^$past(r_ckwr_wr_ptr_gray)), "write gray pointer does not step one bit after handshake" )
-`COM_SIGNAL_ASSERT( a3, rd_clk,rd_rst_n,$past(rd_rst_n)&&$past(ckrd_rd_hs),$onehot(r_ckrd_rd_ptr_gray^$past(r_ckrd_rd_ptr_gray)), "read gray pointer does not step one bit after handshake" )
+`COM_SIGNAL_ASSERT( a3, rd_clk,rd_rst_n,$past(rd_rst_n)&&$past(ckrd_mem_rd_en),$onehot(r_ckrd_rd_ptr_gray^$past(r_ckrd_rd_ptr_gray)), "read gray pointer does not step one bit after prefetch" )
 
 endmodule //end of com_async_fifo_reg

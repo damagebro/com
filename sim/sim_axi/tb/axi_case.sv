@@ -12,7 +12,7 @@ program automatic axi_case_prog #( parameter
     UW        = 2
 )
 (
-axi_if.drv  axi_bus,
+axi_if      axi_bus,
 output logic o_done
 );
 

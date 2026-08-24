@@ -1,0 +1,32 @@
+# Generated from wave/sim_arbiter.gtkw.
+# Load with: verdi ... -sswr wave/sim_arbiter.rc
+
+addGroup "common"
+addSignal -h 15 /top/clk
+addSignal -h 15 /top/rst_n
+addSignal -h 15 /top/clear
+addSignal -h 15 /top/gnt_rdy
+addSignal -h 15 -UNSIGNED -HEX /top/req_vld[3:0]
+addSignal -h 15 -UNSIGNED -HEX /top/cfg_weight[0][3:0]
+addSignal -h 15 -UNSIGNED -HEX /top/cfg_weight[1][3:0]
+addSignal -h 15 -UNSIGNED -HEX /top/cfg_weight[2][3:0]
+addSignal -h 15 -UNSIGNED -HEX /top/cfg_weight[3][3:0]
+
+addGroup "com_arbiter_rr"
+addSignal -h 15 /top/rr_req_rdy[3:0]
+addSignal -h 15 /top/rr_gnt_onehot[3:0]
+addSignal -h 15 /top/rr_gnt_vld
+addSignal -h 15 -UNSIGNED -HEX /top/rr_gnt_idx[1:0]
+
+addGroup "com_arbiter_wrr"
+addSignal -h 15 /top/wrr_req_rdy[3:0]
+addSignal -h 15 /top/wrr_gnt_onehot[3:0]
+addSignal -h 15 /top/wrr_gnt_vld
+addSignal -h 15 -UNSIGNED -HEX /top/wrr_gnt_idx[1:0]
+
+addGroup "com_arbiter_iwrr"
+addSignal -h 15 /top/iwrr_req_rdy[3:0]
+addSignal -h 15 /top/iwrr_gnt_onehot[3:0]
+addSignal -h 15 /top/iwrr_gnt_vld
+addSignal -h 15 -UNSIGNED -HEX /top/iwrr_gnt_idx[1:0]
+
