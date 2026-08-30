@@ -1,4 +1,4 @@
-<mxfile host="Electron" agent="Codex" pages="4">
+<mxfile host="Electron" agent="Codex" pages="5">
   <diagram id="fifo_ram_1p1bank" name="fifo_ram_1p1bank">
     <mxGraphModel dx="1369" dy="807" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="760" pageHeight="520" math="0" shadow="0">
       <root>
@@ -558,6 +558,83 @@
         </mxCell>
         <mxCell id="afe_n5" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#1D66D1;strokeColor=#1D66D1;fontColor=#FFFFFF;fontStyle=1;fontSize=10;" value="5" vertex="1">
           <mxGeometry height="16" width="16" x="645" y="180" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="csr_amba_integration" name="csr_amba_integration">
+    <mxGraphModel dx="1434" dy="810" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1160" pageHeight="680" math="0" shadow="0">
+      <root>
+        <mxCell id="csr_0" />
+        <mxCell id="csr_1" parent="csr_0" />
+        <mxCell id="csr_title" parent="csr_1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=20;fontStyle=1;align=center;" value="AMBA2CSR + csr_tool integration" vertex="1">
+          <mxGeometry x="330" y="24" width="500" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_sw" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=13;" value="CPU / Debug master" vertex="1">
+          <mxGeometry x="30" y="105" width="150" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_bus" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=13;" value="AMBA interconnect&lt;br&gt;APB / AHB-Lite / AXI-Lite" vertex="1">
+          <mxGeometry x="220" y="95" width="190" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_bridge_box" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;" value="AMBA2CSR bridge&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;com_csr_apb2csr&lt;br&gt;com_csr_ahb2csr&lt;br&gt;com_csr_axil2csr&lt;/font&gt;" vertex="1">
+          <mxGeometry x="455" y="85" width="190" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_fabric_box" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=13;" value="optional CSR fabric&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;regslice / timeout&lt;br&gt;CDC / arbiter&lt;/font&gt;" vertex="1">
+          <mxGeometry x="700" y="95" width="175" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_tool_boundary" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#1b4f72;strokeWidth=2;dashed=1;dashPattern=8 5;" value="" vertex="1">
+          <mxGeometry x="915" y="70" width="220" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_tool_label" parent="csr_1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=13;fontStyle=1;fontColor=#1b4f72;align=left;" value="csr_tool generated RTL" vertex="1">
+          <mxGeometry x="930" y="78" width="180" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_decode" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" value="CSR address decode&lt;br&gt;+ request routing" vertex="1">
+          <mxGeometry x="940" y="125" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_regs" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="register bank&lt;br&gt;RW / RO / W1C ..." vertex="1">
+          <mxGeometry x="940" y="235" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_subroute" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="sub-block CSR route&lt;br&gt;user CSR slave" vertex="1">
+          <mxGeometry x="940" y="345" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_default" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" value="default / illegal address&lt;br&gt;read response" vertex="1">
+          <mxGeometry x="940" y="455" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_hw_regs" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="module control/status&lt;br&gt;cfg / sta / irq" vertex="1">
+          <mxGeometry x="690" y="250" width="185" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_subblk" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="sub_module&lt;br&gt;CSR slave or generated tree" vertex="1">
+          <mxGeometry x="690" y="370" width="185" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_req_note" parent="csr_1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=8;" value="CSR request:&lt;br&gt;write / addr / wdata / wstrb&lt;br&gt;valid + ready&lt;br&gt;&lt;br&gt;Read response:&lt;br&gt;rdata + rvalid (no ready)" vertex="1">
+          <mxGeometry x="455" y="250" width="190" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_e1" edge="1" parent="csr_1" source="csr_sw" target="csr_bus" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_e2" edge="1" parent="csr_1" source="csr_bus" target="csr_bridge_box" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;" value="AMBA">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_e3" edge="1" parent="csr_1" source="csr_bridge_box" target="csr_fabric_box" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;" value="CSR bus">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_e4" edge="1" parent="csr_1" source="csr_fabric_box" target="csr_decode" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_e5" edge="1" parent="csr_1" source="csr_decode" target="csr_regs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_e6" edge="1" parent="csr_1" source="csr_decode" target="csr_subroute" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_e7" edge="1" parent="csr_1" source="csr_decode" target="csr_default" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_e8" edge="1" parent="csr_1" source="csr_regs" target="csr_hw_regs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="csr_e9" edge="1" parent="csr_1" source="csr_subroute" target="csr_subblk" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
