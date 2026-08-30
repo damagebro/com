@@ -1,149 +1,136 @@
-/******************************************************************************
-*
-*  Authors:   dmg
-*    Email:   dmg@sensetime.com
-*     Date:   2019/11/25-14:35:32
-*
-*  Description:
-*  -
-*
-*  Modify:
-*   2021/11/30: only 1 async_fifo from src to dst;
-*               only 1 async_fifo from dst to src;
-*
-******************************************************************************/
-
-//`include "com_asyncfifo_reg.v"
-
-`ifndef com_csr_cdc_v
-`define com_csr_cdc_v
-module com_csr_cdc #( parameter
-    AW = 16,
-    DW = 32,
-    SW = DW/8
+module com_csr_cdc #(
+    parameter CSR_AW    = 16, //range=[1::]
+    parameter CSR_DW    = 32, //range=[8::8]
+    parameter REQ_DEPTH = 8,  //range=[1:256:]
+    parameter RD_OSD    = 8,  //range=[1:256:]
+    parameter SYNC_S    = 3
 )
 (
-input  wire                     clk_s               ,
-input  wire                     rst_n_s             ,
-input  wire                     clear_s             ,
-input  wire                     clk_d               ,
-input  wire                     rst_n_d             ,
-input  wire                     clear_d             ,
+    input  wire                     src_clk                 ,
+    input  wire                     src_rst_n               ,
+    input  wire                     dst_clk                 ,
+    input  wire                     dst_rst_n               ,
 
-com_csr_if.slave                csr_rxif            ,
-com_csr_if.master               csr_txif             //,
+    input  wire                     i_src_csr_req_write     ,
+    input  wire [CSR_AW-1:0]        i_src_csr_req_addr      ,
+    input  wire [CSR_DW-1:0]        i_src_csr_req_wdata     ,
+    input  wire [CSR_DW/8-1:0]      i_src_csr_req_wstrb     ,
+    input  wire                     i_src_csr_req_valid     ,
+    output wire                     o_src_csr_req_ready     ,
+    output wire [CSR_DW-1:0]        o_src_csr_rsp_rdata     ,
+    output wire                     o_src_csr_rsp_rvalid    ,
+
+    output wire                     o_dst_csr_req_write     ,
+    output wire [CSR_AW-1:0]        o_dst_csr_req_addr      ,
+    output wire [CSR_DW-1:0]        o_dst_csr_req_wdata     ,
+    output wire [CSR_DW/8-1:0]      o_dst_csr_req_wstrb     ,
+    output wire                     o_dst_csr_req_valid     ,
+    input  wire                     i_dst_csr_req_ready     ,
+    input  wire [CSR_DW-1:0]        i_dst_csr_rsp_rdata     ,
+    input  wire                     i_dst_csr_rsp_rvalid    //,
 );
+
 //localparam-----------------------------------------------------------------
-localparam AFIFO_DEPTH_S2D = 8;
-localparam AFIFO_DEPTH_D2S = 2;
-//reg  declare---------------------------------------------------------------
-//wire declare---------------------------------------------------------------
-wire                   rx_csr_write      ;
-wire [AW-1:0]          rx_csr_addr       ;
-wire [DW-1:0]          rx_csr_wdata      ;
-wire [SW-1:0]          rx_csr_wstrb      ;
-wire                   rx_csr_valid      ;
-wire                   rx_csr_ready      ;
-wire [DW-1:0]          rx_csr_rdata      ;
+localparam CSR_SW = CSR_DW/8;
+localparam REQ_DW = 1+CSR_AW+CSR_DW+CSR_SW;
+localparam RD_CW = $clog2(RD_OSD+1);
+//signal declare-------------------------------------------------------------
+reg  [RD_CW-1:0] r_src_rd_osd_cnt;
 
-wire                   tx_csr_write      ;
-wire [AW-1:0]          tx_csr_addr       ;
-wire [DW-1:0]          tx_csr_wdata      ;
-wire [SW-1:0]          tx_csr_wstrb      ;
-wire                   tx_csr_valid      ;
-wire                   tx_csr_ready      ;
-wire [DW-1:0]          tx_csr_rdata      ;
+wire src_req_hs;
+wire src_read_hs;
+wire src_rsp_fire;
+wire dst_req_hs;
+wire src_rd_osd_avl;
 
-assign rx_csr_write  = csr_rxif.csr_write ;
-assign rx_csr_addr   = csr_rxif.csr_addr  ;
-assign rx_csr_wdata  = csr_rxif.csr_wdata ;
-assign rx_csr_wstrb  = csr_rxif.csr_wstrb ;
-assign rx_csr_valid  = csr_rxif.csr_valid ;
-assign csr_rxif.csr_ready   = rx_csr_ready ;
-assign csr_rxif.csr_rdata   = rx_csr_rdata ;
+//instance signal---
+wire                 u_req_i_wr_en;
+wire [REQ_DW-1:0]    u_req_i_wr_data;
+wire                 u_req_o_wr_full;
+wire                 u_req_i_rd_en;
+wire [REQ_DW-1:0]    u_req_o_rd_data;
+wire                 u_req_o_rd_empty;
 
-assign csr_txif.csr_write  = tx_csr_write ;
-assign csr_txif.csr_addr   = tx_csr_addr  ;
-assign csr_txif.csr_wdata  = tx_csr_wdata ;
-assign csr_txif.csr_wstrb  = tx_csr_wstrb ;
-assign csr_txif.csr_valid  = tx_csr_valid ;
-assign tx_csr_ready   = csr_txif.csr_ready ;
-assign tx_csr_rdata   = csr_txif.csr_rdata ;
+wire                 u_rsp_i_wr_en;
+wire [CSR_DW-1:0]    u_rsp_i_wr_data;
+wire                 u_rsp_o_wr_full;
+wire                 u_rsp_i_rd_en;
+wire [CSR_DW-1:0]    u_rsp_o_rd_data;
+wire                 u_rsp_o_rd_empty;
 //statement------------------------------------------------------------------
-reg  rc_csr_rdflag;
-always @(posedge clk_s or negedge rst_n_s)
-begin
-    if( !rst_n_s )begin
-        rc_csr_rdflag <= 1'b0;
-    end
-    else if( clear_s || (rx_csr_valid&&rx_csr_ready) )begin
-        rc_csr_rdflag <= 1'b0;
-    end
-    else if( rx_csr_valid && !rx_csr_write )begin
-        rc_csr_rdflag <= 1'b1;
-    end
+//output assign---
+assign o_src_csr_req_ready = !u_req_o_wr_full &&
+                             (i_src_csr_req_write || src_rd_osd_avl);
+assign o_src_csr_rsp_rdata = u_rsp_o_rd_data;
+assign o_src_csr_rsp_rvalid = !u_rsp_o_rd_empty;
+
+assign {o_dst_csr_req_wstrb,o_dst_csr_req_wdata,
+        o_dst_csr_req_addr,o_dst_csr_req_write} = u_req_o_rd_data;
+assign o_dst_csr_req_valid = !u_req_o_rd_empty;
+
+//body---
+assign src_req_hs = i_src_csr_req_valid && o_src_csr_req_ready;
+assign src_read_hs = src_req_hs && !i_src_csr_req_write;
+assign src_rsp_fire = o_src_csr_rsp_rvalid;
+assign dst_req_hs = o_dst_csr_req_valid && i_dst_csr_req_ready;
+assign src_rd_osd_avl = r_src_rd_osd_cnt<RD_CW'(RD_OSD);
+
+always @(posedge src_clk or negedge src_rst_n) begin
+    if( !src_rst_n )
+        r_src_rd_osd_cnt <= '0;
+    else if( src_read_hs || src_rsp_fire )
+        r_src_rd_osd_cnt <= r_src_rd_osd_cnt + src_read_hs - src_rsp_fire;
 end
 
-wire                     awr_en     = rx_csr_write ? rx_csr_valid && rx_csr_ready : rx_csr_valid && !rc_csr_rdflag;
-wire [SW+DW+AW+1-1:0]    awr_data   = {rx_csr_wstrb,rx_csr_wdata,rx_csr_addr,rx_csr_write};
-wire                     ard_en     ;
-wire [SW+DW+AW+1-1:0]    ard_data   ;
-wire                     awr_full   ;
-wire                     ard_empty  ;
+//instance-------------------------------------------------------------------
+assign u_req_i_wr_en = src_req_hs;
+assign u_req_i_wr_data = {i_src_csr_req_wstrb,i_src_csr_req_wdata,
+                          i_src_csr_req_addr,i_src_csr_req_write};
+assign u_req_i_rd_en = dst_req_hs;
 com_async_fifo_reg #(
-    .DW         ( SW+DW+AW+1      ), //8
-    .DEPTH      ( AFIFO_DEPTH_S2D )  //4
-)r_com_async_fifo_reg_s2d
+    .DW     (REQ_DW   ),
+    .DEPTH  (REQ_DEPTH),
+    .SYNC_S (SYNC_S   )
+)u_com_async_fifo_reg_req
 (
-    .wr_clk               ( clk_s                ), //i
-    .wr_rst_n             ( rst_n_s              ), //i
-    .wr_clear             ( clear_s              ), //i
-    .rd_clk               ( clk_d                ), //i
-    .rd_rst_n             ( rst_n_d              ), //i
-    .rd_clear             ( clear_d              ), //i
-
-    .wr_en                ( awr_en               ), //i
-    .wr_data              ( awr_data             ), //i
-    .wr_full              ( awr_full             ), //o
-    .rd_en                ( ard_en               ), //i
-    .rd_data              ( ard_data             ), //o
-    .rd_empty             ( ard_empty            ), //o
-    .water_level          (                      )  //o
+    .wr_clk        (src_clk         ), //i
+    .wr_rst_n      (src_rst_n       ), //i
+    .rd_clk        (dst_clk         ), //i
+    .rd_rst_n      (dst_rst_n       ), //i
+    .i_wr_en       (u_req_i_wr_en   ), //i
+    .i_wr_data     (u_req_i_wr_data ), //i
+    .o_wr_full     (u_req_o_wr_full ), //o
+    .i_rd_en       (u_req_i_rd_en   ), //i
+    .o_rd_data     (u_req_o_rd_data ), //o
+    .o_rd_empty    (u_req_o_rd_empty), //o
+    .o_water_level (                )  //o
 );
-assign ard_en = tx_csr_valid && tx_csr_ready;
-assign tx_csr_valid = !ard_empty;
-assign {tx_csr_wstrb,tx_csr_wdata,tx_csr_addr,tx_csr_write} = ard_data;
 
-wire                     rd_wr_en    = tx_csr_valid && tx_csr_ready && !tx_csr_write;
-wire [DW-1:0]            rd_wr_data  = tx_csr_rdata;
-wire                     rd_rd_en    ;
-wire [DW-1:0]            rd_rd_data  ;
-wire                     rd_wr_full  ;
-wire                     rd_rd_empty ;
+assign u_rsp_i_wr_en = i_dst_csr_rsp_rvalid;
+assign u_rsp_i_wr_data = i_dst_csr_rsp_rdata;
+assign u_rsp_i_rd_en = !u_rsp_o_rd_empty;
 com_async_fifo_reg #(
-    .DW         ( DW              ), //8
-    .DEPTH      ( AFIFO_DEPTH_D2S )  //4
-)r_com_async_fifo_reg_d2s
+    .DW     (CSR_DW   ),
+    .DEPTH  (RD_OSD   ),
+    .SYNC_S (SYNC_S   )
+)u_com_async_fifo_reg_rsp
 (
-    .wr_clk               ( clk_d                ), //i
-    .wr_rst_n             ( rst_n_d              ), //i
-    .wr_clear             ( clear_d              ), //i
-    .rd_clk               ( clk_s                ), //i
-    .rd_rst_n             ( rst_n_s              ), //i
-    .rd_clear             ( clear_s              ), //i
-
-    .wr_en                ( rd_wr_en             ), //i
-    .wr_data              ( rd_wr_data           ), //i
-    .rd_en                ( rd_rd_en             ), //i
-    .rd_data              ( rd_rd_data           ), //o
-    .wr_full              ( rd_wr_full           ), //o
-    .rd_empty             ( rd_rd_empty          ), //o
-    .water_level          (                      )  //o
+    .wr_clk        (dst_clk         ), //i
+    .wr_rst_n      (dst_rst_n       ), //i
+    .rd_clk        (src_clk         ), //i
+    .rd_rst_n      (src_rst_n       ), //i
+    .i_wr_en       (u_rsp_i_wr_en   ), //i
+    .i_wr_data     (u_rsp_i_wr_data ), //i
+    .o_wr_full     (u_rsp_o_wr_full ), //o
+    .i_rd_en       (u_rsp_i_rd_en   ), //i
+    .o_rd_data     (u_rsp_o_rd_data ), //o
+    .o_rd_empty    (u_rsp_o_rd_empty), //o
+    .o_water_level (                )  //o
 );
-assign rd_rd_en = !rd_rd_empty;
-assign rx_csr_ready = rx_csr_write ? !awr_full : !rd_rd_empty;
-assign rx_csr_rdata = rd_rd_data;
 
-endmodule //end of com_csr_cdc
-`endif //end of com_csr_cdc_v
+//assert----------------------------------------------------------------------
+`COM_PARAM_ASSERT( RD_OSD>=1 && RD_OSD<=256, "RD_OSD must be in range 1 to 256" )
+`COM_SIGNAL_ASSERT( a0, dst_clk,dst_rst_n,i_dst_csr_rsp_rvalid,!u_rsp_o_wr_full, "csr cdc response fifo overflow" )
+`COM_SIGNAL_ASSERT( a1, src_clk,src_rst_n,src_rsp_fire,r_src_rd_osd_cnt!='0, "csr cdc response without request" )
 
+endmodule

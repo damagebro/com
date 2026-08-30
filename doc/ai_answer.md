@@ -100,3 +100,20 @@
 - `templates/rtl/check_sync.py` 仅在存在 `COM_ROOT` 时检查内置 RTL 副本是否与源文件同步；没有 `COM_ROOT` 时跳过，保证 mem_tool 独立目录也可运行。
 - README 已按“简介 / 用户指南 / RTL集成说明 / 脚本开发者”重写，补充前后端交互流程、`subsys_prefix/MEM_USER` 隔离规则、cfg_mem/ecc_ctrl 来源、ECC shell 集成、JSON 配置和 sim sandbox 用法。
 - 验证方式以 `python .\src\main.py --gen_config_json ...`、`python .\src\main.py -c ...`、`python .\src\main.py -m sim --sim_no_run` 等命令为主；部分 `unittest` 在 Windows sandbox 下因 `tempfile.TemporaryDirectory()` 清理权限失败，属于当前环境限制，失败后需清理残留 `build/tmp*`。
+
+### 2026-07-18 至 2026-08-24: AXI/DMA、FIFO RAM 与开源仿真环境
+
+- 按 `coding_style.md` 整理 `axi/` RTL；`com_axi_extd_wr/com_axi_extd_rd` 尽量只改必要端口，DMA 内 SRAM shell 更新为新的 `impl_template/memory` 接口。
+- 新增 `axi/py_gen_dma`：通过 JSON 配置生成 `${prefix}_axi_dma`，同步替换 subsystem 专属 SRAM shell 名称，并配置各 read data buffer 的深度、宽度和 SRAM 尺寸。README 使用中文说明生成流程和配置项。
+- 新增 `common_rtl_dma_manual.md`，补充 DMA 微架构框图、EBUS/AXI 接口、读写 burst 拆分、读 buffer 和超发限制。以 `DW=256bit`、非对齐地址和跨多次 AXI burst 的例子说明 `ebus_bytelen`、`axi_wstrb`、多次 AXI response 合并为一次 EBUS response 的过程。
+- 修复 `com_arbiter_rr` 在 grant 未 ready 时新请求到来导致 `gnt_idx`变化的问题；grant 必须保持到握手。同步检查 WRR/IWRR，没有保留同类不稳定选择路径。
+- `com_sync_fifo_ram_1p2bank` 增加按需 ibuf：仅在 SRAM full、out_fifo 有预留空间且读写 bank 冲突时暂存写数据，下一拍写入刚释放的位置；常规路径不做额外 data move，优先功耗和面积。
+- FIFO RAM 读控制命名由 `rd_resv`统一为 `rd_prefill`，表达“提前为 SRAM 返回数据预留 out_fifo 空间”；读冲突使用 `r_rd_hold_vld`保持请求，读请求被 hold 时不推进 RAM read pointer。
+- 对齐 `com_sync_fifo_ram_1p1bank/1p2bank/2p1ck` 的 direct write判断：除 `ram_otf_cnt`外，还必须考虑 `com_sync_fifo_reg_2w1r` 的 slow-fill 待完成范围，避免 fast reserve 已满时直接写入破坏顺序。
+- 建立 `com/sim` 验证环境：`sim_fifo`覆盖寄存 FIFO和三类 RAM FIFO，`sim_afifo`覆盖基础/精确水线 AFIFO；另有 `sim_arbiter/sim_axi/sim_cdc/sim_pipe/sim_ram/sim_simo`。波形文件统一放在各目录的 `wave/*.gtkw`和 `wave/*.rc`。
+- `sim_fifo`支持 `CASE`选择，完整矩阵覆盖 RAM FIFO 的 `RAM_RD_DELAY=1~8`；本轮定位并修复 FIFO RAM 的 full、prefill、slow reserve 和 bank conflict 边界问题，最终30组用例全部通过。
+- `py_tools_for_hw/py_rtl_sim`统一为 `gen_tb_demo`模板及 AXI/APB/AHB VIP；生成环境包含 `ENV.sh/Makefile/rtl.f/testbench.f/tb/`，运行产物固定放在 `bin/`。AXI VIP默认 1 master to 1 slave，先连续写、再连续读并检查数据。
+- 安装并验证 WSL2 Ubuntu 下的 OSS CAD Suite/开源工具链，主要使用 Verilator编译仿真、GTKWave查看 FST、Yosys综合；Windows OSS工具不再作为主要环境。Makefile统一提供 `vlt/vlt_com/vlt_run/vlt_wave`。
+- 所有 `com/sim/sim_*` TB 已统一为 clocking block上升沿驱动，去掉下降沿激励和 `#1ps`。单时钟使用 `drv_cb`，CDC/AFIFO按写域和读域分别使用 clocking block；普通接口采用 `input #1step/output #0`。
+- FIFO driver为保持背靠背性能，使用双采样视图：`mon_cb input #1step`结算本拍握手，`drv_cb input #0/output #0`读取边沿后 `full/empty/data`并产生下一拍命令，避免 RAM FIFO预取期间使用旧 empty继续发读。
+- Verilator 5.032支持 clocking block和 `vif.drv_cb`，但不支持 `modport drv(clocking drv_cb)`；AXI TB改用完整 virtual interface。最终 `SIM_SIMO/PIPE/ARBITER/RAM/CDC/AFIFO/FIFO`及 AXI `extd_wr/extd_rd/dma`全部通过。

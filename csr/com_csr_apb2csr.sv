@@ -1,133 +1,101 @@
-/******************************************************************************
-*
-*  Authors:   dmg
-*    Email:   dmg@sensetime.com
-*     Date:   2019/11/25-16:46:34
-*
-*  Description:
-*  -
-*
-*  Modify:
-*  -
-*
-******************************************************************************/
-
-`ifndef com_csr_apb2csr_v
-`define com_csr_apb2csr_v
-module com_csr_apb2csr #( parameter
-    AW_APB = 32,
-    DW_APB = 32,
-    SW_APB = DW_APB/8,
-    AW_CSR = 16,
-    DW_CSR = DW_APB,
-    SW_CSR = DW_CSR/8
+module com_csr_apb2csr #(
+    parameter APB_AW = 32, //range=[1::]
+    parameter APB_DW = 32, //range=[8::8]
+    parameter CSR_AW = 16, //range=[1::]
+    parameter CSR_DW = APB_DW
 )
 (
-input  wire                     PCLK                ,
-input  wire                     PRESETn             ,
+    input  wire                     clk                 ,
+    input  wire                     rst_n               ,
+    input  wire                     clear               ,
 
-input  wire [AW_APB-1:0]        PADDR               ,
-input  wire [2:0]               PPROT               , //3'b001, [0]normal/privileged, [1]secure/nonsecure, [2]data/instruction;  0/1
-input  wire                     PSELx               ,
-input  wire                     PENABLE             ,
-input  wire                     PWRITE              ,
-input  wire [DW_APB-1:0]        PWDATA              ,
-input  wire [SW_APB-1:0]        PSTRB               ,
+    input  wire [APB_AW-1:0]        i_apb_paddr         ,
+    input  wire [2:0]               i_apb_pprot         ,
+    input  wire                     i_apb_psel          ,
+    input  wire                     i_apb_penable       ,
+    input  wire                     i_apb_pwrite        ,
+    input  wire [APB_DW-1:0]        i_apb_pwdata        ,
+    input  wire [APB_DW/8-1:0]      i_apb_pstrb         ,
+    output wire                     o_apb_pready        ,
+    output wire [APB_DW-1:0]        o_apb_prdata        ,
+    output wire                     o_apb_pslverr       ,
 
-output wire                     PREADY              ,
-output wire [DW_APB-1:0]        PRDATA              ,
-output wire                     PSLVERR             ,
-
-com_csr_if.master               csr_txif            //,
+    output wire                     o_csr_req_write     ,
+    output wire [CSR_AW-1:0]        o_csr_req_addr      ,
+    output wire [CSR_DW-1:0]        o_csr_req_wdata     ,
+    output wire [CSR_DW/8-1:0]      o_csr_req_wstrb     ,
+    output wire                     o_csr_req_valid     ,
+    input  wire                     i_csr_req_ready     ,
+    input  wire [CSR_DW-1:0]        i_csr_rsp_rdata     ,
+    input  wire                     i_csr_rsp_rvalid    //,
 );
+
 //localparam-----------------------------------------------------------------
-localparam ST_IDLE   = 3'b001,
-           ST_SETUP  = 3'b010,
-           ST_ACCESS = 3'b100;
-//reg  declare---------------------------------------------------------------
-reg  [2:0] rc_apb_sta;
-reg  [2:0] rb_apb_sta_nxt;
-//wire declare---------------------------------------------------------------
-wire clk   = PCLK;
-wire rst_n = PRESETn;
-wire [AW_APB-1:0] apb_baseaddr = 32'h0000_0000;//<script_target>
+//signal declare-------------------------------------------------------------
+reg                  r_req_sent;
+reg                  r_rsp_vld;
+reg  [CSR_DW-1:0]    r_rsp_data;
 
-wire                   csr_write      ;
-wire [AW_CSR-1:0]      csr_addr       ;
-wire [DW_CSR-1:0]      csr_wdata      ;
-wire [SW_CSR-1:0]      csr_wstrb      ;
-wire                   csr_valid      ;
-wire                   csr_ready      ;
-wire [DW_CSR-1:0]      csr_rdata      ;
-assign csr_txif.csr_write  = csr_write ;
-assign csr_txif.csr_addr   = csr_addr  ;
-assign csr_txif.csr_wdata  = csr_wdata ;
-assign csr_txif.csr_wstrb  = csr_wstrb ;
-assign csr_txif.csr_valid  = csr_valid ;
-assign csr_ready   = csr_txif.csr_ready;
-assign csr_rdata   = csr_txif.csr_rdata;
+wire apb_setup;
+wire apb_access;
+wire apb_done;
+wire csr_req_hs;
+wire write_done;
+wire read_done;
 //statement------------------------------------------------------------------
-always @(posedge clk or negedge rst_n)
-begin
-    if( !rst_n )begin
-        rc_apb_sta <= ST_IDLE;
-    end
-    else begin
-        rc_apb_sta <= rb_apb_sta_nxt;
-    end
-end
-always @*
-begin
-    case ( rc_apb_sta )
-        ST_IDLE:begin
-            if( PSELx && !PENABLE )
-                rb_apb_sta_nxt = ST_SETUP;
-            else
-                rb_apb_sta_nxt = ST_IDLE;
-        end
-        ST_SETUP:begin
-            if( PSELx )
-                rb_apb_sta_nxt = PENABLE ? ST_ACCESS : ST_SETUP;
-            else
-                rb_apb_sta_nxt = ST_IDLE;
-        end
-        ST_ACCESS:begin
-            if( PREADY )
-                rb_apb_sta_nxt = ST_SETUP;
-            else
-                rb_apb_sta_nxt = ST_ACCESS;
-        end
-        default: rb_apb_sta_nxt= ST_IDLE;
-    endcase
-end
+//output assign---
+assign o_apb_pready = apb_access &&
+                      (i_apb_pwrite ? write_done : read_done);
+assign o_apb_prdata = APB_DW'(r_rsp_vld ? r_rsp_data : i_csr_rsp_rdata);
+assign o_apb_pslverr = 1'b0;
 
-wire pin_valid = rb_apb_sta_nxt[1] && PSELx;
-wire pout_valid= rb_apb_sta_nxt[2] || rc_apb_sta[2]&&PENABLE;
-reg               pwrite_d ;
-reg  [AW_APB-1:0] paddr_d  ;
-always @(posedge clk or negedge rst_n)
-begin
-    if( !rst_n )begin
-        pwrite_d <= 'b0;
-        paddr_d  <= 'b0;
-    end
-    else if( pin_valid )begin
-        pwrite_d <= PWRITE;
-        paddr_d  <= PADDR ;
-    end
+assign o_csr_req_write = i_apb_pwrite;
+assign o_csr_req_addr = CSR_AW'(i_apb_paddr);
+assign o_csr_req_wdata = CSR_DW'(i_apb_pwdata);
+assign o_csr_req_wstrb = i_apb_pstrb;
+assign o_csr_req_valid = apb_access && !r_req_sent && !clear;
+
+//body---
+assign apb_setup = i_apb_psel && !i_apb_penable;
+assign apb_access = i_apb_psel && i_apb_penable;
+assign apb_done = apb_access && o_apb_pready;
+assign csr_req_hs = o_csr_req_valid && i_csr_req_ready;
+assign write_done = r_req_sent || csr_req_hs;
+assign read_done = r_rsp_vld || i_csr_rsp_rvalid;
+
+always @(posedge clk or negedge rst_n) begin
+    if( !rst_n )
+        r_req_sent <= 1'b0;
+    else if( clear )
+        r_req_sent <= 1'b0;
+    else if( apb_setup )
+        r_req_sent <= csr_req_hs;
+    else if( apb_done )
+        r_req_sent <= 1'b0;
+    else if( csr_req_hs )
+        r_req_sent <= 1'b1;
 end
 
-wire [AW_APB-1:0] paddr_off0 = paddr_d - apb_baseaddr;
-assign csr_valid = pout_valid;
-assign csr_write = pwrite_d;
-assign csr_addr   = paddr_off0[AW_CSR-1:0];//assert(AW_APB>AW_CSR);
-assign csr_wdata = PWDATA;
-assign csr_wstrb = PSTRB;
+always @(posedge clk or negedge rst_n) begin
+    if( !rst_n )
+        r_rsp_vld <= 1'b0;
+    else if( clear )
+        r_rsp_vld <= 1'b0;
+    else if( apb_setup )
+        r_rsp_vld <= i_csr_rsp_rvalid;
+    else if( apb_done )
+        r_rsp_vld <= 1'b0;
+    else if( i_csr_rsp_rvalid )
+        r_rsp_vld <= 1'b1;
+end
 
-assign PREADY = csr_ready;
-assign PRDATA = csr_rdata;
-assign PSLVERR = 1'b0; //tie to 0
+always @(posedge clk) begin
+    if( i_csr_rsp_rvalid )
+        r_rsp_data <= i_csr_rsp_rdata;
+end
 
-endmodule //end of com_csr_apb2csr
-`endif //end of com_csr_apb2csr_v
+//assert----------------------------------------------------------------------
+`COM_PARAM_ASSERT( APB_DW==CSR_DW, "APB_DW and CSR_DW must be equal" )
+`COM_PARAM_ASSERT( APB_DW>=8 && APB_DW%8==0, "APB_DW must be byte aligned" )
 
+endmodule

@@ -66,6 +66,8 @@ task automatic send_write(
     input integer              beat_num,
     input logic [DW-1:0]       data_base
 );
+integer last_w_hs_cycle;
+integer cycle_cnt;
 begin
     vif.drv_cb.wa_user[0]    <= user;
     vif.drv_cb.wa_addr[0]    <= addr;
@@ -74,10 +76,18 @@ begin
     do @(vif.drv_cb); while( !vif.drv_cb.wa_ready[0] );
     vif.drv_cb.wa_valid[0] <= 1'b0;
 
+    last_w_hs_cycle = -1;
+    cycle_cnt = 0;
     for( integer i=0; i<beat_num; i=i+1 ) begin
         vif.drv_cb.wd_data[0]  <= data_base+DW'(i);
         vif.drv_cb.wd_valid[0] <= 1'b1;
-        do @(vif.drv_cb); while( !vif.drv_cb.wd_ready[0] );
+        do begin
+            @(vif.drv_cb);
+            cycle_cnt = cycle_cnt+1;
+        end while( !vif.drv_cb.wd_ready[0] );
+        if( last_w_hs_cycle>=0 && cycle_cnt!=last_w_hs_cycle+1 )
+            $fatal(1, "AXI write data inserted a bubble at beat %0d", i);
+        last_w_hs_cycle = cycle_cnt;
     end
     vif.drv_cb.wd_valid[0] <= 1'b0;
 
@@ -95,6 +105,8 @@ task automatic send_read(
     input integer              beat_num,
     input logic [DW-1:0]       data_base
 );
+integer last_r_hs_cycle;
+integer cycle_cnt;
 begin
     vif.drv_cb.ra_user[0]    <= user;
     vif.drv_cb.ra_addr[0]    <= addr;
@@ -104,14 +116,34 @@ begin
     vif.drv_cb.ra_valid[0] <= 1'b0;
     do @(vif.drv_cb); while( !vif.drv_cb.axi_arvalid );
 
-    for( integer i=0; i<beat_num; i=i+1 ) begin
-        vif.drv_cb.axi_rdata  <= data_base+DW'(i);
-        vif.drv_cb.axi_rlast  <= (i==beat_num-1);
-        vif.drv_cb.axi_rvalid <= 1'b1;
-        do @(vif.drv_cb); while( !vif.drv_cb.axi_rready );
-    end
-    vif.drv_cb.axi_rvalid <= 1'b0;
-    vif.drv_cb.axi_rlast  <= 1'b0;
+    fork
+        begin
+            last_r_hs_cycle = -1;
+            cycle_cnt = 0;
+            for( integer i=0; i<beat_num; i=i+1 ) begin
+                vif.drv_cb.axi_rdata  <= data_base+DW'(i);
+                vif.drv_cb.axi_rlast  <= (i==beat_num-1);
+                vif.drv_cb.axi_rvalid <= 1'b1;
+                do begin
+                    @(vif.drv_cb);
+                    cycle_cnt = cycle_cnt+1;
+                end while( !vif.drv_cb.axi_rready );
+                if( last_r_hs_cycle>=0 && cycle_cnt!=last_r_hs_cycle+1 )
+                    $fatal(1, "AXI read data inserted a bubble at beat %0d", i);
+                last_r_hs_cycle = cycle_cnt;
+            end
+            vif.drv_cb.axi_rvalid <= 1'b0;
+            vif.drv_cb.axi_rlast  <= 1'b0;
+        end
+        begin
+            do @(vif.drv_cb); while( !vif.drv_cb.rd_valid[0] );
+            for( integer i=1; i<beat_num; i=i+1 ) begin
+                @(vif.drv_cb);
+                if( !vif.drv_cb.rd_valid[0] )
+                    $fatal(1, "EBUS read data inserted a bubble at beat %0d", i);
+            end
+        end
+    join
 end
 endtask
 
@@ -119,16 +151,16 @@ task automatic run;
 begin
     reset_phase();
     if( CASE_KIND==0 ) begin
-        send_write(UW'(1), AW'(1), EBUS_LW'(17), 6, DW'('h1000));
+        send_write(UW'(1), AW'(0), EBUS_LW'(64), 16, DW'('h1000));
         repeat(20) @(vif.drv_cb);
     end
     else if( CASE_KIND==1 ) begin
-        send_read(UW'(2), AW'(4), EBUS_LW'(8), 2, DW'('h55aa_0000));
+        send_read(UW'(2), AW'(0), EBUS_LW'(64), 16, DW'('h55aa_0000));
         repeat(20) @(vif.drv_cb);
     end
     else begin
-        send_write('0, AW'('h10), EBUS_LW'(8), 2, DW'('hd00d_0001));
-        send_read('0, AW'('h20), EBUS_LW'(8), 2, DW'('hcafe_0001));
+        send_write('0, AW'('h40), EBUS_LW'(64), 16, DW'('hd00d_0000));
+        send_read('0, AW'('h80), EBUS_LW'(64), 16, DW'('hcafe_0000));
         repeat(30) @(vif.drv_cb);
     end
 end
