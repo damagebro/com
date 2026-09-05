@@ -12,6 +12,8 @@
 | `com_csr_cdc`      | CSR request、response 双向跨时钟域            |
 | `com_csr_arbiter`  | 多路 CSR master 轮询仲裁到一路 CSR slave      |
 | `com_csr_timeout`  | CSR request/response 超时检测与超时响应接管   |
+| `com_csr_pkg_wr`   | 从外存读取配置包，批量写CSR并支持JUMP预取     |
+| `com_csr_pkg_rd`   | 按配置包批量读CSR，将地址和数据写回外存       |
 
 CSR 总线面向低带宽寄存器访问，request 使用 valid/ready 握手，read response 使用
 `rvalid+rdata` 返回。write request 在 request 握手后即完成，不单独返回 write response；read response
@@ -187,6 +189,235 @@ valid/ready 吞吐。`REQ_DEPTH`、`RSP_DEPTH` 默认均为 2；无反压时流�
 `o_pls_err_req_timeout/o_pls_err_rsp_timeout` 应连接状态寄存器、interrupt 或系统错误收集模块；软件完成
 错误记录和下游恢复后，再通过 `clear` 退出 takeover 状态。
 
+## CSR Package
+
+`com_csr_pkg_wr`从外存读取配置包并批量写CSR；`com_csr_pkg_rd`读取描述包、批量读CSR，
+再将地址和读数据写回外存。两个模块都是CSR master，控制和状态寄存器由`csr_tool`生成。
+CPU准备package、配置首个block地址和长度并触发start，执行期间无需逐寄存器发起访问。
+
+package模块的CSR数据固定为32-bit，不提供`CSR_DW`参数。写侧只支持full write。
+与CPU入口集成时，经CSR arbiter汇聚到`csr_tool` tree；`com_csr_arbiter`本身采用轮询，
+若系统要求CPU固定优先，需要额外的优先级控制。package不提供整包原子锁，读回结果也不是同时刻快照。
+
+```text
+csr_tool cfg/sta <-> package engine <-> EBUS / DMA <-> external memory
+                         |
+                         +-> CSR arbiter -> csr_tool register tree
+CPU AMBA2CSR ------------+
+```
+
+### 公共参数与控制接口
+
+表中I/O方向均相对于package模块。CSR地址字段在包内始终占32-bit；输出只连接低`CSR_AW`位，
+软件必须保证地址可表示且burst递增不越界，不能依赖硬件上报所有地址溢出。
+
+| param_name | default_value | description                                             |
+| ---------- | ------------- | ------------------------------------------------------- |
+| `CSR_AW`   | `16`          | CSR地址位宽；写侧范围`[8:32]`，读侧范围`[1:32]`         |
+| `EBUS_AW`  | `64`          | EBUS byte address位宽，范围`[8:64]`                     |
+| `EBUS_DW`  | `256`         | EBUS data位宽，按2的幂配置；写侧至少64，读侧至少32      |
+| `EBUS_LW`  | `32`          | EBUS byte length位宽，至少20；按参数约定不超过`EBUS_AW` |
+| `EBUS_UW`  | `1`           | EBUS user属性位宽，至少1                                |
+
+| signal               | bit_width | direction | description                                                 |
+| -------------------- | --------- | --------- | ----------------------------------------------------------- |
+| `clk`                | `1`       | I         | 模块及CSR/EBUS接口时钟                                      |
+| `rst_n`              | `1`       | I         | 低有效异步复位                                              |
+| `clear`              | `1`       | I         | 同步清除内部状态；使用前需处理外部在途事务                  |
+| `i_cfg_pkg_addr`     | `EBUS_AW` | I         | 首个block的byte address，要求4B对齐                         |
+| `i_cfg_pkg_bytelen`  | `EBUS_LW` | I         | 首个block的有效byte数，至少4且为4的整数倍                   |
+| `i_cfg_ebus_user`    | `EBUS_UW` | I         | EBUS请求的user属性，执行期间保持稳定                        |
+| `i_cfg_start`        | `1`       | I         | 单拍启动；idle时接受并锁存首个block地址/长度                |
+| `i_cfg_abort`        | `1`       | I         | 请求进入错误排空流程，不等于撤销已经发出的总线事务          |
+| `o_sta_busy`         | `1`       | O         | 执行或排空中；清零后才允许重新启动                          |
+| `o_pls_done`         | `1`       | O         | 正常执行EXIT后的完成脉冲                                    |
+| `o_pls_error`        | `1`       | O         | 错误诊断脉冲；不代表排空已经完成                            |
+| `o_sta_error_code`   | `8`       | O         | 首个错误码，保持至idle启动、clear或reset                    |
+| `o_sta_reg_done_cnt` | `32`      | O         | 写侧按CSR request握手累加，读侧按CSR response累加；满后饱和 |
+| `o_sta_jump_cnt`     | `16`      | O         | 已正式切换到目标block的次数，不包含仅发起预取的JUMP         |
+
+`pkg_addr/pkg_bytelen`在启动时锁存，`i_cfg_ebus_user`直接透传到EBUS请求。
+两个计数器跨block累计，在idle启动、clear或reset时清零。busy期间再次start只报告
+`ERR_START_BUSY`，不会排队新package，也不自动终止当前执行。
+
+### EBUS与CSR接口
+
+两个模块均通过EBUS的RA/RD channel读取package。EBUS下层负责大长度传输和burst/地址边界拆分。
+本模块要求package地址4B对齐，但不要求按`EBUS_DW`对齐；首尾beat中的有效word由地址和
+`bytelen`决定，低地址word位于beat的低位lane。
+
+| signal                 | bit_width | direction | description                                          |
+| ---------------------- | --------- | --------- | ---------------------------------------------------- |
+| `o_tx_ebus_ra_user`    | `EBUS_UW` | O         | package读取属性                                      |
+| `o_tx_ebus_ra_addr`    | `EBUS_AW` | O         | 当前或预取block的byte address                        |
+| `o_tx_ebus_ra_bytelen` | `EBUS_LW` | O         | block的有效byte数                                    |
+| `o_tx_ebus_ra_valid`   | `1`       | O         | 读地址有效，反压时保持请求                           |
+| `i_tx_ebus_ra_ready`   | `1`       | I         | 读地址接收就绪                                       |
+| `i_tx_ebus_rd_data`    | `EBUS_DW` | I         | 按总线宽度对齐的package data beat                    |
+| `i_tx_ebus_rd_last`    | `1`       | I         | 整个block的最后一个beat，不是底层每个AXI burst的last |
+| `i_tx_ebus_rd_valid`   | `1`       | I         | 返回数据有效                                         |
+| `o_tx_ebus_rd_ready`   | `1`       | O         | 返回数据接收就绪，支持反压                           |
+| `o_tx_csr_req_write`   | `1`       | O         | 写模块固定1，读模块固定0                             |
+| `o_tx_csr_req_addr`    | `CSR_AW`  | O         | CSR byte address，要求4B对齐                         |
+| `o_tx_csr_req_wdata`   | `32`      | O         | 写模块输出配置数据；读模块固定0                      |
+| `o_tx_csr_req_wstrb`   | `4`       | O         | 写模块固定`4'hf`；读模块固定0                        |
+| `o_tx_csr_req_valid`   | `1`       | O         | CSR request有效                                      |
+| `i_tx_csr_req_ready`   | `1`       | I         | CSR request接收就绪                                  |
+| `i_tx_csr_rsp_rdata`   | `32`      | I         | 仅读模块：CSR read response数据                      |
+| `i_tx_csr_rsp_rvalid`  | `1`       | I         | 仅读模块：按请求顺序返回，无response ready           |
+
+CSR read response至少晚于对应request握手一拍。下游必须按序且每笔只返回一次，
+metadata FIFO据此匹配CSR地址；写模块没有CSR response接口。
+
+### 配置包格式
+
+package使用little-endian byte order，每条指令以一个32-bit基础header开始。
+令`H=header_wordsize`、`N=reg_num`，整个header占`4H` byte，
+payload从`instruction_addr+4H`开始。扩展header中未定义的word写0，硬件跳过。
+
+| bit       | field             | description                            |
+| --------- | ----------------- | -------------------------------------- |
+| `[31:28]` | `opcode`          | 指令类型                               |
+| `[27:24]` | `header_wordsize` | 包含基础header的总word数，范围`[1:15]` |
+| `[23:16]` | `rsv`             | 软件写0                                |
+| `[15:0]`  | `reg_num`         | 普通指令的entry数；JUMP复用为次数配置  |
+
+| opcode | name          | 最小H | 扩展header / payload                                      | 指令总byte数 |
+| ------ | ------------- | ----- | --------------------------------------------------------- | ------------ |
+| `0`    | `LIST_WRITE`  | `1`   | payload为N组`addr,data`，每组8B，地址可离散或重复         | `4H+8N`      |
+| `1`    | `BURST_WRITE` | `1`   | payload为一个`addr_base`及N个data，地址逐笔加4            | `4H+4+4N`    |
+| `2`    | `LIST_READ`   | `3`   | 扩展header为result地址低/高32-bit；payload为N个addr       | `4H+4N`      |
+| `3`    | `BURST_READ`  | `3`   | 扩展header为result地址低/高32-bit；payload为一个addr_base | `4H+4`       |
+| `4`    | `JUMP`        | `4`   | 扩展header为next地址低/高32-bit、next byte length         | `4H`         |
+| `5~14` | reserved      | ----- | 检测到后报错                                              | ------------ |
+| `15`   | `EXIT`        | `1`   | 无payload，`reg_num=0`                                    | `4H`         |
+
+LIST/BURST的`N`范围为`[1:65535]`，一个header管理N笔访问。
+每条指令必须完整落在当前block长度内；普通指令执行完后顺序解析下一header。
+block内有一次JUMP时按长度边界切换；没有JUMP时必须以EXIT结束。EXIT必须在block末尾，
+且不能与JUMP出现在同一block。
+
+读指令的result地址要求4B对齐，每个结果占8B，存储顺序如下；只写地址和数据，不带额外header：
+
+| result byte offset | field                 |
+| ------------------ | --------------------- |
+| `8*i`              | 第i笔`reg_addr[31:0]` |
+| `8*i+4`            | 第i笔`reg_data[31:0]` |
+
+详细逐字段offset可参考[配置包格式说明](plan_csr_pkg.md#指令格式)。
+
+### com_csr_pkg_wr
+
+写侧使用2-entry EBUS beat FIFO，`r_beat0_data/r_beat1_data`为无复位数据DFF，
+有效性由控制寄存器管理。双word解析窗口允许一个LIST entry跨越两个beat。
+
+```text
+EBUS RD -> 2-entry beat FIFO -> word0/word1 window -> CSR write
+                                      |
+                              header / JUMP decode
+```
+
+`eHEADER`解析基础header，`eHEADER_EXTD`解析扩展字段和跳过reserved word。
+LIST数据阶段同拍使用一个addr和一个data，CSR握手后消费2个word；BURST先取得base address，
+后续每次握手消费1个data并将地址加4。CSR反压时保持当前entry。
+
+在输入数据充足、CSR ready连续有效时，同一LIST或BURST数据段可达到
+`1 write/cycle`，支持beat边界连续消费及FIFO同拍pop/push。
+header、扩展字段、指令切换和block切换仍有控制开销，不能将该吞吐理解为任意短指令序列都无气泡。
+
+### com_csr_pkg_rd
+
+读侧解析LIST地址或保存BURST base，使用metadata FIFO记录已发CSR request的地址。
+收到CSR response后形成64-bit `{reg_addr,reg_data}`，写入result FIFO，
+再序列化为EBUS写数据。每条读指令发送一笔长度为`8N`的EBUS result write，
+收到该笔`wb_valid`且数据发送完成后才执行下一条指令。
+
+| param_name     | default_value | description                                                      |
+| -------------- | ------------- | ---------------------------------------------------------------- |
+| `RD_OSD`       | `8`           | metadata寄存器FIFO深度及CSR最大在途数量，范围`[1:32]`            |
+| `RESULT_DEPTH` | `32`          | result SRAM逻辑深度及result预留上限；偶数、至少4且不小于`RD_OSD` |
+| `RAM_RD_DELAY` | `1`           | 外部result SRAM固定读延迟，范围`[1:16]`                          |
+
+每次发CSR read之前，同时检查metadata FIFO空间和result预留空间。
+result预留从request发出保持到该entry被EBUS packer取走，上限由`RESULT_DEPTH`独立限制；
+因此`RD_OSD`用于覆盖CSR响应延迟，`RESULT_DEPTH`还需要考虑EBUS write反压。
+response没有ready，不能等数据到达后再判断FIFO是否有空间。
+
+result FIFO使用`com_sync_fifo_ram_1p1bank`，内部输出FIFO深度为`RAM_RD_DELAY+3`。
+SRAM接口在模块端口上，需外接单口SRAM或对应shell；每行存两个64-bit entry，
+物理深度为`RESULT_DEPTH/2`，数据宽度固定128-bit。外部SRAM实际读延迟必须匹配`RAM_RD_DELAY`。
+
+| signal                 | bit_width       | direction | description                     |
+| ---------------------- | --------------- | --------- | ------------------------------- |
+| `o_tx_ebus_wa_user`    | `EBUS_UW`       | O         | result写回的user属性            |
+| `o_tx_ebus_wa_addr`    | `EBUS_AW`       | O         | 当前读指令的result byte address |
+| `o_tx_ebus_wa_bytelen` | `EBUS_LW`       | O         | result总byte数，等于`8N`        |
+| `o_tx_ebus_wa_valid`   | `1`             | O         | result写地址有效                |
+| `i_tx_ebus_wa_ready`   | `1`             | I         | 写地址接收就绪                  |
+| `o_tx_ebus_wd_data`    | `EBUS_DW`       | O         | 对齐后的result数据beat          |
+| `o_tx_ebus_wd_valid`   | `1`             | O         | 写数据有效                      |
+| `i_tx_ebus_wd_ready`   | `1`             | I         | 写数据接收就绪                  |
+| `i_tx_ebus_wb_valid`   | `1`             | I         | 整笔result写完成，无wb ready    |
+| `o_result_ram_ce_n`    | `1`             | O         | SRAM片选，低有效                |
+| `o_result_ram_we_n`    | `1`             | O         | `0=write, 1=read`               |
+| `o_result_ram_addr`    | `RESULT_RAM_AW` | O         | SRAM row address                |
+| `o_result_ram_wr_data` | `128`           | O         | SRAM整行写数据                  |
+| `i_result_ram_rd_data` | `128`           | I         | SRAM整行读数据                  |
+
+`RESULT_RAM_AW=$clog2(max(RESULT_DEPTH/2,2))`由localparam计算，无需用户配置。
+result的首尾有效byte由WA地址和长度限定，模块不输出独立的EBUS strobe。
+
+BURST读请求在credit充足、下游ready连续时可每拍发出一次；LIST读还受单beat缓存补充的空拍影响。
+当前result packer每拍最多消费一个32-bit word，一个结果需要两个word，且发送beat时暂停装填。
+因此读请求的短时峰值可为`1 read/cycle`，持续性能还受result打包与写回速度限制；
+不能按`EBUS_DW`推断每拍满宽输出。
+
+### JUMP提前预取
+
+JUMP扩展header顺序为`jump_addr_l`、`jump_addr_h`、`jump_bytesize`，
+其中byte length字段固定32-bit。首次JUMP的`reg_num[7:0]`锁存为`jump_max_num_m1`，
+允许正式跳转`jump_max_num_m1+1`次，即1至256次。后续block的JUMP低8-bit忽略，
+所有JUMP的`reg_num[15:8]`必须为0。
+
+1. JUMP可放在block首部、中部或末尾；解析并校验后登记目标信息，继续执行当前block。
+2. 本block的EBUS读返回全部接收后，才提前发送下一block RA。无需同时接收两条读返回流，
+   也不增加预取data DFF；下一block数据在正式切换前由RD ready反压。
+3. 当前block按长度执行完成后正式切换。写侧等待最后一次CSR write握手；
+   读侧还要等待当前读指令结果写回完成。只有正式切换才增加`o_sta_jump_cnt`。
+4. 每个block最多一次JUMP，第二次报`ERR_DUP_JUMP`；JUMP与EXIT同块报`ERR_BAD_BLOCK`。
+   次数限制在目标RA发出前检查，超限目标不会被读取。
+5. 软件把JUMP放在前部可增加预取机会，收益取决于取数完成后剩余CSR执行或result写回时间；
+   不保证能完全掩盖EBUS读延迟。
+
+### 错误处理与软件流程
+
+| code | RTL name         | condition                                                         |
+| ---- | ---------------- | ----------------------------------------------------------------- |
+| `0`  | `ERR_NONE`       | 无错误                                                            |
+| `1`  | `ERR_BAD_OPCODE` | reserved opcode或当前模块不支持的读/写opcode                      |
+| `2`  | `ERR_BAD_HEADER` | header长度小于该opcode要求                                        |
+| `3`  | `ERR_BAD_REGNUM` | LIST/BURST数量为0、EXIT数量非0、JUMP高8-bit非0                    |
+| `4`  | `ERR_BAD_BLOCK`  | 指令越界、EXIT非末尾、JUMP与EXIT同块、缺少结束指令或RD last不匹配 |
+| `5`  | `ERR_BAD_ALIGN`  | 初始地址/长度、CSR地址、JUMP目标或result地址不满足约束            |
+| `6`  | `ERR_START_BUSY` | busy期间再次start                                                 |
+| `7`  | `ERR_ABORTED`    | busy期间收到abort                                                 |
+| `8`  | `ERR_JUMP_LIMIT` | JUMP超过首次配置的次数上限                                        |
+| `9`  | `ERR_DUP_JUMP`   | 同一block出现第二条JUMP                                           |
+
+格式错误或abort进入排空流程；若预取RA已有效但尚未握手，保持RA直至握手，
+再排空并丢弃目标数据，不执行目标CSR访问。软件不能仅根据error pulse立即重启，
+需要检查busy清零；已有result write的地址、长度不能通过abort撤销。
+当外部事务无法完成时，需要系统协调恢复，clear/reset本身不会清除外部总线中的旧响应。
+
+1. 软件按CSR map生成package，校验地址范围、对齐、长度和JUMP/EXIT规则；配置包及result区避免重叠。
+2. 完成外存写入及必要的cache一致性处理后，设置首个地址、长度和user，产生一次start脉冲。
+3. 执行期间不修改package，避免CPU同时访问相关寄存器；错误脉冲和done脉冲由状态寄存器/中断锁存。
+4. 等待完成或错误排空后读取状态；读侧正常完成后再读取result区，并按系统要求处理cache一致性。
+
+CSR bus没有error sideband，本模块无法凭CSR response识别非法寄存器、访问权限或外围timeout。
+这些错误需由`csr_tool`默认响应、错误收集及外围`com_csr_timeout`等机制配合处理，
+不属于上述package错误码。
+
 ## 性能验证
 
 `sim/sim_csr` 使用 Verilator 自动检查连续访问，任意额外空拍会触发 `$fatal`。
@@ -209,3 +440,23 @@ make vlt
 
 回归结果为 `SIM_CSR PASS`。这里的性能结论表示稳态吞吐；regslice、CDC、bridge 状态机引入的首笔
 固定 latency 不计为 steady-state bubble。
+
+### Package回归
+
+`sim/sim_csr_pkg`已在64/128/256-bit EBUS下通过功能自检，每种位宽包含读写两侧共24组新增
+JUMP用例，三种位宽合计72组。覆盖首部/中部/尾部及扩展header JUMP、重复JUMP、次数限制、
+非法目标/指令、EXIT冲突、last错误、预取RA反压期间abort及错误后的重新启动。
+
+回归同时检查LIST/BURST写数据段连续握手、读结果地址/数据顺序、result SRAM实际读写，
+并比较下一block RA与当前操作完成周期，验证预取重叠。性能用例刻意加入CSR/result反压，
+统计的提前周期不等于无反压场景的固定收益。
+
+```bash
+cd sim/sim_csr_pkg
+source ENV.sh
+make vlt
+make vlt_wave
+```
+
+默认生成64-bit波形，保存的GTKWave/Verdi配置包含JUMP预取信号组。
+各位宽验证记录见[sim_csr_pkg README](../sim/sim_csr_pkg/README.md#jump预取回归记录)。

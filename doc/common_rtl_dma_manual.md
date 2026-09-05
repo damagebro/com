@@ -94,4 +94,4 @@
     1. 脚本位于 `axi/py_gen_dma/gen_dma.py`，用于把公共 `com_axi_dma` 生成项目或 subsystem 私有 DMA。
     2. 示例：`python axi/py_gen_dma/gen_dma.py -c cpu_dma_cfg.json`。
     3. 默认替换关系：`com_axi_dma -> cpu_axi_dma`，`com_spram_shell -> cpu_spram_shell`。
-    4. DMA read buffer SRAM shell 与 `impl_template/memory/mem_tool` 生成结果强相关，二者必须使用相同 prefix，否则 filelist 中找不到对应 shell。
+    4. DMA read buffer SRAM shell 与 `py_tools_for_hw/mem_tool` 生成结果强相关，二者必须使用相同 prefix，否则 filelist 中找不到对应 shell。

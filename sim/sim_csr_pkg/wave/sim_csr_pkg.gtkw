@@ -1,0 +1,136 @@
+[*]
+[timestart] 0
+@800200
+-common
+@28
+top.u_csr_pkg_case.clk
+top.u_csr_pkg_case.rst_n
+@1000200
+-common
+@800200
+-writer status
+@28
+top.u_csr_pkg_case.wr_cfg_start
+top.u_csr_pkg_case.wr_busy
+top.u_csr_pkg_case.wr_done
+top.u_csr_pkg_case.wr_error
+@22
+top.u_csr_pkg_case.wr_error_code[7:0]
+top.u_csr_pkg_case.wr_reg_done_cnt[31:0]
+top.u_csr_pkg_case.wr_jump_cnt[15:0]
+top.u_csr_pkg_case.u_com_csr_pkg_wr.r_state[3:0]
+@1000200
+-writer status
+@800200
+-writer package EBUS
+@22
+top.u_csr_pkg_case.wr_ra_addr[63:0]
+top.u_csr_pkg_case.wr_ra_bytelen[31:0]
+@28
+top.u_csr_pkg_case.wr_ra_valid
+top.u_csr_pkg_case.wr_ra_ready
+top.u_csr_pkg_case.wr_rd_valid
+top.u_csr_pkg_case.wr_rd_ready
+top.u_csr_pkg_case.wr_rd_last
+@22
+top.u_csr_pkg_case.wr_rd_data[63:0]
+@1000200
+-writer package EBUS
+@800200
+-writer CSR
+@28
+top.u_csr_pkg_case.wr_csr_req_valid
+top.u_csr_pkg_case.wr_csr_req_ready
+top.u_csr_pkg_case.wr_csr_req_write
+@22
+top.u_csr_pkg_case.wr_csr_req_addr[15:0]
+top.u_csr_pkg_case.wr_csr_req_wdata[31:0]
+top.u_csr_pkg_case.wr_csr_req_wstrb[3:0]
+@1000200
+-writer CSR
+@800200
+-reader status
+@28
+top.u_csr_pkg_case.rd_cfg_start
+top.u_csr_pkg_case.rd_busy
+top.u_csr_pkg_case.rd_done
+top.u_csr_pkg_case.rd_error
+@22
+top.u_csr_pkg_case.rd_error_code[7:0]
+top.u_csr_pkg_case.rd_reg_done_cnt[31:0]
+top.u_csr_pkg_case.rd_jump_cnt[15:0]
+top.u_csr_pkg_case.u_com_csr_pkg_rd.r_state[3:0]
+@1000200
+-reader status
+@800200
+-reader package EBUS
+@22
+top.u_csr_pkg_case.rd_ra_addr[63:0]
+top.u_csr_pkg_case.rd_ra_bytelen[31:0]
+@28
+top.u_csr_pkg_case.rd_ra_valid
+top.u_csr_pkg_case.rd_ra_ready
+top.u_csr_pkg_case.rd_rd_valid
+top.u_csr_pkg_case.rd_rd_ready
+top.u_csr_pkg_case.rd_rd_last
+@22
+top.u_csr_pkg_case.rd_rd_data[63:0]
+@1000200
+-reader package EBUS
+@800200
+-reader CSR
+@28
+top.u_csr_pkg_case.rd_csr_req_valid
+top.u_csr_pkg_case.rd_csr_req_ready
+top.u_csr_pkg_case.rd_csr_req_write
+@22
+top.u_csr_pkg_case.rd_csr_req_addr[15:0]
+@28
+top.u_csr_pkg_case.rd_csr_rsp_rvalid
+@22
+top.u_csr_pkg_case.rd_csr_rsp_rdata[31:0]
+@1000200
+-reader CSR
+@800200
+-reader result EBUS
+@22
+top.u_csr_pkg_case.rd_wa_addr[63:0]
+top.u_csr_pkg_case.rd_wa_bytelen[31:0]
+@28
+top.u_csr_pkg_case.rd_wa_valid
+top.u_csr_pkg_case.rd_wa_ready
+top.u_csr_pkg_case.rd_wd_valid
+top.u_csr_pkg_case.rd_wd_ready
+@22
+top.u_csr_pkg_case.rd_wd_data[63:0]
+@28
+top.u_csr_pkg_case.rd_wb_valid
+@1000200
+-reader result EBUS
+@800200
+-wr JUMP prefetch
+@28
+top.u_csr_pkg_case.u_com_csr_pkg_wr.r_jump_pending
+top.u_csr_pkg_case.u_com_csr_pkg_wr.r_prefetch_req
+top.u_csr_pkg_case.u_com_csr_pkg_wr.r_prefetch_sent
+top.u_csr_pkg_case.u_com_csr_pkg_wr.jump_event
+top.u_csr_pkg_case.u_com_csr_pkg_wr.block_end_error
+@22
+top.u_csr_pkg_case.u_com_csr_pkg_wr.r_block_word_rem[31:0]
+top.u_csr_pkg_case.u_com_csr_pkg_wr.r_ebus_word_rem[31:0]
+@1000200
+-wr JUMP prefetch
+
+@800200
+-rd JUMP prefetch
+@28
+top.u_csr_pkg_case.u_com_csr_pkg_rd.r_jump_pending
+top.u_csr_pkg_case.u_com_csr_pkg_rd.r_prefetch_req
+top.u_csr_pkg_case.u_com_csr_pkg_rd.r_prefetch_sent
+top.u_csr_pkg_case.u_com_csr_pkg_rd.jump_event
+top.u_csr_pkg_case.u_com_csr_pkg_rd.block_end_error
+@22
+top.u_csr_pkg_case.u_com_csr_pkg_rd.r_block_word_rem[31:0]
+top.u_csr_pkg_case.u_com_csr_pkg_rd.r_ebus_word_rem[31:0]
+@1000200
+-rd JUMP prefetch

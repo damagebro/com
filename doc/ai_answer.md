@@ -89,7 +89,7 @@
 ### 2026-07-01 至 2026-07-17: memory template 与 mem_tool 开发
 
 - 整理 `impl_template/memory` 结构：`rtl/shell` 保存可人工维护的 shell RTL，`mem_tool/src` 保存生成脚本，`templates/rtl` 保存独立 sim 所需的最小 RTL 副本，`templates/sim` 保存可手工运行的独立仿真模板，`templates/py_sim/gen_tb.py` 用于脚本化生成同结构 sandbox。
-- 新增/调整 `com_ecc_secded`，默认走 Synopsys `DW_ecc`，定义自研宏时使用项目内 SECDED 实现；控制信号改为 `i_correct_n`，低有效关闭纠错。`COM_MEM_CTRL_W/COM_ECC_CTRL_W/COM_SRAM_W` 等项目实现相关宏移到 `impl_define`，不再放入 `com_define.sv`。
+- 新增/调整 `com_ecc_secded`，默认走 Synopsys `DW_ecc`，定义自研宏时使用项目内 SECDED 实现；控制信号改为 `i_correct_n`，低有效关闭纠错。`COM_MEM_CTRL_W/COM_ECC_CTRL_W` 等项目实现相关宏移到 `impl_define`，不再放入 `com_define.sv`。
 - 按当前 RTL 风格重构 memory shell：`com_spram_shell`、`com_tpram1ck_shell`、`com_tpram2ck_shell`、`com_sprom_shell` 及 ECC 版本统一端口、例化对齐和 report 逻辑；`COM_REPORT_OFF` 控制 report 关闭，report 区域用 `synopsys translate_off/on` 隔离。
 - ECC shell 保持 `{lst_ecc_data,nrm_ecc_data*n,ori_ram_data}` 存储顺序；每个 row 额外记录 partial-write flag，partial write 后不做 ECC decode，避免旧 ECC 与部分写数据不一致导致误报。
 - `COM_RAM_NFOUND_CHK` 语义改为严格检查：未定义时未命中 PHY 默认回退 RTL model；定义后若存在未被 SRAM PHY 实现的 shape，故意例化 `*_not_found` 触发编译失败。

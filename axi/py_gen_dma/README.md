@@ -22,7 +22,7 @@ python gen_dma.py -p cpu -o build
 
 ## 注意事项
 
-DMA read buffer 内部会例化 SRAM shell，因此该脚本和 `impl_template/memory/mem_tool` 生成的 SRAM shell 强相关。
+DMA read buffer 内部会例化 SRAM shell，因此该脚本和 `py_tools_for_hw/mem_tool` 生成的 SRAM shell 强相关。
 
 同一个 subsystem/project 中，DMA 生成时使用的 `prefix` 必须和 memory shell 生成时使用的 `subsys_prefix` 保持一致。否则生成后的 DMA 会例化不存在的 SRAM shell module，导致 filelist 编译找不到模块。
 

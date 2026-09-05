@@ -1,0 +1,84 @@
+# Load with: verdi ... -sswr wave/sim_csr_pkg.rc
+
+addGroup "writer status"
+addSignal -h 15 /top/u_csr_pkg_case/clk
+addSignal -h 15 /top/u_csr_pkg_case/rst_n
+addSignal -h 15 /top/u_csr_pkg_case/wr_cfg_start
+addSignal -h 15 /top/u_csr_pkg_case/wr_busy
+addSignal -h 15 /top/u_csr_pkg_case/wr_done
+addSignal -h 15 /top/u_csr_pkg_case/wr_error
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/wr_error_code[7:0]
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/wr_reg_done_cnt[31:0]
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/wr_jump_cnt[15:0]
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/u_com_csr_pkg_wr/r_state[3:0]
+
+addGroup "writer package EBUS"
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/wr_ra_addr[63:0]
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/wr_ra_bytelen[31:0]
+addSignal -h 15 /top/u_csr_pkg_case/wr_ra_valid
+addSignal -h 15 /top/u_csr_pkg_case/wr_ra_ready
+addSignal -h 15 /top/u_csr_pkg_case/wr_rd_valid
+addSignal -h 15 /top/u_csr_pkg_case/wr_rd_ready
+addSignal -h 15 /top/u_csr_pkg_case/wr_rd_last
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/wr_rd_data[63:0]
+
+addGroup "writer CSR"
+addSignal -h 15 /top/u_csr_pkg_case/wr_csr_req_valid
+addSignal -h 15 /top/u_csr_pkg_case/wr_csr_req_ready
+addSignal -h 15 /top/u_csr_pkg_case/wr_csr_req_write
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/wr_csr_req_addr[15:0]
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/wr_csr_req_wdata[31:0]
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/wr_csr_req_wstrb[3:0]
+
+addGroup "reader status"
+addSignal -h 15 /top/u_csr_pkg_case/rd_cfg_start
+addSignal -h 15 /top/u_csr_pkg_case/rd_busy
+addSignal -h 15 /top/u_csr_pkg_case/rd_done
+addSignal -h 15 /top/u_csr_pkg_case/rd_error
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/rd_error_code[7:0]
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/rd_reg_done_cnt[31:0]
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/rd_jump_cnt[15:0]
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/u_com_csr_pkg_rd/r_state[3:0]
+
+addGroup "reader package EBUS"
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/rd_ra_addr[63:0]
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/rd_ra_bytelen[31:0]
+addSignal -h 15 /top/u_csr_pkg_case/rd_ra_valid
+addSignal -h 15 /top/u_csr_pkg_case/rd_ra_ready
+addSignal -h 15 /top/u_csr_pkg_case/rd_rd_valid
+addSignal -h 15 /top/u_csr_pkg_case/rd_rd_ready
+addSignal -h 15 /top/u_csr_pkg_case/rd_rd_last
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/rd_rd_data[63:0]
+
+addGroup "reader CSR"
+addSignal -h 15 /top/u_csr_pkg_case/rd_csr_req_valid
+addSignal -h 15 /top/u_csr_pkg_case/rd_csr_req_ready
+addSignal -h 15 /top/u_csr_pkg_case/rd_csr_req_write
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/rd_csr_req_addr[15:0]
+addSignal -h 15 /top/u_csr_pkg_case/rd_csr_rsp_rvalid
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/rd_csr_rsp_rdata[31:0]
+
+addGroup "reader result EBUS"
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/rd_wa_addr[63:0]
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/rd_wa_bytelen[31:0]
+addSignal -h 15 /top/u_csr_pkg_case/rd_wa_valid
+addSignal -h 15 /top/u_csr_pkg_case/rd_wa_ready
+addSignal -h 15 /top/u_csr_pkg_case/rd_wd_valid
+addSignal -h 15 /top/u_csr_pkg_case/rd_wd_ready
+addSignal -h 15 -UNSIGNED -HEX /top/u_csr_pkg_case/rd_wd_data[63:0]
+addSignal -h 15 /top/u_csr_pkg_case/rd_wb_valid
+
+addGroup "wr JUMP prefetch"
+addSignal -h 15 /top/u_csr_pkg_case/u_com_csr_pkg_wr/r_jump_pending
+addSignal -h 15 /top/u_csr_pkg_case/u_com_csr_pkg_wr/r_prefetch_req
+addSignal -h 15 /top/u_csr_pkg_case/u_com_csr_pkg_wr/r_prefetch_sent
+addSignal -h 15 /top/u_csr_pkg_case/u_com_csr_pkg_wr/jump_event
+addSignal -h 15 /top/u_csr_pkg_case/u_com_csr_pkg_wr/block_end_error
+
+
+addGroup "rd JUMP prefetch"
+addSignal -h 15 /top/u_csr_pkg_case/u_com_csr_pkg_rd/r_jump_pending
+addSignal -h 15 /top/u_csr_pkg_case/u_com_csr_pkg_rd/r_prefetch_req
+addSignal -h 15 /top/u_csr_pkg_case/u_com_csr_pkg_rd/r_prefetch_sent
+addSignal -h 15 /top/u_csr_pkg_case/u_com_csr_pkg_rd/jump_event
+addSignal -h 15 /top/u_csr_pkg_case/u_com_csr_pkg_rd/block_end_error
