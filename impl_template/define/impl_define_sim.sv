@@ -2,7 +2,6 @@
 `define COM_SYNC_STAGE     3
 `define COM_MEM_CTRL_W     4
 `define COM_ECC_CTRL_W     4
-`define COM_SRAM_W         `COM_MEM_CTRL_W
 
 //#2.report define---------------------------------
 // `define COM_REPORT_OFF
