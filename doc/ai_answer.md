@@ -117,3 +117,19 @@
 - 所有 `com/sim/sim_*` TB 已统一为 clocking block上升沿驱动，去掉下降沿激励和 `#1ps`。单时钟使用 `drv_cb`，CDC/AFIFO按写域和读域分别使用 clocking block；普通接口采用 `input #1step/output #0`。
 - FIFO driver为保持背靠背性能，使用双采样视图：`mon_cb input #1step`结算本拍握手，`drv_cb input #0/output #0`读取边沿后 `full/empty/data`并产生下一拍命令，避免 RAM FIFO预取期间使用旧 empty继续发读。
 - Verilator 5.032支持 clocking block和 `vif.drv_cb`，但不支持 `modport drv(clocking drv_cb)`；AXI TB改用完整 virtual interface。最终 `SIM_SIMO/PIPE/ARBITER/RAM/CDC/AFIFO/FIFO`及 AXI `extd_wr/extd_rd/dma`全部通过。
+
+### 2026-08-25 至 2026-09-05: CSR Bus配套与CSR Package Engine
+
+- 全新整理 `csr/` 目录并完成基础配套模块：`com_csr_apb2csr`、`com_csr_ahb2csr`、`com_csr_axil2csr`、`com_csr2apb`、`com_csr_regslice`、`com_csr_cdc`、`com_csr_arbiter` 和 `com_csr_timeout`。
+- APB bridge仅在 `PSEL&&PENABLE` 的access phase发起CSR请求；AHB-Lite与AXI-Lite bridge在下游无反压时支持连续请求。AXI-Lite读请求支持参数化超发，并保证已接收read request完成前不接收后来的write，维持AXI读写进入CSR后的顺序。
+- `com_csr_regslice`的request/response方向分别使用同步FIFO，双向完成寄存隔离；`com_csr_cdc`使用异步FIFO跨时钟域，并用`RD_OSD`同时约束read outstanding和response容量。
+- `com_csr_arbiter`使用RR仲裁多路CSR master，并用owner FIFO按序返回read response；owner FIFO满时同时门控request valid和ready，避免上游误判握手。`com_csr_timeout`可接管超时路径，sticky takeover期间屏蔽迟到response、吞掉新write并为新read返回全0，直到clear或reset。
+- 建立`sim/sim_csr`，覆盖bridge、fabric、timeout和regslice；连续访问用例检查APB/CSR2APB达到每2 cycle一笔，AHB、AXI-Lite及CSR流水达到每cycle一笔。当前Verilator回归结果为`SIM_CSR PASS`。
+- 完成`com_csr_pkg_wr/com_csr_pkg_rd`，用于从外存读取配置包批量写CSR，或批量读CSR后将`{reg_addr,reg_data}`结果写回外存。控制寄存器只需配置首个block的`pkg_addr/pkg_bytelen`、EBUS user属性并触发start，执行过程中不需要CPU逐寄存器参与。
+- 定稿32-bit package header：`opcode/header_wordsize/rsv/reg_num`。第一版指令为`LIST_WRITE/BURST_WRITE/LIST_READ/BURST_READ/JUMP/EXIT`；LIST表示一个header管理N笔离散地址，burst地址固定按4B递增，read result固定按每项8B保存地址和数据。
+- 写侧限制`EBUS_DW>=64`并使用2-entry EBUS beat FIFO和双32-bit word窗口，支持entry跨beat解析；`r_beat0_data/r_beat1_data`为无复位数据DFF。在数据充足且CSR ready连续时，LIST/BURST数据段都可达到`1 write/cycle`，header和block切换仍存在控制开销。
+- 读侧metadata继续使用深度不超过32的`com_sync_fifo_reg`；result FIFO改为`com_sync_fifo_ram_1p1bank`，容量由独立`RESULT_DEPTH`配置以覆盖EBUS write反压，SRAM接口提升到package模块端口。当前result packer每拍消费一个32-bit word，持续写回带宽仍低于满宽EBUS。
+- JUMP改为block内提前登记和预取：允许位于block首部、中部或末尾，当前block的EBUS数据接收完后可提前发出目标RA，待当前CSR操作/result写回完成后才正式切换。目标RD在切换前通过ready反压，因而无需额外预取data buffer；同一block重复JUMP和JUMP/EXIT并存都会报错。
+- JUMP次数不再使用RTL参数，由首次JUMP的`reg_num[7:0]`编码`jump_max_num_m1`，支持1至256次；后续JUMP忽略低8-bit配置，超过上限报`ERR_JUMP_LIMIT`。错误或abort后模块先报告错误再排空当前及已预取事务，避免旧response污染下一次start。
+- 建立`sim/sim_csr_pkg`，在`EBUS_DW=64/128/256`下覆盖读写功能及72组JUMP场景，包括首/中/尾JUMP、扩展header、重复JUMP、次数超限、非法目标、EXIT冲突、last错误、预取RA反压时abort和错误后重启；三种位宽全部通过，并验证目标RA与当前block尾部执行存在实际重叠。
+- `common_rtl_csr_manual.md`已补CSR集成框图、接口、参数、吞吐、package格式、错误码、JUMP预取及软件流程；详细格式与边界规则同步维护在`doc/plan/plan_csr_pkg.md`，GTKWave/Verdi配置已加入package与JUMP关键观察信号。
