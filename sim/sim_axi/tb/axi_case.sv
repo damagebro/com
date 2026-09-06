@@ -16,7 +16,17 @@ axi_if      axi_bus,
 output logic o_done
 );
 
-axi_drv #(CASE_KIND,WCH,RCH,AW,DW,EBUS_LW,LW,IW,UW) drv;
+axi_drv #(
+    .CASE_KIND ( CASE_KIND ),
+    .WCH       ( WCH       ),
+    .RCH       ( RCH       ),
+    .AW        ( AW        ),
+    .DW        ( DW        ),
+    .EBUS_LW   ( EBUS_LW   ),
+    .LW        ( LW        ),
+    .IW        ( IW        ),
+    .UW        ( UW        )
+)drv;
 
 initial begin
     o_done = 1'b0;

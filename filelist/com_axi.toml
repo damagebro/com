@@ -1,0 +1,20 @@
+[core]
+id = "dmg:com:axi"
+filesets = ["rtl"]
+
+[fileset.rtl]
+dir = "."
+depend = ["dmg:com:common"]
+files = [
+  "axi/com_axi_rch_arb.sv",
+  "axi/com_axi_rch_clr.sv",
+  "axi/com_axi_rch_regslice.sv",
+  "axi/com_axi_rch.sv",
+  "axi/com_axi_wch_arb.sv",
+  "axi/com_axi_wch_clr.sv",
+  "axi/com_axi_wch_regslice.sv",
+  "axi/com_axi_wch.sv",
+  "axi/com_axi_extd_rd.sv",
+  "axi/com_axi_extd_wr.sv",
+  "axi/com_axi_dma.sv",
+]

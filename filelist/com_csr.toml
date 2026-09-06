@@ -1,0 +1,19 @@
+[core]
+id = "dmg:com:csr"
+filesets = ["rtl"]
+
+[fileset.rtl]
+dir = "."
+depend = ["dmg:com:common"]
+files = [
+  "csr/com_csr_apb2csr.sv",
+  "csr/com_csr_ahb2csr.sv",
+  "csr/com_csr_axil2csr.sv",
+  "csr/com_csr2apb.sv",
+  "csr/com_csr_regslice.sv",
+  "csr/com_csr_cdc.sv",
+  "csr/com_csr_arbiter.sv",
+  "csr/com_csr_timeout.sv",
+  "csr/com_csr_pkg_wr.sv",
+  "csr/com_csr_pkg_rd.sv",
+]

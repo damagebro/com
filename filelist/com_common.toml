@@ -1,0 +1,67 @@
+[core]
+id = "dmg:com:common"
+filesets = [
+  "prelude",
+  "base",
+  "fifo",
+  "ram",
+  "cdc",
+]
+
+[fileset.prelude]
+dir = "."
+files = ["first: com_define.sv"]
+
+[fileset.base]
+dir = "."
+files = [
+  "common/com_find_lsb_first_one.sv",
+  "common/com_reg.sv",
+  "common/com_reg_e.sv",
+  "common/com_reg_ce.sv",
+  "common/com_pipe_vld_single.sv",
+  "common/com_pipe_vld.sv",
+  "common/com_pipe_rdy.sv",
+  "common/com_pipe_vld_rdy.sv",
+  "common/com_pipe_regslice.sv",
+  "common/com_simo_no_delay.sv",
+  "common/com_counter.sv",
+  "common/com_edge_detect.sv",
+  "common/com_arbiter_rr.sv",
+  "common/com_arbiter_wrr.sv",
+  "common/com_arbiter_iwrr.sv",
+]
+
+[fileset.fifo]
+dir = "."
+files = [
+  "common/fifo/com_sync_fifo_reg.sv",
+  "common/fifo/com_sync_fifo_reg_v2.sv",
+  "common/fifo/com_sync_fifo_reg_pfetch.sv",
+  "common/fifo/com_sync_fifo_reg_fullbyp.sv",
+  "common/fifo/com_sync_fifo_reg_2w1r.sv",
+  "common/fifo/com_sync_fifo_ram_1p1bank.sv",
+  "common/fifo/com_sync_fifo_ram_1p2bank.sv",
+  "common/fifo/com_sync_fifo_ram_2p1ck.sv",
+  "common/fifo/com_async_fifo_reg.sv",
+  "common/fifo/com_async_fifo_reg_exactwl.sv",
+  "common/fifo/com_dp_buffer.sv",
+  "common/fifo/com_dp_ram.sv",
+]
+
+[fileset.ram]
+dir = "."
+files = [
+  "common/com_ram_arbiter.sv",
+  "common/com_ram_adp_sp.sv",
+  "common/com_ram_adp_rmw.sv",
+  "common/com_ram_adp_2sp.sv",
+]
+
+[fileset.cdc]
+dir = "."
+files = [
+  "common/cdc/com_cdc_handshake.sv",
+  "common/cdc/com_cdc_rstn.sv",
+  "common/cdc/com_cdc_rstn_pair.sv",
+]

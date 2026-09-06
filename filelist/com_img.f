@@ -1,9 +1,0 @@
-$COM_PATH/img/com_img_gen_win.sv
-$COM_PATH/img/com_img_gen_win_core.sv
-$COM_PATH/img/com_img_lb_wr.sv
-$COM_PATH/img/com_img_lb_rd.sv
-$COM_PATH/img/com_img_lb_cut_rd.sv
-$COM_PATH/img/com_img_bus_pack.sv
-$COM_PATH/img/com_img_bus_unpack.sv
-$COM_PATH/img/com_img_cut_rd.sv
-$COM_PATH/img/com_img_cut_wr.sv

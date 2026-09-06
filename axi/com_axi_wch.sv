@@ -229,7 +229,6 @@ assign u_clr_i_rx_axi_awuser   = u_arb_o_tx_axi_awuser ;
 assign u_clr_i_rx_axi_awvalid  = u_arb_o_tx_axi_awvalid;
 assign u_clr_i_rx_axi_wdata    = u_arb_o_tx_axi_wdata  ;
 assign u_clr_i_rx_axi_wstrb    = u_arb_o_tx_axi_wstrb  ;
-assign u_clr_i_rx_axi_wlast    = u_arb_o_tx_axi_wlast  ;
 assign u_clr_i_rx_axi_wvalid   = u_arb_o_tx_axi_wvalid ;
 assign u_clr_i_rx_axi_bready   = u_arb_o_tx_axi_bready ;
 assign u_clr_i_tx_axi_awready = u_regslice_o_rx_axi_awready ;
@@ -286,7 +285,6 @@ assign u_regslice_i_rx_axi_awuser   = u_clr_o_tx_axi_awuser ;
 assign u_regslice_i_rx_axi_awvalid  = u_clr_o_tx_axi_awvalid;
 assign u_regslice_i_rx_axi_wdata    = u_clr_o_tx_axi_wdata  ;
 assign u_regslice_i_rx_axi_wstrb    = u_clr_o_tx_axi_wstrb  ;
-assign u_regslice_i_rx_axi_wlast    = 1'b0                  ; //if(WA_BEFORE_WD_EN=1), rx_wlast unused; tie 0;
 assign u_regslice_i_rx_axi_wvalid   = u_clr_o_tx_axi_wvalid ;
 assign u_regslice_i_rx_axi_bready   = u_clr_o_tx_axi_bready ;
 assign u_regslice_i_tx_axi_awready = i_tx_axi_awready ;
@@ -313,7 +311,7 @@ com_axi_wch_regslice #(
     .o_rx_axi_awready    ( u_regslice_o_rx_axi_awready   ), //o
     .i_rx_axi_wdata      ( u_regslice_i_rx_axi_wdata     ), //i
     .i_rx_axi_wstrb      ( u_regslice_i_rx_axi_wstrb     ), //i
-    .i_rx_axi_wlast      ( u_regslice_i_rx_axi_wlast     ), //i
+    .i_rx_axi_wlast      ( 1'b0                          ), //i, recovered from AWLEN
     .i_rx_axi_wvalid     ( u_regslice_i_rx_axi_wvalid    ), //i
     .o_rx_axi_wready     ( u_regslice_o_rx_axi_wready    ), //o
     .o_rx_axi_bresp      ( u_regslice_o_rx_axi_bresp     ), //o
@@ -338,5 +336,4 @@ com_axi_wch_regslice #(
 );
 
 endmodule //end of com_axi_wch
-
 

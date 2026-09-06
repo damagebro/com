@@ -1,0 +1,10 @@
+[core]
+id = "dmg:com:all"
+filesets = ["library"]
+
+[fileset.library]
+depend = [
+  "dmg:com:common",
+  "dmg:com:axi",
+  "dmg:com:csr",
+]

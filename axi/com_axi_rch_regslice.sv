@@ -54,71 +54,71 @@ input  wire                     i_tx_axi_rvalid     ,
 output wire                     o_tx_axi_rready     //,
 );
 //localparam-----------------------------------------------------------------
-localparam RA_FIFO_DW = UW + 8 + IW + AW; //{aruser,arlen,arid,araddr}
+localparam RA_FIFO_DW = UW + LW + IW + AW; //{aruser,arlen,arid,araddr}
 localparam RD_FIFO_DW = 2 + 1 + IW + DW; //{rresp,rlast,rid,rdata}
 //signal declare-------------------------------------------------------------
-wire [RA_FIFO_DW-1:0]  u_ra_i_rx_data;
-wire                   u_ra_i_rx_vld ;
-wire                   u_ra_o_rx_rdy ;
-wire [RA_FIFO_DW-1:0]  u_ra_o_tx_data;
-wire                   u_ra_o_tx_vld ;
-wire                   u_ra_i_tx_rdy ;
+wire                   u_ra_i_wr_en    ;
+wire [RA_FIFO_DW-1:0]  u_ra_i_wr_data  ;
+wire                   u_ra_o_wr_full  ;
+wire                   u_ra_i_rd_en    ;
+wire [RA_FIFO_DW-1:0]  u_ra_o_rd_data  ;
+wire                   u_ra_o_rd_empty ;
 
-wire [RD_FIFO_DW-1:0]  u_rd_i_rx_data;
-wire                   u_rd_i_rx_vld ;
-wire                   u_rd_o_rx_rdy ;
-wire [RD_FIFO_DW-1:0]  u_rd_o_tx_data;
-wire                   u_rd_o_tx_vld ;
-wire                   u_rd_i_tx_rdy ;
+wire                   u_rd_i_wr_en    ;
+wire [RD_FIFO_DW-1:0]  u_rd_i_wr_data  ;
+wire                   u_rd_o_wr_full  ;
+wire                   u_rd_i_rd_en    ;
+wire [RD_FIFO_DW-1:0]  u_rd_o_rd_data  ;
+wire                   u_rd_o_rd_empty ;
 //statement------------------------------------------------------------------
 //out---
-assign {o_tx_axi_aruser,o_tx_axi_arlen,o_tx_axi_arid,o_tx_axi_araddr} = u_ra_o_tx_data;
-assign o_tx_axi_arvalid = u_ra_o_tx_vld;
-assign o_rx_axi_arready = u_ra_o_rx_rdy;
+assign {o_tx_axi_aruser,o_tx_axi_arlen,o_tx_axi_arid,o_tx_axi_araddr} = u_ra_o_rd_data;
+assign o_tx_axi_arvalid = !u_ra_o_rd_empty;
+assign o_rx_axi_arready = !u_ra_o_wr_full;
 
-assign {o_rx_axi_rresp,o_rx_axi_rlast,o_rx_axi_rid,o_rx_axi_rdata} = u_rd_o_tx_data;
-assign o_rx_axi_rvalid  = u_rd_o_tx_vld;
-assign o_tx_axi_rready  = u_rd_o_rx_rdy;
+assign {o_rx_axi_rresp,o_rx_axi_rlast,o_rx_axi_rid,o_rx_axi_rdata} = u_rd_o_rd_data;
+assign o_rx_axi_rvalid = !u_rd_o_rd_empty;
+assign o_tx_axi_rready = !u_rd_o_wr_full;
 
 //instance--
-assign u_ra_i_rx_vld = i_rx_axi_arvalid;
-assign u_ra_i_rx_data= {i_rx_axi_aruser,i_rx_axi_arlen,i_rx_axi_arid,i_rx_axi_araddr};
-assign u_ra_i_tx_rdy = i_tx_axi_arready;
-com_dp_buffer #(
-    .DW         ( RA_FIFO_DW  ), //8
-    .DEPTH      ( 2           )  //4
-)r_com_dp_buffer_ext_ra
+assign u_ra_i_wr_en   = i_rx_axi_arvalid && o_rx_axi_arready;
+assign u_ra_i_wr_data = {i_rx_axi_aruser,i_rx_axi_arlen,i_rx_axi_arid,i_rx_axi_araddr};
+assign u_ra_i_rd_en   = o_tx_axi_arvalid && i_tx_axi_arready;
+com_sync_fifo_reg #(
+    .DW    ( RA_FIFO_DW ), //8
+    .DEPTH ( 2          )  //2
+)u_com_sync_fifo_reg_ra
 (
-    .clk                  ( clk                  ), //i
-    .rst_n                ( rst_n                ), //i
-    .clear                ( clear                ), //i
-    .i_rx_data            ( u_ra_i_rx_data       ), //i
-    .i_rx_vld             ( u_ra_i_rx_vld        ), //i
-    .o_rx_rdy             ( u_ra_o_rx_rdy        ), //o
-    .o_tx_data            ( u_ra_o_tx_data       ), //o
-    .o_tx_vld             ( u_ra_o_tx_vld        ), //o
-    .i_tx_rdy             ( u_ra_i_tx_rdy        )  //i
+    .clk           ( clk                 ), //i
+    .rst_n         ( rst_n               ), //i
+    .clear         ( clear               ), //i
+    .i_wr_en       ( u_ra_i_wr_en        ), //i
+    .i_wr_data     ( u_ra_i_wr_data      ), //i
+    .o_wr_full     ( u_ra_o_wr_full      ), //o
+    .i_rd_en       ( u_ra_i_rd_en        ), //i
+    .o_rd_data     ( u_ra_o_rd_data      ), //o
+    .o_rd_empty    ( u_ra_o_rd_empty     ), //o
+    .o_water_level (                     )  //o
 );
 
-assign u_rd_i_rx_vld = i_tx_axi_rvalid;
-assign u_rd_i_rx_data= {i_tx_axi_rresp,i_tx_axi_rlast,i_tx_axi_rid,i_tx_axi_rdata};
-assign u_rd_i_tx_rdy = i_rx_axi_rready;
-com_dp_buffer #(
-    .DW         ( RD_FIFO_DW  ), //8
-    .DEPTH      ( 2           )  //4
-)r_com_dp_buffer_ext_rd
+assign u_rd_i_wr_en   = i_tx_axi_rvalid && o_tx_axi_rready;
+assign u_rd_i_wr_data = {i_tx_axi_rresp,i_tx_axi_rlast,i_tx_axi_rid,i_tx_axi_rdata};
+assign u_rd_i_rd_en   = o_rx_axi_rvalid && i_rx_axi_rready;
+com_sync_fifo_reg #(
+    .DW    ( RD_FIFO_DW ), //8
+    .DEPTH ( 2          )  //2
+)u_com_sync_fifo_reg_rd
 (
-    .clk                  ( clk                  ), //i
-    .rst_n                ( rst_n                ), //i
-    .clear                ( clear                ), //i
-    .i_rx_data            ( u_rd_i_rx_data       ), //i
-    .i_rx_vld             ( u_rd_i_rx_vld        ), //i
-    .o_rx_rdy             ( u_rd_o_rx_rdy        ), //o
-    .o_tx_data            ( u_rd_o_tx_data       ), //o
-    .o_tx_vld             ( u_rd_o_tx_vld        ), //o
-    .i_tx_rdy             ( u_rd_i_tx_rdy        )  //i
+    .clk           ( clk                 ), //i
+    .rst_n         ( rst_n               ), //i
+    .clear         ( clear               ), //i
+    .i_wr_en       ( u_rd_i_wr_en        ), //i
+    .i_wr_data     ( u_rd_i_wr_data      ), //i
+    .o_wr_full     ( u_rd_o_wr_full      ), //o
+    .i_rd_en       ( u_rd_i_rd_en        ), //i
+    .o_rd_data     ( u_rd_o_rd_data      ), //o
+    .o_rd_empty    ( u_rd_o_rd_empty     ), //o
+    .o_water_level (                     )  //o
 );
 
 endmodule //end of com_axi_rch_regslice
-
-
