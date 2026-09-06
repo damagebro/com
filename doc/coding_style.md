@@ -31,6 +31,7 @@
     - 内部模块例化名: a时钟例化信号: `u_cka_<inst_name>_[i|o]_xxx`,  b时钟例化信号: `u_ckb_<inst_name>_[i|o]_xxx`;
     - 单bit信号cdc统一调用`cdc req/ack`协议封装的模块, 多bit信号cdc统一调用`async_fifo`, cdc底层统一封装`sync_cell`模块和后端对接;
     - 一般来说, 自研代码**禁止**自己开发cdc逻辑, 统一用上述封装。
+14. 行宽限制只适用于RTL源代码：RTL单行超过100~120个字符时按语义换行；Markdown等文档不限制行宽，不因字符数人工拆分自然段。
 
 
 ## rtl代码模板
