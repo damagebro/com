@@ -24,16 +24,21 @@
 
 ## RTL组成
 
-| 目录             | 主要内容                                                                  | Filelist core    |
-| ---------------- | ------------------------------------------------------------------------- | ---------------- |
-| `common/`        | 仲裁器、pipe、同步/异步FIFO、RAM adapter、CDC和基础控制模块               | `dmg:com:common` |
-| `axi/`           | AXI读写通道仲裁、清除、regslice、extended burst和EBUS/AXI DMA             | `dmg:com:axi`    |
-| `csr/`           | APB/AHB-Lite/AXI-Lite bridge、regslice、CDC、仲裁、timeout和package engine | `dmg:com:csr`    |
-| `impl_template/` | 项目初始工艺模板，包括实现宏、stdcell wrapper、ECC wrapper和memory shell  | 不进入通用core   |
-| `sim/`           | 各模块族的独立testbench、Makefile、GTKWave和Verdi波形配置                 | 仿真环境自行引用 |
-| `filelist/`      | `rtl_flist_mgr`使用的结构化TOML core                                      | `dmg:com:all`    |
+| 目录             | 主要内容                                                                |
+| ---------------- | ----------------------------------------------------------------------- |
+| `common/`        | 仲裁器、pipe、同步/异步FIFO、RAM adapter、CDC和基础控制模块                |
+| `axi/`           | AXI读写通道仲裁、清除、regslice、extended burst和EBUS/AXI DMA              |
+| `csr/`           | APB/AHB-Lite/AXI-Lite bridge、regslice、CDC、仲裁、timeout和package engine |
+| `impl_template/` | 项目初始工艺模板，不进入通用core                                         |
+| `sim/`           | 各模块族的独立testbench、Makefile、GTKWave和Verdi波形配置                  |
+| `filelist/`      | 按是否依赖项目impl划分的两个TOML core                                    |
 
-`dmg:com:axi`和`dmg:com:csr`均依赖`dmg:com:common`；`dmg:com:all`聚合三组稳定RTL。`com_define.sv`属于Common IP的编译前置文件，定义参数和信号断言宏。定义`COM_ASSERT_ON`后启用断言，未定义时不会为RTL引入额外断言依赖。
+文件清单按实现依赖划分，而不是按RTL目录划分：
+
+- [com_common_ip.toml](filelist/com_common_ip.toml)：`dmg:com:common_ip`，仅依赖本仓库文件，包含基础模块、同步FIFO、RAM adapter、AXI通道和非CDC的CSR模块。
+- [com_ip_need_impl.toml](filelist/com_ip_need_impl.toml)：`dmg:com:ip_need_impl`，自动依赖`dmg:com:common_ip`，额外包含CDC、异步FIFO、CSR CDC和DMA，需要项目提供impl实现。
+
+SRAM FIFO、`com_dp_ram`和CSR package read只暴露RAM接口，不直接例化SRAM shell，因此仍属于`common_ip`；实际使用时由上层连接存储器。`com_define.sv`随`common_ip`作为编译前置文件引入，定义参数和信号断言宏；定义`COM_ASSERT_ON`后启用断言。
 
 ## 主要模块族
 
@@ -50,7 +55,7 @@
 
 ### AXI与DMA
 
-`axi/`将AXI读写通道拆分为独立模块，提供仲裁、复位清除和双向regslice。`com_axi_extd_wr/rd`负责大长度访问的burst拆分，`com_axi_dma`在EBUS与AXI之间完成数据搬运、边界拆分、响应合并和读数据缓存。需要按subsystem生成专属DMA时，使用[py_gen_dma](axi/py_gen_dma/README.md)。
+`axi/`将AXI读写通道拆分为独立模块，提供仲裁、复位清除和双向regslice。`com_axi_extd_wr/rd`负责大长度访问的burst拆分，`com_axi_dma`是DMA生成模板，实现EBUS与AXI之间的数据搬运、边界拆分、响应合并和读数据缓存。项目必须通过[py_gen_dma](axi/py_gen_dma/README.md)生成`${prefix}_axi_dma`，并使用相同prefix的SRAM shell。
 
 协议、buffer配置和burst拆分示例见[AXI/DMA手册](doc/common_rtl_dma_manual.md)。
 
@@ -88,7 +93,11 @@ VCS使用`make com`、`make run`和`make verdi`；Xcelium使用对应Makefile中
 
 ## 项目集成
 
-正式项目可以通过`filelist/*.toml`选择Common、AXI、CSR或完整RTL集合，但不得直接引用本仓库的`impl_template/`作为量产实现目录。`impl_template/`是后端工艺库的初始模板，应复制到项目的`impl/`后独立维护工艺宏、memory model、SRAM shell、PHY wrapper和stdcell wrapper。
+不需要工艺实现的项目只引入`dmg:com:common_ip`；需要CDC或DMA时引入`dmg:com:ip_need_impl`，并在项目上层filelist中先引入实际impl core。COM不固定impl的core名称或路径，也不自动引用`impl_template/`。展开filelist不会检查外部模块是否已提供，项目仍需通过编译和展开检查实现依赖。
+
+项目impl须提供`impl_define.sv`中的实现配置（包括DMA使用的`COM_MEM_CTRL_W`）和CDC使用的`com_cdc_sig`。`com_axi_dma`仅作为生成模板保留在本core中，不直接作为项目DMA使用；项目必须使用`${prefix}_axi_dma`与相同prefix的SRAM shell，并在项目filelist中引入这两个生成文件。当前生成器的具体shell模块名为`${prefix}_spram_shell`，不是`${prefix}_sram_shell`。
+
+`impl_template/`是后端工艺库的初始模板，应复制到项目的`impl/`后独立维护工艺宏、memory model、SRAM shell、PHY wrapper和stdcell wrapper，不得直接作为量产实现目录。
 
 同一项目中的`impl_define.sv`和公共memory model只保留一份，由whole-chip filelist统一引入。SRAM shell应使用Memory Tool按`subsys_prefix`生成；不同subsystem使用不同prefix，同一subsystem内需要强制区分PPA约束的memory可通过`MEM_USER`指定唯一名称。
 

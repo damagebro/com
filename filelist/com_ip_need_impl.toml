@@ -1,0 +1,33 @@
+# The project filelist must provide impl_define.sv and com_cdc_sig.
+# com_axi_dma is a generation template, not a project DMA implementation.
+# Projects must use the generated <prefix>_axi_dma with its matching
+# <prefix> SRAM shell (currently named <prefix>_spram_shell by the generator).
+# Include the generated DMA and shell in the project filelist.
+# Select the actual impl core in the project; do not bind impl_template here.
+[core]
+id = "dmg:com:ip_need_impl"
+filesets = ["cdc", "fifo", "csr"]
+
+[fileset.cdc]
+dir = "."
+depend = ["dmg:com:common_ip"]
+files = [
+  "common/cdc/com_cdc_handshake.sv",
+  "common/cdc/com_cdc_rstn.sv",
+  "common/cdc/com_cdc_rstn_pair.sv",
+]
+
+[fileset.fifo]
+dir = "."
+files = [
+  "common/fifo/com_async_fifo_reg.sv",
+  "common/fifo/com_async_fifo_reg_exactwl.sv",
+]
+
+[fileset.csr]
+dir = "."
+files = ["csr/com_csr_cdc.sv"]
+
+# [fileset.axi]
+# dir = "."
+# files = ["axi/com_axi_dma.sv"]

@@ -1,11 +1,12 @@
 [core]
-id = "dmg:com:common"
+id = "dmg:com:common_ip"
 filesets = [
   "prelude",
   "base",
   "fifo",
   "ram",
-  "cdc",
+  "axi",
+  "csr",
 ]
 
 [fileset.prelude]
@@ -43,8 +44,6 @@ files = [
   "common/fifo/com_sync_fifo_ram_1p1bank.sv",
   "common/fifo/com_sync_fifo_ram_1p2bank.sv",
   "common/fifo/com_sync_fifo_ram_2p1ck.sv",
-  "common/fifo/com_async_fifo_reg.sv",
-  "common/fifo/com_async_fifo_reg_exactwl.sv",
   "common/fifo/com_dp_buffer.sv",
   "common/fifo/com_dp_ram.sv",
 ]
@@ -58,10 +57,31 @@ files = [
   "common/com_ram_adp_2sp.sv",
 ]
 
-[fileset.cdc]
+[fileset.axi]
 dir = "."
 files = [
-  "common/cdc/com_cdc_handshake.sv",
-  "common/cdc/com_cdc_rstn.sv",
-  "common/cdc/com_cdc_rstn_pair.sv",
+  "axi/com_axi_rch_arb.sv",
+  "axi/com_axi_rch_clr.sv",
+  "axi/com_axi_rch_regslice.sv",
+  "axi/com_axi_rch.sv",
+  "axi/com_axi_wch_arb.sv",
+  "axi/com_axi_wch_clr.sv",
+  "axi/com_axi_wch_regslice.sv",
+  "axi/com_axi_wch.sv",
+  "axi/com_axi_extd_rd.sv",
+  "axi/com_axi_extd_wr.sv",
+]
+
+[fileset.csr]
+dir = "."
+files = [
+  "csr/com_csr_apb2csr.sv",
+  "csr/com_csr_ahb2csr.sv",
+  "csr/com_csr_axil2csr.sv",
+  "csr/com_csr2apb.sv",
+  "csr/com_csr_regslice.sv",
+  "csr/com_csr_arbiter.sv",
+  "csr/com_csr_timeout.sv",
+  "csr/com_csr_pkg_wr.sv",
+  "csr/com_csr_pkg_rd.sv",
 ]
