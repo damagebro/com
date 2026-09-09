@@ -10,7 +10,7 @@ filesets = ["cdc", "fifo", "csr"]
 
 [fileset.cdc]
 dir = "."
-depend = ["dmg:com:common_ip"]
+depend = ["dmg:com:base_ip"]
 files = [
   "common/cdc/com_cdc_handshake.sv",
   "common/cdc/com_cdc_rstn.sv",

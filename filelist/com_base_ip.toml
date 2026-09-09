@@ -1,0 +1,87 @@
+[core]
+id = "dmg:com:base_ip"
+filesets = [
+  "prelude",
+  "base",
+  "fifo",
+  "ram",
+  "axi",
+  "csr",
+]
+
+[fileset.prelude]
+dir = "."
+files = ["first: com_define.sv"]
+
+[fileset.base]
+dir = "."
+files = [
+  "common/com_find_lsb_first_one.sv",
+  "common/com_reg.sv",
+  "common/com_reg_e.sv",
+  "common/com_reg_ce.sv",
+  "common/com_pipe_vld_single.sv",
+  "common/com_pipe_vld.sv",
+  "common/com_pipe_rdy.sv",
+  "common/com_pipe_vld_rdy.sv",
+  "common/com_pipe_regslice.sv",
+  "common/com_simo_no_delay.sv",
+  "common/com_counter.sv",
+  "common/com_edge_detect.sv",
+  "common/com_arbiter_rr.sv",
+  "common/com_arbiter_wrr.sv",
+  "common/com_arbiter_iwrr.sv",
+]
+
+[fileset.fifo]
+dir = "common/fifo"
+files = [
+  "com_sync_fifo_reg.sv",
+  "com_sync_fifo_reg_v2.sv",
+  "com_sync_fifo_reg_pfetch.sv",
+  "com_sync_fifo_reg_fullbyp.sv",
+  "com_sync_fifo_reg_2w1r.sv",
+  "com_sync_fifo_ram_1p1bank.sv",
+  "com_sync_fifo_ram_1p2bank.sv",
+  "com_sync_fifo_ram_2p1ck.sv",
+  "com_dp_buffer.sv",
+  "com_dp_ram.sv",
+]
+
+[fileset.ram]
+dir = "."
+files = [
+  "common/com_ram_arbiter.sv",
+  "common/com_ram_adp_sp.sv",
+  "common/com_ram_adp_rmw.sv",
+  "common/com_ram_adp_2sp.sv",
+]
+
+[fileset.axi]
+dir = "axi"
+files = [
+  "com_axi_rch_arb.sv",
+  "com_axi_rch_clr.sv",
+  "com_axi_rch_regslice.sv",
+  "com_axi_rch.sv",
+  "com_axi_wch_arb.sv",
+  "com_axi_wch_clr.sv",
+  "com_axi_wch_regslice.sv",
+  "com_axi_wch.sv",
+  "com_axi_extd_rd.sv",
+  "com_axi_extd_wr.sv",
+]
+
+[fileset.csr]
+dir = "csr"
+files = [
+  "com_csr_apb2csr.sv",
+  "com_csr_ahb2csr.sv",
+  "com_csr_axil2csr.sv",
+  "com_csr2apb.sv",
+  "com_csr_regslice.sv",
+  "com_csr_arbiter.sv",
+  "com_csr_timeout.sv",
+  "com_csr_pkg_wr.sv",
+  "com_csr_pkg_rd.sv",
+]
