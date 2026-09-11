@@ -35,10 +35,12 @@
 
 文件清单按实现依赖划分，而不是按RTL目录划分：
 
-- [com_common_ip.toml](filelist/com_common_ip.toml)：`dmg:com:common_ip`，仅依赖本仓库文件，包含基础模块、同步FIFO、RAM adapter、AXI通道和非CDC的CSR模块。
-- [com_ip_need_impl.toml](filelist/com_ip_need_impl.toml)：`dmg:com:ip_need_impl`，自动依赖`dmg:com:common_ip`，额外包含CDC、异步FIFO、CSR CDC和DMA，需要项目提供impl实现。
+- [com_base_ip.toml](filelist/com_base_ip.toml)：`dmg:com:base_ip`，仅依赖本仓库文件，包含基础模块、同步FIFO、RAM adapter、AXI通道和非CDC的CSR模块。
+- [com_ip_need_impl.toml](filelist/com_ip_need_impl.toml)：`dmg:com:ip_need_impl`，自动依赖`dmg:com:base_ip`，额外包含CDC、异步FIFO和CSR CDC共6个模块，需要项目提供impl实现。DMA生成模板不在当前有效清单中。
 
-SRAM FIFO、`com_dp_ram`和CSR package read只暴露RAM接口，不直接例化SRAM shell，因此仍属于`common_ip`；实际使用时由上层连接存储器。`com_define.sv`随`common_ip`作为编译前置文件引入，定义参数和信号断言宏；定义`COM_ASSERT_ON`后启用断言。
+SRAM FIFO、`com_dp_ram`和CSR package read只暴露RAM接口，不直接例化SRAM shell，因此仍属于`base_ip`；实际使用时由上层连接存储器。`com_define.sv`随`base_ip`作为编译前置文件引入，定义参数和信号断言宏；定义`COM_ASSERT_ON`后启用断言。
+
+`ip_need_impl`通过`[fileset.cdc].depend`引入`base_ip`，为当前模块使用的断言宏提供前置文件`com_define.sv`。其模块调用包括内部的`com_cdc_rstn`、`com_async_fifo_reg`以及项目impl提供的`com_cdc_sig`。
 
 ## 主要模块族
 
@@ -93,9 +95,11 @@ VCS使用`make com`、`make run`和`make verdi`；Xcelium使用对应Makefile中
 
 ## 项目集成
 
-不需要工艺实现的项目只引入`dmg:com:common_ip`；需要CDC或DMA时引入`dmg:com:ip_need_impl`，并在项目上层filelist中先引入实际impl core。COM不固定impl的core名称或路径，也不自动引用`impl_template/`。展开filelist不会检查外部模块是否已提供，项目仍需通过编译和展开检查实现依赖。
+不需要工艺实现的项目只引入`dmg:com:base_ip`；需要CDC、异步FIFO或CSR CDC时引入`dmg:com:ip_need_impl`，并在项目上层filelist中先引入实际impl core。COM不固定impl的core名称或路径，也不自动引用`impl_template/`。展开filelist不会检查外部模块是否已提供，项目仍需通过编译和展开检查实现依赖。
 
-项目impl须提供`impl_define.sv`中的实现配置（包括DMA使用的`COM_MEM_CTRL_W`）和CDC使用的`com_cdc_sig`。`com_axi_dma`仅作为生成模板保留在本core中，不直接作为项目DMA使用；项目必须使用`${prefix}_axi_dma`与相同prefix的SRAM shell，并在项目filelist中引入这两个生成文件。当前生成器的具体shell模块名为`${prefix}_spram_shell`，不是`${prefix}_sram_shell`。
+项目impl须提供`impl_define.sv`中的实现配置和CDC使用的`com_cdc_sig`。实际impl core的名称和路径由项目定义。
+
+使用DMA时，由项目filelist引入生成的`${prefix}_axi_dma`和配套的`${prefix}_spram_shell`，并提供DMA使用的`COM_MEM_CTRL_W`等实现配置。`axi/com_axi_dma.sv`保留在仓库中作为生成模板，已从`ip_need_impl`的有效fileset中排除；引入该core不会自动引入DMA模板或项目生成的DMA。
 
 `impl_template/`是后端工艺库的初始模板，应复制到项目的`impl/`后独立维护工艺宏、memory model、SRAM shell、PHY wrapper和stdcell wrapper，不得直接作为量产实现目录。
 

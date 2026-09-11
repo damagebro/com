@@ -304,7 +304,7 @@ block内有一次JUMP时按长度边界切换；没有JUMP时必须以EXIT结束
 | `8*i`              | 第i笔`reg_addr[31:0]` |
 | `8*i+4`            | 第i笔`reg_data[31:0]` |
 
-详细逐字段offset可参考[配置包格式说明](plan_csr_pkg.md#指令格式)。
+详细逐字段offset可参考[配置包格式说明](plan/plan_csr_pkg.md#指令格式)。
 
 ### com_csr_pkg_wr
 
