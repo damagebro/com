@@ -1,17 +1,15 @@
 # COM RTL 飞书同步计划与脚本
 
-## 章节顺序计划
+## 当前章节顺序
 
-以仓库根目录 SUMMARY.md 为发布清单，飞书根页面为“COMMON RTL 文档”，与 HW Tool 文档使用独立页面和状态。默认父节点沿用另一个仓库已有配置，也可通过 --parent-url 指定。首轮为6个分组、18篇源文档，加上根页共25页。
+以仓库根目录 SUMMARY.md 为发布清单，飞书根页面为“COMMON RTL 文档”，与 HW Tool 文档使用独立页面和状态。默认父节点沿用已授权知识库，也可通过 --parent-url 指定。
 
-1. 入门与规范：仓库概览、模块分类和filelist入口 → RTL编码规范。
-2. Common IP：使用手册 → FIFO微架构。使用手册保留当前仲裁、基础逻辑、pipe、SIMO、counter、RAM、FIFO、CDC的章节顺序；微架构单独成页。
-3. AXI与DMA：EBUS/DMA手册 → DMA生成指南。
-4. CSR：概述 → 集成框图 → CSR接口 → AMBA Bridge → CSR Fabric → CSR Package → 性能验证，保留在一篇手册内。
-5. 工艺实现与项目集成：impl模板、项目维护边界、memory与stdcell接入。
-6. 仿真验证：Pipe → SIMO → 仲裁 → 同步FIFO → 异步FIFO → RAM → CDC → AXI/DMA → CSR Bus → CSR Package。
+2026-09-12清单为2个分组、11篇源文档，加上根页共14页：
 
-首轮按现有文件发布，不重写正文或拆分模块页。分组页自动生成子页面导航，源文件内标题保留。ai_prompt.md、ai_answer.md、handoff_common_rtl.md、doc/plan和同步脚本说明不发布。CSR详细计划暂留本地；已纳入的手册通过正文链接仍可跳转到GitHub源文件。其他仓库工具文档保留原有GitHub链接，不重复导入。后续若需要模块级拆页，应先调整清单和链接映射再推送。
+1. Common IP：仓库概览 → Common IP手册 → AXI/EBUS DMA手册 → CSR手册 → 工艺实现模板 → FIFO微架构 → DMA生成指南。
+2. 仿真验证环境：同步FIFO → AXI/DMA → CSR Bus → CSR Package。
+
+按现有文件发布，保留正文与原有页面链接。未列入清单的本地文档不发布；清单内页面链接转换为飞书链接，其余文件链接指向GitHub。章节调整需要显式使用 --sync-tree，删除退出清单的页面还需已获授权并加 --delete-removed，详见下方目录保护。
 
 ## 运行
 
@@ -44,3 +42,13 @@ out/feishu_summary 保存 state.json、转换缓存和report.json，已加入Git
 python -B -m unittest discover -s doc/feishu -p "test_*.py"
 python -B doc/feishu/push_summary.py --dry-run
 ```
+
+## 目录保护（2026-09-12）
+
+普通推送会在写入前检查实际知识库、父节点、文档身份、子节点集合与章节顺序，包含历史归档和旧节点。远端缺失、被移到首页、归档失效或出现未登记子页面时停止，不根据本地状态猜测归属。章节删除、移动或在已有章节中间插入需要显式使用 `--sync-tree`；该参数也不能跳过远端状态异常。
+
+`python -B doc/feishu/push_summary.py --check-tree` 只读联网检查，不修改飞书；`--dry-run` 仅预览本地清单。显式章节同步每次移动前检查目标，移动后验证实际父节点，失败保留pending以阻止盲目重试。正文推送前后再次验证完整受管目录。
+
+仅在已授权删除退出清单的页面时使用 `--sync-tree --delete-removed`；它在正文发布成功后由叶子向上删除旧页及临时归档，并记录删除任务与旧页面状态。COMMON RTL 实际推送还需 `--push`。默认不自动删除。
+
+检查不能阻止用户或其他程序在检查后改动飞书；无法将多次远端操作变为原子事务。检测到冲突会停止，已完成的单项移动可能需要核对后恢复。
